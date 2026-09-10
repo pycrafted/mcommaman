@@ -4,6 +4,8 @@ Identités et clientèle.
 Un seul modèle d'utilisateur pour les deux publics — les clientes et l'équipe de
 la boutique — distingués par leur rôle. Deux modèles séparés auraient obligé à
 dupliquer la connexion, les sessions et la réinitialisation de mot de passe.
+
+Deux rôles, donc, et pas un de plus : on achète, ou on tient la boutique.
 """
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -43,7 +45,6 @@ class GestionnaireUtilisateur(BaseUserManager):
 class Utilisateur(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
         CLIENTE = "cliente", "Cliente"
-        PREPARATRICE = "preparatrice", "Préparatrice"
         GERANTE = "gerante", "Gérante"
 
     email = models.EmailField("adresse électronique", unique=True)
@@ -75,7 +76,15 @@ class Utilisateur(AbstractBaseUser, PermissionsMixin):
     @property
     def est_equipe(self) -> bool:
         """Qui peut entrer dans le back-office."""
-        return self.role in {self.Role.PREPARATRICE, self.Role.GERANTE}
+        return self.role in ROLES_EQUIPE
+
+
+# Les rôles qui ouvrent le back-office, tenus à un seul endroit : la permission
+# et la vue de gestion s'y réfèrent. Il n'y en a qu'un — la boutique ne distingue
+# pas deux niveaux d'accès, une gérante en fait entrer une autre. Le jour où il
+# faudra un accès partiel, c'est un rôle de plus dans `Role` et dans ce tuple,
+# et rien d'autre à chercher ailleurs.
+ROLES_EQUIPE = (Utilisateur.Role.GERANTE,)
 
 
 class Adresse(models.Model):

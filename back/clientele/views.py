@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import Adresse, Favori
+from .models import ROLES_EQUIPE, Adresse, Favori
 from .permissions import EstEquipe, EstProprietaire
 from .serializers import (
     AdresseSerializer,
@@ -26,6 +26,7 @@ from .serializers import (
     ChangementMotDePasseSerializer,
     ConnexionSerializer,
     InscriptionSerializer,
+    MembreEquipeSerializer,
     ReinitialisationSerializer,
     UtilisateurSerializer,
 )
@@ -330,3 +331,57 @@ class ClienteGestionViewSet(viewsets.ReadOnlyModelViewSet):
         if ville := self.request.query_params.get("ville"):
             selection = selection.filter(ville=ville)
         return selection.order_by("-date_creation")
+
+
+class EquipeGestionViewSet(viewsets.ModelViewSet):
+    """
+    Les comptes qui ouvrent le back-office.
+
+    Toutes gérantes : la boutique ne distingue pas deux niveaux d'accès, et une
+    gérante en fait entrer une autre. C'est un choix assumé, pour une équipe de
+    quelques personnes qui se connaissent — ouvrir un compte revient à partager
+    le sien. Le jour où il faudra des accès partiels, c'est un rôle de plus dans
+    `ROLES_EQUIPE` et un champ de plus dans le sérialiseur.
+
+    Pas de suppression : un compte se désactive. Effacer une identité emporte
+    avec elle ce qu'elle a fait — qui a validé quelle commande, qui a publié
+    quelle fiche —, et un compte revenu de congé se réactive d'un geste.
+    """
+
+    permission_classes = [EstEquipe]
+    serializer_class = MembreEquipeSerializer
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_queryset(self):
+        from django.contrib.auth import get_user_model
+
+        selection = get_user_model().objects.filter(role__in=ROLES_EQUIPE)
+        if requete := self.request.query_params.get("q"):
+            from django.db.models import Q
+
+            selection = selection.filter(
+                Q(nom__unaccent__icontains=requete)
+                | Q(email__icontains=requete)
+                | Q(telephone__icontains=requete)
+            )
+        if role := self.request.query_params.get("role"):
+            selection = selection.filter(role=role)
+        return selection.order_by("-date_creation")
+
+    def perform_update(self, serializer):
+        """
+        Le garde-fou qui compte : ne pas se fermer la porte soi-même.
+
+        Se désactiver laisserait la personne dehors dès son prochain appel, et
+        avec elle la boutique si elle est la dernière gérante. Le rôle, lui, ne
+        se change plus par cette route — le sérialiseur le tient en lecture
+        seule, il n'y a donc rien à garder de ce côté.
+        """
+        from rest_framework.exceptions import ValidationError
+
+        membre = serializer.instance
+        if membre == self.request.user and serializer.validated_data.get("is_active") is False:
+            raise ValidationError(
+                {"is_active": "Vous ne pouvez pas désactiver votre propre compte."}
+            )
+        serializer.save()

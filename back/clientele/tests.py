@@ -15,7 +15,7 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from .models import Adresse
 
@@ -338,4 +338,166 @@ class MotDePasseOublieTest(APITestCase):
 class PermissionsTest(APITestCase):
     def test_le_carnet_est_ferme_aux_visiteurs(self):
         reponse = self.client.get(reverse("adresse-list"))
+        self.assertIn(reponse.status_code, {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN})
+
+
+class EquipeGestionTest(APITestCase):
+    """
+    Ce que la page « Utilisateurs » du back-office doit garantir.
+
+    Une gérante en fait entrer une autre : c'est le seul rôle, et ouvrir un
+    compte revient à partager le sien. Ce que la route ne doit jamais permettre,
+    c'est de se fermer la porte sur soi-même, ni de fabriquer par ce chemin un
+    compte qui n'entre pas dans le back-office.
+    """
+
+    def setUp(self):
+        self.gerante = Utilisateur.objects.create_superuser(
+            email="gerante@mcm.sn", nom="Mame Fatou", password="motdepasse123"
+        )
+        self.cliente = Utilisateur.objects.create_user(
+            email="cliente@mcm.sn", nom="Awa", password="motdepasse123"
+        )
+        self.liste = reverse("equipe-gestion-list")
+        self.client.force_authenticate(self.gerante)
+
+    def _detail(self, utilisateur):
+        return reverse("equipe-gestion-detail", args=[utilisateur.id])
+
+    def test_la_liste_ne_montre_que_l_equipe(self):
+        """Une cliente n'est pas une collegue : elle a son propre onglet."""
+        reponse = self.client.get(self.liste)
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+        adresses = {ligne["email"] for ligne in reponse.data["results"]}
+        self.assertIn("gerante@mcm.sn", adresses)
+        self.assertNotIn("cliente@mcm.sn", adresses)
+
+    def test_un_compte_cree_peut_se_connecter(self):
+        """Le but de la page : donner un acces qui fonctionne vraiment."""
+        reponse = self.client.post(
+            self.liste,
+            {
+                "email": "  Nouvelle@MCM.SN ",
+                "nom": "Nouvelle",
+                "mot_de_passe": "Boutique-2026-Dakar",
+            },
+            format="json",
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        # L'adresse est normalisee, comme partout ailleurs.
+        self.assertEqual(reponse.data["email"], "nouvelle@mcm.sn")
+        # Le mot de passe entre, il ne ressort pas.
+        self.assertNotIn("mot_de_passe", reponse.data)
+
+        membre = Utilisateur.objects.get(email="nouvelle@mcm.sn")
+        self.assertTrue(membre.est_equipe)
+        # Aucun role n'a ete demande : la route n'en fabrique qu'un.
+        self.assertEqual(membre.role, "gerante")
+        self.assertTrue(membre.check_password("Boutique-2026-Dakar"))
+        # L'admin Django reste ferme : ce back-office suffit a l'equipe.
+        self.assertFalse(membre.is_staff)
+
+    def test_un_role_envoye_a_la_main_ne_change_rien(self):
+        """
+        La route ne fabrique que des gerantes.
+
+        Un « role » glisse dans la requete — par curiosite ou par malice — ne
+        doit ni passer, ni faire echouer la creation : il est simplement ignore.
+        Sans cela, on ouvrirait par cette porte un compte que la page ne saurait
+        plus relire.
+        """
+        reponse = self.client.post(
+            self.liste,
+            {"email": "x@mcm.sn", "nom": "X", "role": "cliente", "mot_de_passe": "Boutique-2026-Dakar"},
+            format="json",
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Utilisateur.objects.get(email="x@mcm.sn").role, "gerante")
+
+    def test_un_mot_de_passe_est_obligatoire_a_l_ouverture(self):
+        reponse = self.client.post(
+            self.liste, {"email": "y@mcm.sn", "nom": "Y", "role": "gerante"}, format="json"
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("mot_de_passe", reponse.data)
+
+    def test_un_mot_de_passe_faible_est_refuse(self):
+        """Les regles de Django valent aussi pour un acces au back-office."""
+        reponse = self.client.post(
+            self.liste,
+            {"email": "z@mcm.sn", "nom": "Z", "role": "gerante", "mot_de_passe": "1234"},
+            format="json",
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_une_adresse_deja_prise_est_refusee(self):
+        reponse = self.client.post(
+            self.liste,
+            {
+                "email": "GERANTE@mcm.sn",
+                "nom": "Doublon",
+                "role": "gerante",
+                "mot_de_passe": "Boutique-2026-Dakar",
+            },
+            format="json",
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_on_ne_peut_pas_se_desactiver_soi_meme(self):
+        """Le geste qui enfermerait dehors, et la boutique avec."""
+        reponse = self.client.patch(self._detail(self.gerante), {"is_active": False}, format="json")
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+        self.gerante.refresh_from_db()
+        self.assertTrue(self.gerante.is_active)
+
+    def test_le_role_ne_se_modifie_pas_par_cette_route(self):
+        """
+        Le back-office n'a qu'un role : rien a promouvoir, rien a retrograder.
+
+        Et surtout, rien qui permette de se retrograder en cliente — ce qui
+        reviendrait a se fermer la porte par un autre chemin que `is_active`.
+        """
+        reponse = self.client.patch(
+            self._detail(self.gerante), {"role": "cliente"}, format="json"
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+        self.gerante.refresh_from_db()
+        self.assertEqual(self.gerante.role, "gerante")
+
+    def test_corriger_son_propre_nom_reste_permis(self):
+        """Les garde-fous portent sur l'acces, pas sur l'etat civil."""
+        reponse = self.client.patch(self._detail(self.gerante), {"nom": "Mame F. Diop"}, format="json")
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+
+    def test_un_compte_ferme_ne_se_connecte_plus(self):
+        collegue = Utilisateur.objects.create_user(
+            email="collegue@mcm.sn", nom="Collegue", password="motdepasse123", role="gerante"
+        )
+        reponse = self.client.patch(self._detail(collegue), {"is_active": False}, format="json")
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+
+        anonyme = APIClient()
+        connexion = anonyme.post(
+            reverse("connexion"),
+            {"email": "collegue@mcm.sn", "mot_de_passe": "motdepasse123"},
+            format="json",
+        )
+        self.assertEqual(connexion.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_un_compte_ne_se_supprime_pas(self):
+        """Effacer une identite emporterait avec elle ce qu'elle a fait."""
+        collegue = Utilisateur.objects.create_user(
+            email="autre@mcm.sn", nom="Autre", password="motdepasse123", role="gerante"
+        )
+        reponse = self.client.delete(self._detail(collegue))
+        self.assertEqual(reponse.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertTrue(Utilisateur.objects.filter(pk=collegue.pk).exists())
+
+    def test_une_cliente_n_entre_pas(self):
+        self.client.force_authenticate(self.cliente)
+        self.assertEqual(self.client.get(self.liste).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_un_visiteur_n_entre_pas(self):
+        self.client.force_authenticate(None)
+        reponse = self.client.get(self.liste)
         self.assertIn(reponse.status_code, {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN})

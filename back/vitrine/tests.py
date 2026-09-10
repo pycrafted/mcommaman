@@ -16,9 +16,10 @@ class ReglagesTest(APITestCase):
             email="g@test.sn", nom="Gérante", password="motdepasse123",
             role=Utilisateur.Role.GERANTE,
         )
-        self.preparatrice = Utilisateur.objects.create_user(
-            email="p@test.sn", nom="Préparatrice", password="motdepasse123",
-            role=Utilisateur.Role.PREPARATRICE,
+        # Le contre-exemple de `EstGerante`. C'était une préparatrice tant que ce
+        # rôle existait ; il n'y a plus qu'une cliente à opposer à la gérante.
+        self.cliente = Utilisateur.objects.create_user(
+            email="p@test.sn", nom="Cliente", password="motdepasse123",
         )
 
     def test_la_boutique_lit_les_reglages_sans_compte(self):
@@ -31,7 +32,7 @@ class ReglagesTest(APITestCase):
         self.assertNotIn("seuil_stock_bas", reponse.data)
 
     def test_seule_la_gerante_modifie_les_reglages(self):
-        self.client.force_authenticate(self.preparatrice)
+        self.client.force_authenticate(self.cliente)
         refus = self.client.patch(reverse("reglages-gestion"), {"franco_dakar": 30000}, format="json")
         self.assertEqual(refus.status_code, status.HTTP_403_FORBIDDEN)
 
