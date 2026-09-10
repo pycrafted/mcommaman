@@ -105,6 +105,7 @@ class InscriptionTest(APITestCase):
 
 class ConnexionTest(APITestCase):
     def setUp(self):
+        cache.clear()
         self.cliente = Utilisateur.objects.create_user(
             email="cliente@example.sn", nom="Cliente", password="motdepasse123"
         )
@@ -133,12 +134,24 @@ class ConnexionTest(APITestCase):
                          str(mauvais.data["non_field_errors"][0]))
 
     def test_un_compte_desactive_ne_se_connecte_pas(self):
+        """
+        Fermé, le compte le dit — mais seulement à qui connaît le mot de passe.
+
+        Avec un mauvais mot de passe, un compte fermé répond comme un compte
+        inconnu : sinon on saurait lesquels existent rien qu'en essayant.
+        """
         self.cliente.is_active = False
         self.cliente.save()
-        reponse = self.client.post(reverse("connexion"), {
+        bon = self.client.post(reverse("connexion"), {
             "email": "cliente@example.sn", "mot_de_passe": "motdepasse123",
         }, format="json")
-        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(bon.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(str(bon.data["non_field_errors"][0]), "Ce compte est désactivé.")
+
+        faux = self.client.post(reverse("connexion"), {
+            "email": "cliente@example.sn", "mot_de_passe": "pas-le-bon",
+        }, format="json")
+        self.assertEqual(str(faux.data["non_field_errors"][0]), "Adresse ou mot de passe incorrect.")
 
     def test_moi_repond_sans_erreur_a_un_visiteur_anonyme(self):
         """La vitrine appelle cette route à chaque chargement, connectée ou non."""
@@ -352,6 +365,7 @@ class EquipeGestionTest(APITestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.gerante = Utilisateur.objects.create_superuser(
             email="gerante@mcm.sn", nom="Mame Fatou", password="motdepasse123"
         )
@@ -501,3 +515,50 @@ class EquipeGestionTest(APITestCase):
         self.client.force_authenticate(None)
         reponse = self.client.get(self.liste)
         self.assertIn(reponse.status_code, {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN})
+
+
+class ConnexionGestionTest(APITestCase):
+    """
+    La porte du back-office : elle ne s'ouvre qu'a l'equipe, et sans laisser
+    de session derriere elle quand elle refuse.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.gerante = Utilisateur.objects.create_user(
+            email="g@mcm.sn", nom="Gérante", password="motdepasse123", role="gerante"
+        )
+        self.cliente = Utilisateur.objects.create_user(
+            email="c@mcm.sn", nom="Cliente", password="motdepasse123"
+        )
+        self.porte = reverse("connexion-gestion")
+
+    def test_la_gerante_entre(self):
+        reponse = self.client.post(
+            self.porte, {"email": "g@mcm.sn", "mot_de_passe": "motdepasse123"}, format="json"
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+        self.assertTrue(reponse.data["est_equipe"])
+        self.assertEqual(self.client.get(reverse("moi")).data["utilisateur"]["email"], "g@mcm.sn")
+
+    def test_une_cliente_est_refusee_sans_session(self):
+        """Le refus n'ouvre rien : `/moi/` ne connait toujours personne."""
+        reponse = self.client.post(
+            self.porte, {"email": "c@mcm.sn", "mot_de_passe": "motdepasse123"}, format="json"
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIsNone(self.client.get(reverse("moi")).data["utilisateur"])
+
+    def test_un_mauvais_mot_de_passe_repond_comme_sur_la_vitrine(self):
+        reponse = self.client.post(
+            self.porte, {"email": "g@mcm.sn", "mot_de_passe": "faux"}, format="json"
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_une_gerante_fermee_sait_pourquoi(self):
+        self.gerante.is_active = False
+        self.gerante.save()
+        reponse = self.client.post(
+            self.porte, {"email": "g@mcm.sn", "mot_de_passe": "motdepasse123"}, format="json"
+        )
+        self.assertEqual(str(reponse.data["non_field_errors"][0]), "Ce compte est désactivé.")

@@ -159,19 +159,31 @@ class ConnexionSerializer(serializers.Serializer):
     mot_de_passe = serializers.CharField(write_only=True, style={"input_type": "password"})
 
     def validate(self, donnees):
+        email = donnees["email"].strip().lower()
         utilisateur = authenticate(
             request=self.context.get("request"),
-            username=donnees["email"].strip().lower(),
+            username=email,
             password=donnees["mot_de_passe"],
         )
-        # Un seul message pour les deux cas : dire « cette adresse est inconnue »
-        # revient à confirmer quelles adresses ont un compte.
-        if not utilisateur:
-            raise serializers.ValidationError("Adresse ou mot de passe incorrect.")
-        if not utilisateur.is_active:
+        if utilisateur:
+            donnees["utilisateur"] = utilisateur
+            return donnees
+
+        # `authenticate` répond `None` aussi bien pour un mot de passe faux que
+        # pour un compte fermé : le backend de Django refuse les inactifs avant
+        # même de comparer. Un compte qu'on a fermé mérite pourtant un autre
+        # message que « mot de passe incorrect » — sinon la personne réessaie
+        # dix fois en se croyant maladroite.
+        #
+        # On ne le dit qu'à qui connaît le mot de passe : sans cette condition,
+        # le message trahirait quelles adresses ont un compte ici.
+        ferme = Utilisateur.objects.filter(email__iexact=email, is_active=False).first()
+        if ferme and ferme.check_password(donnees["mot_de_passe"]):
             raise serializers.ValidationError("Ce compte est désactivé.")
-        donnees["utilisateur"] = utilisateur
-        return donnees
+
+        # Un seul message pour tout le reste : dire « cette adresse est inconnue »
+        # revient à confirmer quelles adresses ont un compte.
+        raise serializers.ValidationError("Adresse ou mot de passe incorrect.")
 
 
 class DemandeReinitialisationSerializer(serializers.Serializer):

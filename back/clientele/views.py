@@ -85,6 +85,37 @@ class ConnexionView(APIView):
         return Response(UtilisateurSerializer(utilisateur).data)
 
 
+class ConnexionGestionView(APIView):
+    """
+    Ouvre une session de back-office — et seulement celle-là.
+
+    La vitrine et l'admin partagent la même table de comptes et la même route
+    de connexion. Mais entrer dans le back-office avec un compte cliente n'a
+    pas de sens, et la page de connexion admin faisait jusqu'ici l'aller-retour
+    elle-même : connecter, lire le rôle, déconnecter. Une session ouverte pour
+    rien, une clé tournée pour rien, et une fenêtre pendant laquelle le
+    navigateur porte un cookie qu'il ne devrait pas avoir.
+
+    Ici le rôle se vérifie avant `login()` : un refus ne laisse rien derrière.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "connexion"
+
+    def post(self, request):
+        serializer = ConnexionSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        utilisateur = serializer.validated_data["utilisateur"]
+        if not utilisateur.est_equipe:
+            return Response(
+                {"non_field_errors": ["Ce compte n'a pas accès au back-office."]},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        login(request, utilisateur)
+        return Response(UtilisateurSerializer(utilisateur).data)
+
+
 class DeconnexionView(APIView):
     """Ferme la session. Django fait tourner la clé : l'ancien cookie ne vaut plus rien."""
 
