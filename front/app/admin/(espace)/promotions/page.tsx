@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatXOF } from "@/lib/format";
-import { REFERENCE_DATE, useAdmin } from "@/lib/admin/store";
+import { maintenant, useAdmin } from "@/lib/admin/store";
 import {
   promotionEndDate,
   type AdminPromotion,
@@ -92,7 +92,7 @@ const vide = (): AdminPromotion => ({
   name: "",
   type: "pourcentage",
   value: 10,
-  startsAt: REFERENCE_DATE.toISOString().slice(0, 10),
+  startsAt: maintenant().toISOString().slice(0, 10),
   durationDays: 30,
   target: "boutique",
   categorySlug: "",
@@ -123,7 +123,7 @@ export default function Page() {
 
   /* Même date de référence que le tableau de bord : la graine est figée au
      15 août 2026, une campagne « en cours » doit l'être par rapport à elle. */
-  const aujourdhui = REFERENCE_DATE.toISOString().slice(0, 10);
+  const aujourdhui = maintenant().toISOString().slice(0, 10);
 
   const triees = useMemo(
     () => [...promotions].sort((a, b) => b.startsAt.localeCompare(a.startsAt)),
@@ -182,7 +182,7 @@ export default function Page() {
     const vive = statut === "En cours" || statut === "Programmée";
     const total = Math.max(1, p.durationDays);
     const ecoules = Math.round(
-      (REFERENCE_DATE.getTime() - new Date(`${p.startsAt}T00:00:00`).getTime()) / 86_400_000,
+      (maintenant().getTime() - new Date(`${p.startsAt}T00:00:00`).getTime()) / 86_400_000,
     );
     const avance = Math.min(100, Math.max(0, (ecoules / total) * 100));
     const legende =

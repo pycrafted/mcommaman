@@ -6,13 +6,18 @@ import Link from "next/link";
 import { CountUp, Magnetic, SplitText, useSpotlight } from "./motion";
 import { IconArrow, IconWhatsApp } from "./icons";
 import { formatXOF, waLink } from "@/lib/format";
-import { HERO_VIDEOS, HERO_VIGNETTES, PRODUCTS } from "@/lib/products";
+import type { BandeauApi } from "@/lib/api";
+import { HERO_VIDEOS, HERO_VIGNETTES, type Product } from "@/lib/products";
 
 /* ------------------------------------------------------------------ la parole
    Tout le texte du bandeau tient ici : la pastille, trois lignes de titre dont
    la dernière porte l'accent, et le chapô. Changer l'accroche, c'est changer
-   ces quatre constantes. Les vidéos, elles, sont dans `HERO_VIDEOS`
-   (lib/products.ts). */
+   ces quatre constantes.
+
+   Les séquences, elles, viennent du back-office : `/api/vitrine/bandeau/`.
+   Tant qu'aucune photo n'y est active, la vitrine fait défiler les deux vidéos
+   livrées avec le site (`HERO_VIDEOS`) — la page d'accueil n'est jamais nue.
+   C'est exactement la règle que le modèle Django annonce de son côté. */
 
 const EYEBROW = "Nouvelle collection · 2026";
 const TITRE_HAUT = "Des looks \n qui suivent";
@@ -31,7 +36,57 @@ const DUREE = 6500;
 /** Un halo par séquence : le fond se teinte de ce que l'image a de dominant. */
 const HALOS = ["bg-gold-soft/85", "bg-rose-soft/85"];
 
-export function Hero() {
+/**
+ * Une séquence du bandeau.
+ *
+ * `video` n'existe que pour les séquences livrées avec le site : une photo du
+ * back-office n'en a pas, et l'arche montre alors l'image seule.
+ */
+type Sequence = {
+  cle: string;
+  video?: string;
+  image: string;
+  alt: string;
+  /** Recadrage CSS, quand le sujet n'est pas au centre. */
+  pos: string;
+  tag: string;
+};
+
+const SEQUENCES_LIVREES: Sequence[] = HERO_VIDEOS.map((v) => ({
+  cle: v.src,
+  video: v.src,
+  image: v.poster,
+  alt: v.alt,
+  pos: v.pos,
+  tag: v.tag,
+}));
+
+export function Hero({
+  pieces = [],
+  bandeau = [],
+  avis = { count: 0, average: 0 },
+  telephone,
+}: {
+  /** Le catalogue publié : c'est lui qui défile dans la carte flottante. */
+  pieces?: Product[];
+  /** Le bandeau réglé dans le back-office. Vide, on garde les vidéos. */
+  bandeau?: BandeauApi[];
+  /** La note de la boutique, telle que les avis la donnent. */
+  avis?: { count: number; average: number };
+  /** Le numéro de la boutique, celui des réglages. */
+  telephone?: string;
+}) {
+  const sequences: Sequence[] =
+    bandeau.length > 0
+      ? bandeau.map((b) => ({
+          cle: String(b.id),
+          image: b.url,
+          alt: b.texte_alternatif,
+          pos: b.cadrage || "50% 40%",
+          tag: b.etiquette,
+        }))
+      : SEQUENCES_LIVREES;
+
   const [actif, setActif] = useState(0);
   const [pause, setPause] = useState(false);
 
@@ -43,13 +98,15 @@ export function Hero() {
   const [pieceFigee, setPieceFigee] = useState(false);
 
   useEffect(() => {
-    if (pieceFigee) return;
+    if (pieceFigee || pieces.length === 0) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setInterval(() => setPiece((p) => (p + 1) % PRODUCTS.length), 3400);
+    const t = window.setInterval(() => setPiece((p) => (p + 1) % pieces.length), 3400);
     return () => window.clearInterval(t);
-  }, [pieceFigee]);
+  }, [pieceFigee, pieces.length]);
 
-  const vedette = PRODUCTS[piece];
+  /* Le catalogue peut avoir rétréci entre deux tours — une fiche dépubliée —
+     et l'index rester au-delà : le modulo évite une carte vide. */
+  const vedette = pieces.length > 0 ? pieces[piece % pieces.length] : undefined;
 
   /* L'inclinaison est portée par un calque au-dessus de l'arche : posée sur
      l'arche elle-même, elle se battrait avec l'animation d'entrée, qui écrit
@@ -67,12 +124,10 @@ export function Hero() {
   useEffect(() => {
     if (pause) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setTimeout(
-      () => setActif((a) => (a + 1) % HERO_VIDEOS.length),
-      duree
-    );
+    if (sequences.length < 2) return;
+    const t = window.setTimeout(() => setActif((a) => (a + 1) % sequences.length), duree);
     return () => window.clearTimeout(t);
-  }, [actif, pause, duree]);
+  }, [actif, pause, duree, sequences.length]);
 
   /* Une seule vidéo joue à la fois : les autres sont remises à zéro, sinon
      elles reprennent en plein milieu au tour suivant. Le survol met la lecture
@@ -175,7 +230,7 @@ export function Hero() {
             </Magnetic>
             <Magnetic strength={7} className="w-full sm:w-auto">
               <a
-                href={waLink("Bonjour, je voudrais un conseil de taille")}
+                href={waLink("Bonjour, je voudrais un conseil de taille", telephone)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2.5 rounded-full border border-ink/15 bg-white/70 px-7 py-4 text-[14.5px] font-bold backdrop-blur-sm transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-cream"
@@ -186,6 +241,11 @@ export function Hero() {
             </Magnetic>
           </div>
 
+          {/* Ni le nombre d'avis ni la note ne sont écrits ici : ils viennent
+              des avis déposés. Tant qu'aucune cliente n'a écrit, le bloc
+              disparaît — même principe que le compte à rebours, qui s'efface
+              plutôt que d'afficher 00:00:00. */}
+          {avis.count > 0 && (
           <div className="anim-hero mt-9 flex flex-wrap items-center gap-x-4 gap-y-3 [animation-delay:900ms]">
             <div className="flex -space-x-3">
               {HERO_VIGNETTES.map((src, i) => (
@@ -199,12 +259,17 @@ export function Hero() {
               ))}
             </div>
             <div>
-              <div className="text-[13px] tracking-[3px] text-gold">★★★★★</div>
+              <div className="text-[13px] tracking-[3px] text-gold">
+                {"★".repeat(Math.round(avis.average))}
+                <span className="text-gold/25">{"★".repeat(5 - Math.round(avis.average))}</span>
+              </div>
               <div className="mt-0.5 text-[12.5px] font-medium text-muted">
-                <CountUp to={126} /> avis de mamans · 4,9 sur 5
+                <CountUp to={avis.count} /> avis de mamans ·{" "}
+                {String(avis.average).replace(".", ",")} sur 5
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* --------------------------------------------------------- l'arche
@@ -221,7 +286,9 @@ export function Hero() {
           <div className="relative mx-auto w-full max-w-[420px] lg:ml-auto lg:mr-0 lg:max-w-[480px]">
             <div
               aria-hidden
-              className={`absolute -inset-5 rounded-t-full blur-2xl transition-colors duration-1000 ${HALOS[actif]}`}
+              className={`absolute -inset-5 rounded-t-full blur-2xl transition-colors duration-1000 ${
+                HALOS[actif % HALOS.length]
+              }`}
             />
 
             <div ref={inclinaison} className="tilt">
@@ -230,14 +297,31 @@ export function Hero() {
                     se faire si l'ancienne est démontée avant la nouvelle. Muettes
                     et `playsInline`, seules conditions pour qu'un mobile accepte
                     de les lancer sans geste de l'utilisateur. */}
-                {HERO_VIDEOS.map((s, i) => (
+                {sequences.map((s, i) =>
+                  s.video === undefined ? (
+                    /* Une photo réglée dans le back-office : pas de vidéo à
+                       lire, l'arche la montre telle quelle. `img` natif plutôt
+                       que `next/image` — l'adresse vient de la photothèque et
+                       peut pointer n'importe où. */
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={s.cle}
+                      src={s.image}
+                      alt={i === actif ? s.alt : ""}
+                      aria-hidden={i !== actif}
+                      style={{ objectPosition: s.pos }}
+                      className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-[1400ms] ease-soft ${
+                        i === actif ? "scale-100 opacity-100" : "scale-[1.06] opacity-0"
+                      }`}
+                    />
+                  ) : (
                   <video
-                    key={s.src}
+                    key={s.cle}
                     ref={(el) => {
                       videos.current[i] = el;
                     }}
-                    src={s.src}
-                    poster={s.poster}
+                    src={s.video}
+                    poster={s.image}
                     aria-label={i === actif ? s.alt : undefined}
                     aria-hidden={i !== actif}
                     muted
@@ -255,7 +339,8 @@ export function Hero() {
                       i === actif ? "scale-100 opacity-100" : "scale-[1.06] opacity-0"
                     }`}
                   />
-                ))}
+                  ),
+                )}
 
                 <div
                   aria-hidden

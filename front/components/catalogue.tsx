@@ -4,17 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProductCard } from "./product-card";
 import { QuickView } from "./quick-view";
-import { PRODUCTS, CATEGORIES, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
 const SORTS = ["Nouveautés", "Prix croissant", "Prix décroissant", "A → Z"] as const;
 
 export function Catalogue({
-  produits = PRODUCTS,
+  produits = [],
   rayons = [],
 }: {
   produits?: Product[];
   /** Les catégories du serveur, chacune avec ses sous-catégories. */
-  rayons?: { nom: string; enfants: { nom: string }[] }[];
+  rayons?: { nom: string; slug: string; enfants: { nom: string; slug: string }[] }[];
 }) {
   const params = useSearchParams();
 
@@ -80,8 +80,13 @@ export function Catalogue({
 
   const countFor = (f: string) => base.filter((p) => matches(p, f)).length;
 
-  const facet = (title: string, entries: { key: string; label: string }[]) => (
-    <div className="mb-6.5" key={title}>
+  /* Les catégories qui ont des sous-catégories font un groupe chacune ; celles
+     qui n'en ont pas se retrouvent dans un seul groupe, en bas. */
+  const groupes = rayons.filter((r) => r.enfants.length > 0);
+  const seules = rayons.filter((r) => r.enfants.length === 0);
+
+  const facet = (title: string, entries: { key: string; label: string }[], cle = title) => (
+    <div className="mb-6.5" key={cle}>
       <div className="border-b border-line pb-3 text-[12.5px] font-extrabold uppercase tracking-[.06em]">
         {title}
       </div>
@@ -137,19 +142,26 @@ export function Catalogue({
 
       <div className="grid grid-cols-[240px_1fr] gap-11 pb-20 pt-7">
         <aside>
-          {/* Les sous-catégories font les pastilles : cliquer sur « Tissus »
-              est plus parlant que cliquer sur « Coin Maman », qui ne
-              retirerait rien. La parente reste le titre du groupe. */}
-          {rayons.length > 0
-            ? rayons.map((racine) =>
-                racine.enfants.length > 0
-                  ? facet(
-                      racine.nom,
-                      racine.enfants.map((e) => ({ key: "cat:" + e.nom, label: e.nom })),
-                    )
-                  : null,
-              )
-            : facet("Catégorie", CATEGORIES.map((c) => ({ key: "cat:" + c, label: c })))}
+          {/* Les sous-catégories font les cases : cliquer sur « Tissus » est
+              plus parlant que cliquer sur « Coin Maman », qui ne retirerait
+              rien. La parente reste le titre du groupe.
+
+              Une catégorie sans sous-catégorie porte ses fiches elle-même :
+              elle rejoint le groupe du bas plutôt que de disparaître — c'est
+              ce qui rendait invisible une catégorie tout juste créée. */}
+          {groupes.map((racine) =>
+            facet(
+              racine.nom,
+              racine.enfants.map((e) => ({ key: "cat:" + e.nom, label: e.nom })),
+              racine.slug,
+            ),
+          )}
+          {seules.length > 0 &&
+            facet(
+              "Catégorie",
+              seules.map((r) => ({ key: "cat:" + r.nom, label: r.nom })),
+              "racines-seules",
+            )}
           <div>
             <div className="border-b border-line pb-3 text-[12.5px] font-extrabold uppercase tracking-[.06em]">
               Prix

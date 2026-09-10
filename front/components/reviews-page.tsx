@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { byId } from "@/lib/products";
-import { useReviews } from "./reviews-context";
+import { useAvis, useDerniersAvisArticles } from "./reviews-context";
 import { ReviewForm, ReviewList, StarRow } from "./review-form";
 import { SectionCard } from "./form-kit";
 import { IconQuote } from "./icons";
@@ -10,11 +9,11 @@ import { IconQuote } from "./icons";
 const SHELL = "mx-auto w-full max-w-[1180px] px-5 md:px-8 lg:px-10";
 
 export function ReviewsPage() {
-  const { shopReviews, reviews, aggregate, hydrated } = useReviews();
-
-  const surLaBoutique = shopReviews();
-  const note = aggregate({ kind: "shop" });
-  const surLesArticles = reviews.filter((r) => r.target.kind === "product").slice(0, 6);
+  /* Deux lectures distinctes : les avis sur la boutique, et les derniers avis
+     déposés sur des articles. Le serveur sait faire la différence — la vitrine
+     n'a plus à trier une liste qu'elle tenait entière. */
+  const { avis: surLaBoutique, resume: note, pret } = useAvis({ kind: "shop" });
+  const { avis: surLesArticles } = useDerniersAvisArticles(6);
 
   /* Éviter la division par zéro quand aucun avis n'existe encore. */
   const total = note.count || 1;
@@ -73,8 +72,8 @@ export function ReviewsPage() {
               </div>
             )}
 
-            {/* Avant l'hydratation on ne sait pas encore ce qui existe. */}
-            {hydrated && <ReviewList reviews={surLaBoutique} />}
+            {/* Avant la réponse du serveur on ne sait pas encore ce qui existe. */}
+            {pret && <ReviewList reviews={surLaBoutique} />}
           </SectionCard>
 
           {surLesArticles.length > 0 && (
@@ -84,16 +83,15 @@ export function ReviewsPage() {
             >
               <ul className="flex flex-col gap-3">
                 {surLesArticles.map((avis) => {
-                  const article = avis.target.kind === "product" ? byId(avis.target.productId) : undefined;
                   return (
                     <li key={avis.id} className="rounded-2xl border border-line bg-mist p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        {article ? (
+                        {avis.productSlug ? (
                           <Link
-                            href={`/p/${article.slug}`}
+                            href={`/p/${avis.productSlug}`}
                             className="text-[13.5px] font-bold transition-colors hover:text-rose"
                           >
-                            {article.name}
+                            {avis.productName}
                           </Link>
                         ) : (
                           <span className="text-[13.5px] text-muted">Article retiré du catalogue</span>

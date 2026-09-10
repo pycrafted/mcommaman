@@ -3,23 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { byId } from "@/lib/products";
+import type { Product } from "@/lib/products";
 import { formatXOF } from "@/lib/format";
 import { useReducedMotion } from "./reveal";
 import { IconArrow, IconMuet, IconSon } from "./icons";
 
-/* Les séquences filmées, dans l'ordre de la bande. Chacune est rattachée à une
-   pièce du catalogue : la vidéo montre, la carte vend.
+/* Les séquences filmées, dans l'ordre de la bande. La vidéo montre, la carte
+   vend — et la pièce vendue vient du catalogue publié, plus d'un identifiant
+   écrit ici : une fiche dépubliée ne doit pas laisser une carte vide.
 
    Il n'existe que deux séquences pour l'instant, servies deux fois. Elles
    alternent pour que deux tuiles voisines ne montrent jamais le même plan, et
    chacune démarre à un instant différent : côte à côte, deux lectures
    synchronisées se lisent immédiatement comme une copie. */
 const BANDE = [
-  { video: "/videos/hero-1.mp4", poster: "/images/hero/fille-cour.webp", piece: "p3", depart: 0 },
-  { video: "/videos/hero-2.mp4", poster: "/images/hero/robe-rouge.webp", piece: "p8", depart: 0 },
-  { video: "/videos/hero-1.mp4", poster: "/images/hero/garcon-cour.webp", piece: "p2", depart: 5 },
-  { video: "/videos/hero-2.mp4", poster: "/images/hero/duo-pyjamas.webp", piece: "p10", depart: 4 },
+  { video: "/videos/hero-1.mp4", poster: "/images/hero/fille-cour.webp", depart: 0 },
+  { video: "/videos/hero-2.mp4", poster: "/images/hero/robe-rouge.webp", depart: 0 },
+  { video: "/videos/hero-1.mp4", poster: "/images/hero/garcon-cour.webp", depart: 5 },
+  { video: "/videos/hero-2.mp4", poster: "/images/hero/duo-pyjamas.webp", depart: 4 },
 ] as const;
 
 /**
@@ -31,7 +32,7 @@ const BANDE = [
  * d'office, c'est la seule façon qu'un navigateur accepte de lancer une vidéo
  * sans clic ; un bouton par tuile le rend, une tuile à la fois.
  */
-export function EnMouvement() {
+export function EnMouvement({ pieces = [] }: { pieces?: Product[] }) {
   const reduced = useReducedMotion();
   const [son, setSon] = useState<number | null>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
@@ -77,7 +78,10 @@ export function EnMouvement() {
         const decalage = i % 2 === 1 ? "lg:mt-12" : "";
         const cadre = `relative w-[68vw] overflow-hidden rounded-[24px] bg-stone sm:w-[46vw] ${decalage}`;
 
-        const piece = byId(item.piece);
+        /* Une pièce par tuile, prise dans le catalogue publié. Moins de
+           pièces que de tuiles : on repasse sur les mêmes plutôt que de
+           laisser une vignette sans article. */
+        const piece = pieces.length > 0 ? pieces[i % pieces.length] : undefined;
 
         return (
           <div key={`${item.video}-${i}`} className={`group ${cadre}`}>

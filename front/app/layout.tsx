@@ -5,6 +5,8 @@ import { CartProvider } from "@/components/cart-context";
 import { OrdersProvider } from "@/components/orders-context";
 import { ReviewsProvider } from "@/components/reviews-context";
 import { FavoritesProvider } from "@/components/favorites-context";
+import { ReglagesProvider } from "@/components/reglages-context";
+import { lireReglages } from "@/lib/reglages";
 
 export const metadata: Metadata = {
   title: {
@@ -21,7 +23,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+/* Les réglages de la boutique sont lus une fois ici, au-dessus de tout le
+   reste : frais de livraison, identité, ouverture de la caisse. Les lire à
+   la racine évite que chaque page les redemande, et ils arrivent dans le
+   HTML servi plutôt qu'après coup. */
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const reglages = await lireReglages();
+
   return (
     <html lang="fr">
       <head>
@@ -32,15 +40,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="font-sans antialiased">
-        <AuthProvider>
-          <OrdersProvider>
-            <ReviewsProvider>
-              <FavoritesProvider>
-                <CartProvider>{children}</CartProvider>
-              </FavoritesProvider>
-            </ReviewsProvider>
-          </OrdersProvider>
-        </AuthProvider>
+        <ReglagesProvider valeur={reglages}>
+          <AuthProvider>
+            <OrdersProvider>
+              <ReviewsProvider>
+                <FavoritesProvider>
+                  <CartProvider>{children}</CartProvider>
+                </FavoritesProvider>
+              </ReviewsProvider>
+            </OrdersProvider>
+          </AuthProvider>
+        </ReglagesProvider>
       </body>
     </html>
   );

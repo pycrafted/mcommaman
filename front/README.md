@@ -8,12 +8,15 @@ Reprend à l'identique la maquette `Refonte mcommaman.dc.html`.
 ## Démarrer
 
 ```bash
-cd react
+cd front
 npm install     # rétablit aussi les routes dynamiques (voir plus bas)
 npm run dev
 ```
 
 → http://localhost:3000
+
+> **Il faut le serveur.** La vitrine lit tout dans `back` : sans lui elle s'affiche, mais vide.
+> `cd back && docker compose up -d && .venv\Scripts\python.exe manage.py runserver`.
 
 > **Routes dynamiques.** L'export ne peut pas contenir de crochets dans les noms de dossier :
 > `app/p/[slug]` est livré sous `app/p/-slug-`. Le script `scripts/fix-routes.mjs` les renomme,
@@ -55,42 +58,63 @@ npm run dev
 
 ---
 
-## Où brancher la base
+## Ce que la vitrine lit sur le serveur
 
-Le catalogue est un tableau statique dans **`lib/products.ts`**, avec exactement la forme du
-modèle Prisma de l'audit (prix en entier, `slug` distinct du `sku`, `age`, `gender`).
-Pour passer en base : remplacer `PRODUCTS`, `bySlug` et `byId` par des requêtes serveur.
-Aucun composant n'a besoin de changer.
+**Plus rien du catalogue n'est écrit dans le code.** Tout ce que la boutique affiche vient de
+`back` par HTTP, et le passage entre les deux vocabulaires tient dans `lib/api.ts`,
+`lib/catalogue.ts` et `lib/reglages.ts`.
 
-**`lib/search.ts`** suit la même logique : l'index est construit une fois au chargement du
-module, à partir de `PRODUCTS`. Chaque mot tapé doit se retrouver dans la fiche, le score
-décide de l'ordre (nom > rayon > âge et genre > description). Le jour où le catalogue passe
-en base, seule `chercherProduits` devient une requête serveur — sa signature ne bouge pas.
-La palette (`components/search-overlay.tsx`) s'ouvre au clic, à `Ctrl/Cmd + K` et à `/`,
-se pilote aux flèches, et renvoie sur `/boutique?q=…` pour la liste complète.
+| Ce qui s'affiche | D'où ça vient |
+|---|---|
+| Fiches, prix, stock, photos | `/api/catalogue/produits/` — `lireCatalogue`, `lireFiche`, `lireSimilaires` |
+| Rayons du menu, des filtres, des tuiles d'accueil, du pied de page | `/api/catalogue/rayons/` — `lireRayonsNavigables` |
+| Frais de livraison, franco, téléphone, courriel, bandeau d'annonce, caisse ouverte | `/api/vitrine/reglages/` — `lireReglages` |
+| Photos du bandeau d'accueil | `/api/vitrine/bandeau/` — `lireBandeau` |
+| Campagne annoncée et son compte à rebours | `/api/campagnes/` — `lireCampagnes` |
+| Panier, favoris | `/api/compte/panier/`, `/api/compte/favoris/` |
+| Devis, commandes, suivi, annulation | `/api/devis/`, `/api/commandes/` |
+| Avis, résumé, « ce qu'il reste à noter » | `/api/avis/` |
+
+`lib/products.ts` ne garde que **la forme** d'une fiche (le type `Product`, que tous les
+composants attendent) et les deux vidéos du bandeau livrées avec le site. Il ne contient plus
+ni catalogue, ni rayons, ni tailles, ni coloris, ni date de promotion.
+
+Les réglages sont lus **une seule fois**, par `app/layout.tsx`, et posés dans
+`components/reglages-context.tsx` : le tunnel, le pied de page et la page contact les
+trouvent là sans refaire l'appel chacun de leur côté.
+
+**La recherche est faite par le serveur** (`catalogue/recherche.py`, appelé par `?q=`) : il
+connaît les accents et une table de synonymes, et il n'a pas besoin de charger le catalogue
+pour le filtrer. `lib/search.ts` ne garde que la mise en forme — normalisation et surlignage.
+La palette (`components/search-overlay.tsx`) s'ouvre au clic, à `Ctrl/Cmd + K` et à `/`, se
+pilote aux flèches, attend un quart de seconde avant d'interroger le serveur, et renvoie sur
+`/boutique?q=…` pour la liste complète.
+
+**Quand le serveur ne répond pas**, chaque lecture retombe sur une valeur vide ou sur les
+valeurs par défaut du modèle Django : la boutique reste consultable, elle n'affiche jamais un
+prix ou des frais inventés.
 
 ### Espace client
 
-**`components/auth-context.tsx`** tient les comptes : inscription, connexion, profil, carnet
-d'adresses, tailles suivies, changement de mot de passe, suppression. Deux clés de stockage —
-`mcm-comptes-v1` pour la liste, `mcm-session-v1` pour la session — et un écouteur `storage` pour
-qu'une connexion faite dans un autre onglet suive. Le mot de passe est haché en SHA-256 avec un
-sel tiré au hasard (`crypto.subtle`, donc contexte sécurisé obligatoire : https ou localhost).
+**`components/auth-context.tsx`** parle au serveur : inscription, connexion, profil, carnet
+d'adresses, tailles suivies, changement de mot de passe, mot de passe oublié, suppression —
+tout passe par `/api/compte/`. Les mots de passe sont hachés en Argon2 par Django, la session
+voyage dans un cookie que le JavaScript ne peut pas lire, et les écritures portent un jeton
+CSRF que `lib/api.ts` renouvelle tout seul quand il tourne.
 
-**Ce n'est pas une authentification.** Tout vit dans le navigateur : la liste des comptes est
-lisible, la session remplaçable. La mise en ligne demande des comptes en base, un hachage lent
-côté serveur (bcrypt ou argon2), une session en cookie HttpOnly et la vérification de l'adresse
-e-mail. La note en bas de `auth-context.tsx` le redit.
+Reste à faire côté serveur : la vérification de l'adresse e-mail.
 
 Ce que le compte change ailleurs : l'en-tête montre les initiales et mène à `/compte` ; l'étape
 Livraison du tunnel se pré-remplit depuis l'adresse par défaut, et propose de se connecter
-sinon. Les zones de livraison, partagées entre le tunnel et le carnet d'adresses, vivent dans
-**`lib/livraison.ts`**.
+sinon. Les trois zones de livraison — leur nom et leur délai — sont partagées entre le tunnel et
+le carnet d'adresses dans **`lib/livraison.ts`** ; **leurs montants n'y sont pas**, ils viennent
+des réglages de la boutique, et le total d'une commande est chiffré par le serveur.
 
 ### Favoris
 
-**`components/favorites-context.tsx`** tient la liste (clé `mcm-favoris-v1`) : le dernier cœur
-touché passe en tête, un écouteur `storage` reflète ce qui se fait dans un autre onglet. Le cœur
+**`components/favorites-context.tsx`** tient la liste : le dernier cœur touché passe en tête.
+Hors session elle reste dans le navigateur (`mcm-favoris-v1`) ; connectée, elle vient de
+`/api/compte/favoris/` et suit d'un appareil à l'autre. Le cœur
 lui-même est un seul composant, **`components/favorite-button.tsx`** — posé sur une carte, il
 intercepte le clic pour ne pas partir sur la fiche ; il se dessine vide tant que le stockage n'a
 pas été relu, sinon le premier rendu ne serait pas le même côté serveur et client.
@@ -99,27 +123,39 @@ Le même cœur sert partout : carte de la boutique, aperçu rapide, fiche produi
 `/favoris` où il fait office de retrait. La page reprend les cartes de la boutique plutôt qu'un
 gabarit à part, ajoute une barre de tête (nombre d'articles, total, **Tout ajouter au panier**,
 **Vider la liste** en deux temps) et signale les identifiants qui ne correspondent plus à aucun
-article du catalogue au lieu de tomber dessus.
+article du catalogue au lieu de tomber dessus — les fiches sont demandées au serveur par leurs
+identifiants, une pièce dépubliée n'en revient tout simplement pas.
 
-**La liste ne suit pas le compte.** Ouverte sur un autre téléphone, elle est vide, même
-connectée. En ligne la table est courte — `(compte, produit, date)` avec une contrainte
-d'unicité — et la liste du navigateur doit se **fondre** dans celle du compte à la connexion :
-une cliente qui met des pièces de côté avant de créer son compte ne doit pas les perdre en le
-créant.
+**La liste du navigateur se fond dans celle du compte à la connexion**
+(`POST /api/compte/favoris/fusionner/`) : une cliente qui met des pièces de côté avant de créer
+son compte ne les perd pas en le créant.
 
 ### Commandes et suivi
 
-**`components/orders-context.tsx`** enregistre la commande à la validation : référence
-`MCM-2026-0001` tirée du nombre de commandes déjà passées, cinq statuts (`recue` →
-`preparation` → `expediee` → `livree`, plus `annulee`), clé `mcm-commandes-v1`. Une commande
-s'annule tant qu'elle est encore « reçue », et se remet au panier en un clic — chaque ligne
-garde ses indices de couleur et de taille pour ça.
+**`components/orders-context.tsx`** ne garde plus rien : la commande est écrite en base par
+`POST /api/commandes/`. Le serveur refait les prix, retire le stock, numérote (`MCM-10241`) et
+répond ce qu'il a retenu — **aucun montant n'est envoyé**, les accepter reviendrait à laisser
+le navigateur fixer ses prix.
 
-Le tunnel (`components/checkout.tsx`) valide vraiment : nom, téléphone, quartier et point de
-repère sont obligatoires, l'e-mail est facultatif mais vérifié s'il est saisi, et les messages
-n'apparaissent qu'au `blur` ou à la tentative de passage. Le paiement à la livraison disparaît
-hors de Dakar. La remise n'est plus appliquée d'office : il faut saisir le code (`CODES` dans
-`lib/livraison.ts`).
+Deux régimes, comme le panier. **Connectée**, ses commandes viennent de `/api/mes-commandes/`
+et la suivent d'un appareil à l'autre. **Sans compte**, la commande existe tout aussi bien en
+base ; seul le lien vers elle manque, alors le navigateur retient la référence et le téléphone
+(`mcm-suivis-v1`) — c'est ce couple que le serveur exige pour la montrer. Une page de suivi
+ouverte ailleurs propose donc de saisir ce téléphone plutôt que de dire « introuvable ».
+
+**Le statut est piloté par la boutique**, depuis son back-office. Le bouton « J'ai reçu ma
+commande » a disparu : la cliente ne déclare plus sa propre livraison, et c'est le passage en
+« Livrée » par la boutique qui ouvre le droit à l'avis. Reste l'annulation par la cliente
+(`POST /api/commandes/<ref>/annuler/`), possible tant que rien n'est parti en préparation :
+elle remet le stock, et le refus au-delà est expliqué.
+
+Le tunnel (`components/checkout.tsx`) valide toujours la saisie — nom, téléphone, quartier et
+point de repère obligatoires, e-mail facultatif mais vérifié, messages au `blur` — mais **il
+ne calcule plus rien**. Chaque changement de panier, de zone ou de code appelle
+`POST /api/devis/` : c'est le serveur qui annonce les frais, la remise et le total. Le code de
+réduction n'est plus une liste dans le code : il est vérifié en base, avec sa fenêtre de
+validité et sa condition, et le refus est repris tel qu'il est formulé. La caisse se ferme
+d'elle-même quand la gérante décoche « accepter les commandes » pendant ses congés.
 
 ### Panier
 
@@ -148,28 +184,25 @@ jamais par le retour du navigateur.
 
 ### Avis
 
-**`components/reviews-context.tsx`** tient les avis (clé `mcm-avis-v1`), sur un article
-(`{ kind: "product", productId }`) ou sur la boutique (`{ kind: "shop" }`). `aggregate()`
-recalcule la moyenne — arrondie à une décimale — et la distribution des cinq notes à chaque
-lecture : plus aucun chiffre d'avis n'est écrit en dur. La fiche produit et la page d'accueil
-affichent donc « aucun avis » tant que personne n'a écrit, au lieu d'inventer un 4,8.
+**`components/reviews-context.tsx`** ne tient plus rien : les avis sont en base et modérés.
+Rien n'est chargé d'avance — une fiche demande les avis de son article (`useAvis`), l'accueil
+et la page d'avis ceux de la boutique. Le cache est partagé, si bien que la liste et le
+formulaire d'une même page lisent la même chose et se remettent à jour ensemble.
 
-**Le droit d'écrire vient d'une commande reçue.** `components/review-form.tsx` cherche une
-commande au statut `livree` qui porte l'article (n'importe laquelle pour la boutique) ; sans
-elle, le formulaire reste affiché et explique pourquoi il est fermé. Un compte n'a qu'un avis
-par cible : le suivant remplace le précédent, et chacune supprime le sien.
+**Le droit d'écrire ne se déclare plus, il se prouve.** C'est le serveur qui dit ce qu'il reste
+à noter (`/api/avis/a-noter/`) : une commande **livrée**, la sienne, contenant l'article. Le
+formulaire ne s'ouvre que pour ce que cette liste autorise, et il envoie l'identifiant de
+commande que le serveur lui a donné.
 
-Le statut n'avançant pas tout seul, la page de suivi porte un bouton **« J'ai reçu ma
-commande »** (`confirmDelivery`) — c'est le seul évènement qui fait passer une commande à
-`livree` aujourd'hui, et donc ce qui ouvre le dépôt d'avis.
+**Un avis paraît après relecture.** Il part en `en_attente` — le message le dit — et n'apparaît
+publiquement qu'une fois publié depuis le back-office. Son autrice, elle, le voit dans tous ses
+états : sans ça il disparaîtrait sous ses yeux, et elle ne comprendrait pas pourquoi elle ne
+peut pas en écrire un second sur le même achat (un seul par achat, tenu en base).
 
-Sur la page d'accueil, les trois avis d'exemple de `REVIEWS` ne servent que tant qu'aucun avis
-boutique n'existe ; dès le premier déposé, ce sont les vrais qui s'affichent, avec la vraie
-moyenne à la place du « 4,9/5 sur 126 avis ».
-
-**À reproduire côté serveur.** La vérification est ici côté client : éditer le stockage suffit
-à la contourner. En ligne, l'avis se rattache à une ligne de commande livrée, l'unicité se
-tient en base, et la modération annoncée demande un vrai passage en revue avant publication.
+La note affichée vient de `/api/avis/resume/`, qui ne compte que les avis publiés. La fiche,
+l'accueil et le bandeau annoncent donc « aucun avis » — ou n'affichent rien du tout — tant que
+personne n'a écrit, au lieu d'inventer un 4,8 sur 126 avis. La référence de commande n'est plus
+affichée sous les avis : sous chacun, elle donnerait le compte des ventes à qui sait lire.
 
 ### Back-office
 
@@ -217,14 +250,10 @@ démonstration sont écrits en clair dans la page de connexion
 c'est sans conséquence. Dès qu'il écrit en base, il faut un vrai compte administrateur, une
 session en cookie signé, et la vérification du rôle sur le serveur à **chaque** écriture.
 
-**Deux ponts manquent encore**, et le back-office le dit lui-même sur les pages concernées :
-
-- Les commandes et les comptes de la vitrine (`mcm-commandes-v1`, `mcm-comptes-v1`) vivent dans le
-  navigateur de chaque cliente et ne remontent pas ici. C'est pour ça que le suivi de commande de
-  la vitrine se termine par un bouton « J'ai reçu ma commande » plutôt que par un statut piloté.
-- Ce que l'on modifie ici ne redescend pas sur la vitrine, qui lit encore ses constantes
-  (`lib/products.ts`, `lib/livraison.ts`, `components/hero.tsx`). Sur 3001 le pont existe : la
-  vitrine ouvre la clé du back-office à la main.
+**Les deux ponts sont posés.** Les commandes, les comptes et les avis de la vitrine sont en base
+et se lisent ici ; et ce qu'on modifie ici redescend sur la vitrine — rayons, fiches, réglages,
+bandeau, campagnes. Le tableau de bord compte à partir du **vrai jour** : la date de démonstration
+figée au 15 août 2026 a disparu avec la graine locale.
 
 ### Publication d'un produit
 
@@ -312,22 +341,6 @@ quand le mouvement réduit est demandé, ou quand les pièces filtrées tiennent
 La position est tenue en flottant dans une ref plutôt que lue depuis `scrollLeft` : les
 sous-pixels seraient perdus d'une image à l'autre et le défilement avancerait par à-coups.
 
-### Le sélecteur d'univers
-
-`components/universes.tsx` — la pile verticale reprise de l'ancien site. La carte active au
-centre, ses voisines en retrait, les deux pièces de la catégorie en grand de part et d'autre.
-Chaque carte est positionnée à partir de la **distance signée la plus courte** jusqu'à l'active,
-pas de son index : la pile boucle donc dans les deux sens sans saut.
-
-Rien n'y est écrit à la main. Les cinq univers viennent de `CATEGORIES`, le décompte et les
-photos de `PRODUCTS`, et la ligne « Les filles » / « Les garçons » / « Filles & garçons » est
-déduite des `gender` de la catégorie.
-
-**Quand une catégorie n'a qu'une pièce** — Chaussures et T-shirts aujourd'hui — le panneau de
-droite l'écrit au lieu de répéter la même photo à gauche et à droite. Même principe que le compte
-à rebours qui disparaît plutôt que d'afficher 00:00:00:00 : la page ne fait pas semblant d'avoir
-du stock.
-
 ---
 
 ## Images
@@ -359,23 +372,35 @@ Le sujet doit rester **centré et sur fond calme** : la courbe de l'arche rogne 
 angles hauts, une photo cadrée serré y perdrait une tête. Le cadrage est réglé par
 `object-[50%_35%]` dans `components/hero.tsx`.
 
-**Après la séance photo**, deux chemins : garder l'arche et ne remplacer que
-`HERO_PORTRAIT` dans `lib/products.ts`, ou passer à un vrai diaporama — il faudra
-alors quatre ou cinq photos de vie de ce niveau.
+**Après la séance photo**, rien à toucher dans le code : le bandeau se règle depuis le
+back-office (`/api/vitrine/bandeau/`). Tant qu'aucune photo n'y est active, la vitrine fait
+défiler les deux vidéos livrées avec le site (`HERO_VIDEOS`, `lib/products.ts`) — la page
+d'accueil n'est jamais nue.
 
 ---
 
 ## À faire avant la mise en ligne
 
+Ce qui est fait — la vitrine ne fabrique plus rien qu'elle ne tienne du serveur :
+
+- catalogue, rayons, tailles et coloris lus en base ; plus une seule liste écrite dans le code
+- panier et favoris rattachés au compte, avec fusion à la connexion
+- commandes écrites en base : prix refaits par le serveur, stock retiré, référence numérotée,
+  suivi piloté par le back-office, annulation par la cliente tant que rien n'est préparé
+- avis vérifiés côté serveur — commande livrée, la sienne, un seul par achat — et modérés
+- frais de livraison, franco, coordonnées, bandeau d'annonce et ouverture de la caisse réglés
+  depuis le back-office
+- recherche faite en base, avec accents et synonymes
+
+Ce qui reste :
+
 1. Séance photo homogène, puis remplacement des URL du CDN Shopify
-2. Prisma + PostgreSQL (Neon), migration des 19 produits avec de vrais noms commerciaux
-3. PayDunya : webhook signé, identifiant de transaction en clé unique, idempotence
-4. Paiement à la livraison conditionné à la zone — fait côté client, reste à refuser côté serveur
-5. Resend pour les e-mails de confirmation
-6. Comptes clients côté serveur : `auth-context.tsx` en est la maquette, pas l'implémentation
-7. NINEA et registre du commerce à renseigner dans `lib/legal.ts`
-8. Back-office réel : compte administrateur en base, session en cookie signé, rôle vérifié à chaque écriture
-9. Ponts back-office ↔ vitrine : commandes et comptes remontés, réglages et catalogue redescendus
-10. Favoris rattachés au compte en base, fusion de la liste du navigateur à la connexion
-11. Avis vérifiés côté serveur : rattachement à une ligne de commande livrée, unicité, modération
-12. Test sur vrai téléphone en 4G — la cible est mobile
+2. PayDunya : webhook signé, identifiant de transaction en clé unique, idempotence — aujourd'hui
+   la commande part « en attente de paiement » et la boutique rappelle pour confirmer
+3. Resend pour les e-mails de confirmation
+4. NINEA et registre du commerce à renseigner dans `lib/legal.ts`
+5. Photothèque sur un stockage persistant (Cloudflare R2) : sur une instance sans disque, les
+   images envoyées depuis le back-office disparaissent à chaque livraison
+6. Renseigner les réglages de la boutique à la première ouverture du back-office — le franco de
+   port et les frais par zone y font foi
+7. Test sur vrai téléphone en 4G — la cible est mobile

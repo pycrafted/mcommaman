@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
-import { useOrders } from "./orders-context";
-import { useReviews, type Review, type ReviewTarget } from "./reviews-context";
+import { useAvis, useMesAvis, type Review, type ReviewTarget } from "./reviews-context";
 import { TextareaField } from "./form-kit";
 import { IconCheck, IconTrash } from "./icons";
 
@@ -74,32 +73,32 @@ const dateLongue = (iso: string) =>
  */
 export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: string }) {
   const { account } = useAuth();
-  const { orders } = useOrders();
-  const { reviewBy, submit, remove } = useReviews();
+  const { mien, cible } = useAvis(target);
+  const { aNoter, deposer, modifier, retirer } = useMesAvis();
   /* Retour sur la page en cours après connexion, fiche produit comprise. */
   const chemin = usePathname();
 
-  const existant = account ? reviewBy(account.email, target) : undefined;
-  const [note, setNote] = useState(existant?.rating ?? 0);
-  const [texte, setTexte] = useState(existant?.comment ?? "");
+  const [note, setNote] = useState(0);
+  const [texte, setTexte] = useState("");
   const [envoye, setEnvoye] = useState(false);
+  const [refus, setRefus] = useState<string | null>(null);
+  const [enCours, setEnCours] = useState(false);
 
-  /* L'avis déjà déposé n'est connu qu'après hydratation : on recale les champs
-     quand il arrive, sans écraser une saisie en cours. */
-  const [reprisDe, setReprisDe] = useState<string | null>(null);
+  /* L'avis déjà déposé n'arrive qu'avec la réponse du serveur : on recale les
+     champs quand il apparaît, sans écraser une saisie en cours. */
+  const [reprisDe, setReprisDe] = useState<number | null>(null);
   useEffect(() => {
-    if (existant && existant.id !== reprisDe) {
-      setReprisDe(existant.id);
-      setNote(existant.rating);
-      setTexte(existant.comment);
+    if (mien && mien.id !== reprisDe) {
+      setReprisDe(mien.id);
+      setNote(mien.rating);
+      setTexte(mien.comment);
     }
-  }, [existant, reprisDe]);
+  }, [mien, reprisDe]);
 
-  const livrees = orders.filter((o) => o.status === "livree");
-  const commandeLiee =
-    target.kind === "product"
-      ? livrees.find((o) => o.lines.some((l) => l.productId === target.productId))
-      : livrees[0];
+  /* Ce que le serveur autorise encore à noter. Un avis déjà écrit n'y figure
+     plus : c'est `mien` qui prend le relais, pour le modifier. */
+  const attendu = target.kind === "shop" ? null : Number(target.productId);
+  const ouvert = mien !== undefined || aNoter.some((entree) => entree.produit === attendu);
 
   if (!account) {
     return (
@@ -115,12 +114,12 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
     );
   }
 
-  if (!commandeLiee) {
+  if (!ouvert) {
     return (
       <p className="rounded-2xl border border-dashed border-line px-5 py-4 text-[13px] leading-relaxed text-muted">
         {target.kind === "product"
-          ? "Vous pourrez noter cet article une fois votre commande reçue."
-          : "Vous pourrez donner votre avis sur la boutique après votre première réception."}{" "}
+          ? "Vous pourrez noter cet article une fois votre commande livrée."
+          : "Vous pourrez donner votre avis sur la boutique après votre première livraison."}{" "}
         <Link href="/commandes" className="font-bold text-rose underline underline-offset-4">
           Voir mes commandes
         </Link>
@@ -130,23 +129,25 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
 
   const valide = note > 0 && texte.trim().length >= 10;
 
-  const envoyer = (e: React.FormEvent) => {
+  const soumettre = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valide) return;
-    submit({
-      target,
-      rating: note,
-      comment: texte.trim(),
-      authorName: account.name,
-      authorEmail: account.email,
-      orderRef: commandeLiee.ref,
-    });
+    if (!valide || enCours) return;
+    setEnCours(true);
+    setRefus(null);
+    const resultat = mien
+      ? await modifier(mien.id, cible, note, texte.trim())
+      : await deposer(cible, note, texte.trim());
+    setEnCours(false);
+    if (!resultat.ok) {
+      setRefus(resultat.error ?? "Votre avis n'a pas pu être envoyé.");
+      return;
+    }
     setEnvoye(true);
-    window.setTimeout(() => setEnvoye(false), 2600);
+    window.setTimeout(() => setEnvoye(false), 3200);
   };
 
   return (
-    <form onSubmit={envoyer} className="flex flex-col gap-4">
+    <form onSubmit={(e) => void soumettre(e)} className="flex flex-col gap-4">
       <div>
         <span className="mb-2.5 block text-[12.5px] font-bold">{titre}</span>
         <StarPicker value={note} onChange={setNote} />
@@ -169,18 +170,24 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          disabled={!valide}
+          disabled={!valide || enCours}
           className="inline-flex items-center gap-2 rounded-full bg-rose px-6 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
         >
           <IconCheck className="h-4 w-4" />
-          {existant ? "Modifier mon avis" : "Publier mon avis"}
+          {mien ? "Modifier mon avis" : "Envoyer mon avis"}
         </button>
 
-        {existant && (
+        {mien && (
           <button
             type="button"
-            onClick={() => {
-              remove(existant.id);
+            onClick={async () => {
+              setRefus(null);
+              const resultat = await retirer(mien.id, cible);
+              if (!resultat.ok) {
+                setRefus(resultat.error ?? "Le retrait n'a pas abouti.");
+                return;
+              }
+              setReprisDe(null);
               setNote(0);
               setTexte("");
             }}
@@ -194,9 +201,11 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
         {envoye && (
           <span className="anim-fade-up inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#3f8a5f]">
             <IconCheck className="h-4 w-4" />
-            Merci, votre avis est publié.
+            Merci, votre avis paraîtra après relecture.
           </span>
         )}
+
+        {refus && <span className="text-[13px] font-semibold text-rose-deep">{refus}</span>}
       </div>
     </form>
   );
@@ -223,8 +232,13 @@ export function ReviewList({ reviews }: { reviews: Review[] }) {
               </span>
               <div>
                 <p className="text-[13.5px] font-bold">{avis.authorName}</p>
-                <p className="text-[11px] text-[#3f8a5f] tabular-nums">
-                  Achat vérifié · {avis.orderRef}
+                {/* La référence de commande n'est plus affichée : sous chaque
+                    avis, elle donnerait le compte des ventes à qui sait lire.
+                    « Achat vérifié » dit ce qu'il y a à savoir. */}
+                <p className="text-[11px] text-[#3f8a5f]">
+                  {avis.state === "publie"
+                    ? "Achat vérifié"
+                    : "Achat vérifié · en cours de relecture"}
                 </p>
               </div>
             </div>

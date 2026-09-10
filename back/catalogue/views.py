@@ -93,8 +93,17 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         # Le filtre ne vaut que pour la liste. Une fiche doit rester atteignable
         # par son adresse quel que soit son univers, sinon un lien vers un
         # coupon de bazin renverrait « page introuvable ».
-        if self.action == "list":
+        # Une poignée de fiches désignées par leur identifiant : ce que la page
+        # des favoris demande pour dessiner ses cartes. Elle traverse les deux
+        # univers — on peut mettre de côté un pyjama et un coupon de bazin —,
+        # d'où le filtre d'univers écarté dans ce cas.
+        demandes = params.get("ids", "")
+        voulus = [int(x) for x in demandes.split(",") if x.strip().isdigit()][:100]
+
+        if self.action == "list" and not voulus:
             selection = selection.filter(rayon__univers=params.get("univers", "enfant"))
+        elif voulus:
+            selection = selection.filter(pk__in=voulus)
 
         # Choisir « Coin Maman » doit ramener ses tissus et ses voiles : on
         # filtre sur le rayon **et** ses sous-catégories. Le `distinct` compte :
@@ -167,7 +176,19 @@ class RayonPublicViewSet(viewsets.ReadOnlyModelViewSet):
         selection = (
             Rayon.objects.filter(visible=True)
             .select_related("image")
-            .prefetch_related("parents", "enfants")
+            .prefetch_related(
+                "parents",
+                # Une sous-catégorie masquée depuis le back-office ne doit pas
+                # reparaître dans les filtres de la boutique. Le filtre est posé
+                # ici et non dans le sérialiseur : celui-ci sert aussi au
+                # back-office, à qui il faut continuer de montrer ce qu'il a
+                # masqué. Le décompte de fiches suit, puisqu'il lit la même
+                # liste d'enfants.
+                Prefetch(
+                    "enfants",
+                    queryset=Rayon.objects.filter(visible=True).select_related("image"),
+                ),
+            )
         )
         params = self.request.query_params
         if univers := params.get("univers"):

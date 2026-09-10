@@ -69,9 +69,33 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
     setRequete("");
     setCurseur(0);
     const t = window.setTimeout(() => champ.current?.focus(), 50);
-    void lireCatalogue().then(setProduits);
     return () => window.clearTimeout(t);
   }, [open]);
+
+  /**
+   * La recherche est faite par le serveur.
+   *
+   * Il connaît les accents, les synonymes et le catalogue entier
+   * (`catalogue/recherche.py`) : chercher « bebe » doit trouver « bébé », et
+   * une boutique de mille fiches ne peut pas les charger toutes pour les
+   * filtrer dans le navigateur.
+   *
+   * Un quart de seconde d'attente avant de partir : sans elle, taper « robe »
+   * lancerait quatre requêtes dont trois périmées.
+   */
+  useEffect(() => {
+    if (!open) return;
+    let vivant = true;
+    const attente = window.setTimeout(() => {
+      void lireCatalogue(requete.trim() ? { q: requete.trim() } : {}).then((liste) => {
+        if (vivant) setProduits(liste);
+      });
+    }, requete.trim() ? 250 : 0);
+    return () => {
+      vivant = false;
+      window.clearTimeout(attente);
+    };
+  }, [open, requete]);
 
   /* La page derrière ne doit pas défiler pendant la recherche. */
   useEffect(() => {
@@ -91,17 +115,9 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
         .slice(0, 2),
     [produits, q],
   );
-  const pieces = useMemo(
-    () =>
-      produits.filter(
-        (p) =>
-          !q ||
-          [p.name, p.category, p.description].some((v) =>
-            v.toLocaleLowerCase("fr").includes(q),
-          ),
-      ),
-    [produits, q],
-  );
+  /* Le serveur a déjà écarté ce qui ne correspond pas : la liste reçue est le
+     résultat, on ne la refiltre pas. */
+  const pieces = produits;
 
   const elements = useMemo<Element[]>(() => {
     const liste: Element[] = rayons.map((rayon) => ({

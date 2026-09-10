@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Reveal, useInView } from "./reveal";
@@ -28,11 +28,15 @@ import {
 } from "./icons";
 import { EnMouvement } from "./en-mouvement";
 import { QuickView } from "./quick-view";
-import { useReviews } from "./reviews-context";
+import { useAvis } from "./reviews-context";
 import { StarRow } from "./review-form";
 import { Countdown } from "./countdown";
 import { INSTAGRAM, INSTAGRAM_URL, TIKTOK, TIKTOK_URL, waLink } from "@/lib/format";
-import { HERO_VIGNETTES, PROMO_END, type Product } from "@/lib/products";
+import { HERO_VIGNETTES, type Product } from "@/lib/products";
+import type { BandeauApi, CampagneApi } from "@/lib/api";
+import type { LienRayon } from "@/lib/catalogue";
+import { formatXOF, jusquAu } from "@/lib/format";
+import { useReglages } from "./reglages-context";
 
 const REASSURANCE = [
   { t: "Livraison 24 h", s: "Dakar et banlieue, appel avant passage" },
@@ -50,82 +54,74 @@ const TICKER = [
   "Conseils de taille sur WhatsApp",
 ];
 
-/* La grille « Nos univers » reprise telle quelle de la maquette boty : une
-   grande tuile, quatre petites, la légende au-dessus du nom et la pastille qui
-   arrive au survol. Les photos sont exactement celles de boty, recopiées dans
-   `public/images/univers/`. Les liens sont traduits vers les filtres du
-   catalogue d'ici (`g`, `age`, `cat`). */
-const TUILES_UNIVERS = [
-  {
-    slug: "filles",
-    label: "Filles",
-    caption: "Robes & jupes",
-    image: "/images/univers/short-fille-blanc-lisse.png",
-    href: "/boutique?g=fille",
-    className: "lg:col-span-2 lg:row-span-2",
-  },
-  {
-    slug: "garcons",
-    label: "Garçons",
-    caption: "Ensembles & sweats",
-    image: "/images/univers/Ensembleenfant-192-retouche.png",
-    href: "/boutique?g=garcon",
-    className: "",
-  },
-  {
-    slug: "coin-maman",
-    label: "Coin Maman",
-    caption: "Tissus & voiles",
-    image: "/images/univers/Ensembleenfant-193-retouche.png",
-    href: "/coin-maman",
-    className: "",
-  },
-  {
-    slug: "chaussures",
-    label: "Chaussures",
-    caption: "Pour bien grandir",
-    image: "/images/univers/chass1.png",
-    href: "/boutique?cat=Chaussures",
-    className: "",
-  },
-  {
-    slug: "accessoires",
-    label: "Accessoires",
-    caption: "Les petits plus",
-    /* La tuile montrait un jean cargo, repris tel quel de boty. Un sac à dos
-       dit au moins ce que le rayon contient. */
-    image: "/images/univers/sac-dos.png",
-    /* Pas de rayon « Accessoires » dans ce catalogue : la tuile ouvre la
-       boutique entière plutôt qu'un filtre qui ne renverrait rien. */
-    href: "/boutique",
-    className: "",
-  },
+/* La grille « Nos univers » : une grande tuile, quatre petites, la légende
+   au-dessus du nom et la pastille qui arrive au survol.
+
+   Ce ne sont plus cinq entrées écrites à la main : ce sont les rayons du
+   back-office, avec le visuel qu'on leur a donné. Une catégorie sans visuel
+   retombe sur l'une des photos livrées avec le site, dans l'ordre — la grille
+   garde sa tenue même sur une boutique qui n'a pas encore fait ses photos. */
+const PHOTOS_DE_SECOURS = [
+  "/images/univers/short-fille-blanc-lisse.png",
+  "/images/univers/Ensembleenfant-192-retouche.png",
+  "/images/univers/chass1.png",
+  "/images/univers/sac-dos.png",
 ];
 
-/* Les trois visuels du Coin Maman. Ils pointent vers leur sous-catégorie
-   plutôt que vers la page entière : on entre par ce qu'on a vu. */
+const PHOTO_COIN_MAMAN = "/images/univers/Ensembleenfant-193-retouche.png";
+
+/** Les cinq cases de la grille : quatre rayons, et le Coin Maman en dernier. */
+function tuilesDe(rayons: LienRayon[]) {
+  const cases = rayons.slice(0, 4).map((rayon, index) => ({
+    slug: rayon.slug,
+    label: rayon.nom,
+    caption:
+      rayon.description ||
+      `${rayon.nombre} pièce${rayon.nombre > 1 ? "s" : ""}`,
+    image: rayon.image || PHOTOS_DE_SECOURS[index % PHOTOS_DE_SECOURS.length],
+    href: `/boutique?cat=${encodeURIComponent(rayon.nom)}`,
+    /* La première tuile tient deux colonnes et deux rangées : c'est elle qui
+       porte la grille. */
+    className: index === 0 ? "lg:col-span-2 lg:row-span-2" : "",
+  }));
+
+  return [
+    ...cases,
+    {
+      slug: "coin-maman",
+      label: "Coin Maman",
+      caption: "Tissus & voiles",
+      image: PHOTO_COIN_MAMAN,
+      href: "/coin-maman",
+      className: "",
+    },
+  ];
+}
+
+/* Les visuels du Coin Maman. Trois photos livrées avec le site, mais les
+   libellés et les liens viennent des sous-catégories du back-office : ce qu'on
+   annonce correspond à ce qu'on vend. */
 const CDN = "https://mcommaman.com/cdn/shop/files/";
 
-const COIN_MAMAN_VIGNETTES = [
-  {
-    src: `${CDN}Ensemble_enfant-121.jpg?width=600`,
-    href: "/coin-maman?cat=Tissus",
-    libelle: "Bazin riche",
-    alt: "Voir les tissus",
-  },
-  {
-    src: `${CDN}Ensembleenfant-153.jpg?width=600`,
-    href: "/coin-maman?cat=Voiles",
-    libelle: "Voiles brodés",
-    alt: "Voir les voiles",
-  },
-  {
-    src: `${CDN}Ensemble_enfant-26.jpg?width=600`,
-    href: "/coin-maman?cat=Tissus",
-    libelle: "Coupons wax",
-    alt: "Voir les tissus",
-  },
+const PHOTOS_COIN_MAMAN = [
+  `${CDN}Ensemble_enfant-121.jpg?width=600`,
+  `${CDN}Ensembleenfant-153.jpg?width=600`,
+  `${CDN}Ensemble_enfant-26.jpg?width=600`,
 ];
+
+function vignettesMaman(rayons: LienRayon[]) {
+  return PHOTOS_COIN_MAMAN.map((src, index) => {
+    /* Moins de rayons que de photos : on repasse sur les mêmes plutôt que de
+       laisser une case sans lien. */
+    const rayon = rayons.length > 0 ? rayons[index % rayons.length] : null;
+    return {
+      src,
+      href: rayon ? `/coin-maman?cat=${encodeURIComponent(rayon.nom)}` : "/coin-maman",
+      libelle: rayon?.nom ?? "Coin Maman",
+      alt: rayon ? `Voir « ${rayon.nom} »` : "Voir le Coin Maman",
+    };
+  });
+}
 
 /* Reprise de la section « Pourquoi M comme Maman » de la maquette boty :
    deux visuels décalés, la promesse, et quatre engagements. */
@@ -193,42 +189,89 @@ const CONTACT = [
   },
 ];
 
-/* Date de fin lue dans `PROMO_END`, sans passer par `Date` : le serveur et le
-   navigateur n'ont pas forcément le même fuseau, et la journée aurait pu
-   basculer entre les deux rendus. */
-const MOIS = [
-  "janvier", "février", "mars", "avril", "mai", "juin",
-  "juillet", "août", "septembre", "octobre", "novembre", "décembre",
-];
-const FIN_PROMO = (() => {
-  const [, mois, jour] = PROMO_END.slice(0, 10).split("-");
-  return `${Number(jour)} ${MOIS[Number(mois) - 1]}`;
-})();
-
 const SHELL = "mx-auto w-full max-w-[1400px] px-5 md:px-8 lg:px-10";
 const H2 = "text-[clamp(1.95rem,3.8vw,2.6rem)] font-extrabold tracking-[-.032em]";
 const EYEBROW = "text-[11px] font-bold uppercase tracking-[.16em] text-rose";
 
-export function Home({ products }: { products: Product[] }) {
+export function Home({
+  products,
+  rayons = [],
+  rayonsMaman = [],
+  bandeau = [],
+  campagnes = [],
+}: {
+  products: Product[];
+  /** Les rayons du vestiaire enfant : ce sont eux qui font les tuiles. */
+  rayons?: LienRayon[];
+  /** Ceux du Coin Maman, pour les trois vignettes de la section dédiée. */
+  rayonsMaman?: LienRayon[];
+  /** Le bandeau d'accueil réglé dans le back-office. */
+  bandeau?: BandeauApi[];
+  /** Les campagnes qui courent aujourd'hui. Vide, la section promo disparaît. */
+  campagnes?: CampagneApi[];
+}) {
   const [tab, setTab] = useState("tous");
   const [quick, setQuick] = useState<Product | null>(null);
+  const reglages = useReglages();
+
+  const tuiles = useMemo(() => tuilesDe(rayons), [rayons]);
+  const vignettes = useMemo(() => vignettesMaman(rayonsMaman), [rayonsMaman]);
+
+  /* La campagne annoncée n'est pas écrite dans la page : elle vient du
+     back-office. On garde celle qui touche le plus de monde — la boutique
+     entière avant un rayon, un rayon avant un article — et on laisse de côté
+     les remises réservées à une première commande, qui ne concernent pas tout
+     le monde. Aucune campagne, aucune section : la page ne fait pas semblant
+     d'avoir une offre. */
+  const campagne = useMemo(() => {
+    const rang = { boutique: 0, rayon: 1, commande: 2, produit: 3 } as const;
+    const annoncables = campagnes.filter(
+      (c) => !(c.portee === "commande" && c.condition === "premiere"),
+    );
+    return [...annoncables].sort((a, b) => rang[a.portee] - rang[b.portee])[0] ?? null;
+  }, [campagnes]);
+
+  /* Le bandeau d'annonce de la gérante ouvre le défilé quand elle l'a activé —
+     c'est là qu'elle écrit « livraison offerte dès… ». Le reste est la
+     promesse de la boutique, qui ne change pas d'un jour à l'autre. */
+  const ticker = useMemo(
+    () =>
+      reglages.affiche_bandeau_promo && reglages.texte_bandeau_promo
+        ? [reglages.texte_bandeau_promo, ...TICKER]
+        : TICKER,
+    [reglages.affiche_bandeau_promo, reglages.texte_bandeau_promo],
+  );
+
+  /* Le téléphone affiché est celui des réglages : le changer ne demande pas
+     une mise en production. */
+  const contacts = useMemo(
+    () =>
+      CONTACT.map((c) =>
+        c.canal === "WhatsApp"
+          ? {
+              ...c,
+              valeur: reglages.telephone,
+              href: waLink("Bonjour, j'ai une question", reglages.telephone),
+            }
+          : c,
+      ),
+    [reglages.telephone],
+  );
 
   /* Les avis déposés par les clientes prennent la place des exemples dès qu'il
      y en a un. Avant l'hydratation la liste est vide : le premier rendu reste
      donc identique côté serveur et client. */
-  const { shopReviews, aggregate, hydrated } = useReviews();
-  const deposes = shopReviews();
-  const noteBoutique = aggregate({ kind: "shop" });
-  const avisReels = hydrated && deposes.length > 0;
+  const { avis: deposes, resume: noteBoutique, pret: avisPrets } = useAvis({ kind: "shop" });
+  const publies = deposes.filter((a) => a.state === "publie");
+  const avisReels = avisPrets && publies.length > 0;
   const avis = avisReels
-    ? deposes.slice(0, 3).map((a) => ({
-        cle: a.id,
+    ? publies.slice(0, 3).map((a) => ({
+        cle: String(a.id),
         stars: a.rating,
         who: a.authorName,
-        ref: a.orderRef,
         text: a.comment,
       }))
-    : REVIEWS.map((r) => ({ cle: r.ref, ...r }));
+    : REVIEWS.map((r) => ({ cle: r.ref, stars: r.stars, who: r.who, text: r.text }));
 
   /* Pastille glissante sous l'onglet actif : on mesure le bouton, on déplace la pastille. */
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -255,13 +298,18 @@ export function Home({ products }: { products: Product[] }) {
 
   return (
     <>
-      <Hero />
+      <Hero
+        pieces={products}
+        bandeau={bandeau}
+        avis={noteBoutique}
+        telephone={reglages.telephone}
+      />
 
 
       {/* ================================================== bandeau défilant */}
       <section className="w-full border-b border-line bg-mist">
         <div className="marquee-hold relative overflow-hidden py-4 text-[12.5px] font-semibold uppercase tracking-[.09em] text-muted">
-          <Marquee items={TICKER} duration={38} />
+          <Marquee items={ticker} duration={38} />
           <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-linear-to-r from-mist to-transparent" />
           <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-linear-to-l from-mist to-transparent" />
         </div>
@@ -305,7 +353,7 @@ export function Home({ products }: { products: Product[] }) {
           className="grid auto-rows-[180px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:gap-4 lg:grid-cols-4"
           stagger={110}
         >
-          {TUILES_UNIVERS.map((tuile) => (
+          {tuiles.map((tuile) => (
             <Link
               key={tuile.slug}
               href={tuile.href}
@@ -392,7 +440,7 @@ export function Home({ products }: { products: Product[] }) {
               sur WhatsApp pour être prévenue dès la mise en ligne.
             </p>
             <a
-              href={waLink("Bonjour ! Je souhaite être prévenue dès l’arrivée des nouvelles pièces.")}
+              href={waLink("Bonjour ! Je souhaite être prévenue dès l’arrivée des nouvelles pièces.", reglages.telephone)}
               target="_blank"
               rel="noreferrer"
               className="group mt-7 inline-flex items-center justify-center gap-2 rounded-full bg-rose px-7 py-3.5 text-[14px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
@@ -441,7 +489,7 @@ export function Home({ products }: { products: Product[] }) {
         </Reveal>
 
         <Reveal variant="scale">
-          <EnMouvement />
+          <EnMouvement pieces={products} />
         </Reveal>
       </section>
 
@@ -452,6 +500,7 @@ export function Home({ products }: { products: Product[] }) {
           pas.
           La photo est affichée telle quelle : ni aplat sombre, ni voile, ni
           grain. La bande reste basse, à la hauteur d'un bandeau. */}
+      {campagne && (
       <section className="relative isolate mt-16 overflow-hidden text-white md:mt-20">
         <ParallaxFond
           vitesse={0.42}
@@ -475,21 +524,39 @@ export function Home({ products }: { products: Product[] }) {
             <span aria-hidden className="h-px w-9 bg-gold/50" />
           </span>
 
+          {/* Le nom de la campagne, sa remise, sa portée et sa date de fin
+              viennent du back-office. Rien n'est écrit ici : une campagne qui
+              s'arrête emporte la section avec elle. */}
           <h2 className="mx-auto mt-4 max-w-[16ch] text-[clamp(2rem,5.4vw,3.2rem)] font-extrabold leading-[1.05] tracking-[-.035em] text-balance">
-            Rentrée des classes
+            {campagne.libelle}
             <span className="mt-1 block bg-linear-to-r from-white via-gold to-white bg-clip-text text-transparent">
-              −15 % sur les ensembles
+              {campagne.type === "pourcentage"
+                ? `−${campagne.valeur} %`
+                : `−${formatXOF(campagne.valeur)}`}{" "}
+              {campagne.portee === "rayon" && campagne.rayon_nom
+                ? `sur ${campagne.rayon_nom}`
+                : campagne.portee === "commande"
+                  ? "sur votre commande"
+                  : "sur la boutique"}
             </span>
           </h2>
 
           <div className="mt-6 flex justify-center">
-            <Countdown endsAt={PROMO_END} />
+            {/* Le compte à rebours lit le dernier jour inclus : la remise court
+                jusqu'au bout de cette journée-là. */}
+            <Countdown endsAt={`${campagne.date_fin}T23:59:59`} />
           </div>
 
           <div className="mt-7 flex flex-col items-center gap-3">
             <Magnetic>
               <Link
-                href="/boutique?cat=Ensembles"
+                href={
+                  campagne.portee === "produit" && campagne.produit_slug
+                    ? `/p/${campagne.produit_slug}`
+                    : campagne.portee === "rayon" && campagne.rayon_nom
+                      ? `/boutique?cat=${encodeURIComponent(campagne.rayon_nom)}`
+                      : "/boutique"
+                }
                 className="shine group flex items-center gap-2.5 rounded-full bg-rose px-8 py-4 text-[14.5px] font-bold text-white shadow-[0_18px_42px_-16px_rgba(224,65,127,.9)]"
               >
                 Voir la sélection
@@ -497,11 +564,14 @@ export function Home({ products }: { products: Product[] }) {
               </Link>
             </Magnetic>
             <span className="text-[12.5px] text-white/55">
-              Jusqu&apos;au {FIN_PROMO}, dans la limite des stocks.
+              Jusqu&apos;au {jusquAu(campagne.date_fin)}
+              {campagne.code ? ` avec le code ${campagne.code}` : ""}, dans la limite des
+              stocks.
             </span>
           </div>
         </Reveal>
       </section>
+      )}
 
       {/* ============================================ pourquoi M comme Maman */}
       <section className={`${SHELL} pt-16 md:pt-20`}>
@@ -599,7 +669,7 @@ export function Home({ products }: { products: Product[] }) {
 
             {/* Trois visuels en quinconce : un aperçu, pas un catalogue. */}
             <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5">
-              {COIN_MAMAN_VIGNETTES.map((v, i) => (
+              {vignettes.map((v, i) => (
                 <Link
                   key={v.src}
                   href={v.href}
@@ -664,7 +734,7 @@ export function Home({ products }: { products: Product[] }) {
 
               <div className="mt-5 border-t border-line pt-3.5">
                 <div className="text-[13px] font-bold">{r.who}</div>
-                <div className="mt-0.5 text-xs text-muted">Cliente vérifiée · {r.ref}</div>
+                <div className="mt-0.5 text-xs text-muted">Cliente vérifiée</div>
               </div>
             </article>
           ))}
@@ -701,7 +771,7 @@ export function Home({ products }: { products: Product[] }) {
         {/* Des comptes plutôt qu'un formulaire : la conversation reprend là
             où la cliente a déjà l'habitude d'écrire et de regarder. */}
         <div className="mx-auto mt-9 grid max-w-[1020px] gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          {CONTACT.map((c) => (
+          {contacts.map((c) => (
             <a
               key={c.canal}
               href={c.href}

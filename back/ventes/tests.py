@@ -238,6 +238,113 @@ class SuiviTest(APITestCase):
         self.assertEqual(creation.data["statut_cliente"], "Commande reçue")
 
 
+class CampagnesAnnonceesTest(APITestCase):
+    """
+    Ce que la boutique a le droit d'annoncer.
+
+    Le bandeau d'accueil et son compte à rebours lisent cette route. Une
+    campagne finie ou éteinte doit en disparaître : la vitrine ne fait pas
+    semblant d'avoir une offre.
+    """
+
+    def setUp(self):
+        aujourdhui = timezone.localdate()
+        self.courante = Campagne.objects.create(
+            libelle="Rentrée des classes", code="RENTREE15", valeur=15,
+            date_effet=aujourdhui - timedelta(days=1), duree_jours=10,
+        )
+        Campagne.objects.create(
+            libelle="Campagne finie", code="FINIE", valeur=10,
+            date_effet=aujourdhui - timedelta(days=40), duree_jours=5,
+        )
+        Campagne.objects.create(
+            libelle="Campagne éteinte", code="ETEINTE", valeur=10,
+            date_effet=aujourdhui, duree_jours=10, active=False,
+        )
+
+    def test_seules_les_campagnes_en_cours_sont_annoncees(self):
+        reponse = self.client.get(reverse("campagne-publique-list"))
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+        libelles = [c["libelle"] for c in reponse.data]
+        self.assertEqual(libelles, ["Rentrée des classes"])
+
+    def test_l_annonce_ne_dit_rien_de_la_note_interne(self):
+        self.courante.note = "Marge serrée, ne pas prolonger."
+        self.courante.save()
+        annonce = self.client.get(reverse("campagne-publique-list")).data[0]
+        self.assertNotIn("note", annonce)
+        self.assertEqual(annonce["code"], "RENTREE15")
+        self.assertEqual(annonce["valeur"], 15)
+
+
+class AnnulationParLaClienteTest(APITestCase):
+    """
+    Se raviser tant que rien n'est préparé.
+
+    Cette annulation vivait dans le navigateur : elle n'y changeait que
+    l'affichage, la boutique continuait de préparer le colis et le stock restait
+    retiré. Ici elle est opposable, et le stock revient.
+    """
+
+    def setUp(self):
+        self.variante = fabriquer_variante(stock=10)
+        self.cliente = Utilisateur.objects.create_user(
+            email="annule@test.sn", nom="Aminata", password="motdepasse123"
+        )
+
+    def _commander(self, connectee=True):
+        if connectee:
+            self.client.force_authenticate(self.cliente)
+        creation = self.client.post(
+            reverse("commande-list"), commande_type(self.variante, quantite=2), format="json"
+        )
+        return creation.data["reference"]
+
+    def test_annuler_avant_preparation_remet_le_stock(self):
+        reference = self._commander()
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 8)
+
+        reponse = self.client.post(reverse("commande-annuler", args=[reference]))
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+        self.assertEqual(reponse.data["statut"], "annulee")
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 10)
+
+    def test_une_commande_en_preparation_ne_s_annule_plus_toute_seule(self):
+        reference = self._commander()
+        commande = Commande.objects.get(reference=reference)
+        commande.statut = Commande.Statut.PREPARATION
+        commande.save()
+
+        reponse = self.client.post(reverse("commande-annuler", args=[reference]))
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 8)
+
+    def test_on_n_annule_pas_la_commande_d_une_autre(self):
+        reference = self._commander()
+        autre = Utilisateur.objects.create_user(
+            email="autre@test.sn", nom="Autre", password="motdepasse123"
+        )
+        self.client.force_authenticate(autre)
+        reponse = self.client.post(reverse("commande-annuler", args=[reference]))
+        self.assertEqual(reponse.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Commande.objects.get(reference=reference).statut, "en_attente")
+
+    def test_sans_compte_l_annulation_demande_le_telephone(self):
+        reference = self._commander(connectee=False)
+
+        sans_rien = self.client.post(reverse("commande-annuler", args=[reference]))
+        self.assertEqual(sans_rien.status_code, status.HTTP_403_FORBIDDEN)
+
+        avec = self.client.post(
+            reverse("commande-annuler", args=[reference]),
+            {"telephone": "+221771234567"}, format="json",
+        )
+        self.assertEqual(avec.status_code, status.HTTP_200_OK)
+
+
 class GestionCommandeTest(APITestCase):
     def setUp(self):
         self.variante = fabriquer_variante(stock=10)

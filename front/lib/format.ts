@@ -15,6 +15,7 @@ export function jusquAu(iso: string): string {
 export const formatXOF = (n: number) =>
   n.toLocaleString("fr-FR").replace(/\u202f|\u00a0/g, " ") + " F";
 
+/** Le numéro de repli, quand les réglages ne sont pas encore arrivés. */
 export const WHATSAPP = "221762080202";
 
 /* Les comptes de la boutique. À confirmer avant mise en ligne : un lien vers le
@@ -37,8 +38,18 @@ export const MAPS_URL = "https://maps.app.goo.gl/FhvcWxAku2LBCjP67";
 export const MAPS_COORDS = "14.7386622,-17.4621246";
 export const MAPS_EMBED = `https://www.google.com/maps?q=${MAPS_COORDS}&z=16&hl=fr&output=embed`;
 
-export const waLink = (message: string) =>
-  `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`;
+/**
+ * Un lien WhatsApp vers la boutique.
+ *
+ * Le numéro vient des réglages : c'est le même que celui affiché en pied de
+ * page et sur la page contact. Le laisser écrit ici ferait diverger les deux
+ * le jour où la gérante en change — on lirait un numéro et on écrirait à un
+ * autre. `wa.me` ne veut que des chiffres : espaces et « + » sont retirés.
+ */
+export const waLink = (message: string, telephone?: string) => {
+  const numero = (telephone ?? "").replace(/\D/g, "") || WHATSAPP;
+  return `https://wa.me/${numero}?text=${encodeURIComponent(message)}`;
+};
 
 /** Les initiales servent d'avatar : deux lettres suffisent à se reconnaître.
     Partagées entre la vitrine et le back-office — les deux saluent la même

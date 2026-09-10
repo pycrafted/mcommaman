@@ -6,6 +6,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AvisGestionViewSet,
     AvisViewSet,
+    CampagnePubliqueViewSet,
     CampagneViewSet,
     CommandeGestionViewSet,
     CommandeViewSet,
@@ -16,6 +17,7 @@ from .views import (
 public = DefaultRouter()
 public.register("commandes", CommandeViewSet, basename="commande")
 public.register("avis", AvisViewSet, basename="avis")
+public.register("campagnes", CampagnePubliqueViewSet, basename="campagne-publique")
 
 gestion = DefaultRouter()
 gestion.register("commandes", CommandeGestionViewSet, basename="commande-gestion")

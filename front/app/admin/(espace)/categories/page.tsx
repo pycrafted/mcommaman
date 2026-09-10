@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAdmin } from "@/lib/admin/store";
-import { slugify } from "@/lib/admin/seed";
+import { slugify } from "@/lib/admin/slug";
 import type { AdminCategory } from "@/lib/admin/types";
 import {
   Button,

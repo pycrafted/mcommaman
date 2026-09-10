@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatXOF } from "@/lib/format";
-import { REFERENCE_DATE, computePeriod, useAdmin } from "@/lib/admin/store";
+import { maintenant, computePeriod, useAdmin } from "@/lib/admin/store";
 import { Button, PageHeader } from "@/components/admin/ui";
 import {
   IconArrowRight,
@@ -76,15 +76,15 @@ export default function Page() {
   ).length;
   const periode = computePeriod(orders, 30);
 
-  /* Même date de référence que partout ailleurs : la graine est figée au
-     15 août 2026, une campagne « en cours » doit l'être par rapport à elle. */
-  const aujourdhui = REFERENCE_DATE.toISOString().slice(0, 10);
+  /* Le vrai jour : les commandes viennent de la base, une campagne « en
+     cours » l'est par rapport à aujourd'hui. */
+  const aujourdhui = maintenant().toISOString().slice(0, 10);
   const promosEnCours = promotions.filter((p) => p.active && p.startsAt <= aujourdhui).length;
 
   return (
     <>
       <PageHeader
-        eyebrow={REFERENCE_DATE.toLocaleDateString("fr-FR", {
+        eyebrow={maintenant().toLocaleDateString("fr-FR", {
           weekday: "long",
           day: "numeric",
           month: "long",

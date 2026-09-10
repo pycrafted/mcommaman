@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatXOF, waLink } from "@/lib/format";
-import { byId, type Product } from "@/lib/products";
+import { lireProduitsParIds } from "@/lib/catalogue";
+import { type Product } from "@/lib/products";
 import { zoneLabel } from "@/lib/livraison";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
@@ -12,6 +13,7 @@ import { useOrders } from "./orders-context";
 import { useFavorites } from "./favorites-context";
 import { OrderStatusBadge } from "./order-status-badge";
 import { AccountHeader } from "./account-header";
+import { useReglages } from "./reglages-context";
 import {
   IconArrow,
   IconHeart,
@@ -31,6 +33,7 @@ export function AccountDashboard() {
   const { lignes, count, subtotal } = useCart();
   const { orders } = useOrders();
   const { ids: favorisIds, count: favoris } = useFavorites();
+  const reglages = useReglages();
 
   /* `sortie` évite un aller-retour : après « Se déconnecter », le compte
      disparaît et l'effet de garde renverrait vers la page de connexion avant
@@ -40,6 +43,20 @@ export function AccountDashboard() {
   useEffect(() => {
     if (hydrated && !account && !sortie) router.replace("/compte/connexion?suite=/compte");
   }, [hydrated, account, sortie, router]);
+
+  /* Quatre pièces suffisent à reconnaître sa liste ; le reste est sur /favoris.
+     Les fiches viennent du serveur : un article dépublié n'en revient pas et
+     n'apparaît donc plus, sans que la page en souffre. */
+  const [envies, setEnvies] = useState<Product[]>([]);
+  useEffect(() => {
+    let vivant = true;
+    void lireProduitsParIds(favorisIds.slice(0, 4)).then((fiches) => {
+      if (vivant) setEnvies(fiches);
+    });
+    return () => {
+      vivant = false;
+    };
+  }, [favorisIds]);
 
   /* Avant l'hydratation on ne sait pas encore qui est là : on rend la même
      ossature que le serveur, en attente. */
@@ -60,12 +77,6 @@ export function AccountDashboard() {
 
   const derniere = orders[0] ?? null;
 
-  /* Quatre pièces suffisent à reconnaître sa liste ; le reste est sur /favoris.
-     Un article retiré du catalogue est simplement sauté. */
-  const envies = favorisIds
-    .map((id) => byId(id))
-    .filter((p): p is Product => Boolean(p))
-    .slice(0, 4);
 
   return (
     <div className={`${SHELL} pb-22 pt-8`}>
@@ -97,9 +108,9 @@ export function AccountDashboard() {
                 className="group flex flex-wrap items-center gap-5 rounded-2xl bg-mist p-4 transition-colors duration-300 hover:bg-stone sm:flex-nowrap sm:p-5"
               >
                 <div className="flex -space-x-2.5">
-                  {derniere.lines.slice(0, 3).map((ligne, i) => (
+                  {derniere.lines.slice(0, 3).map((ligne) => (
                     <span
-                      key={`${ligne.productId}-${i}`}
+                      key={ligne.id}
                       className="h-16 w-14 rounded-xl border-2 border-white bg-stone bg-cover bg-center"
                       style={{ backgroundImage: `url(${ligne.image})` }}
                     />
@@ -388,7 +399,7 @@ export function AccountDashboard() {
               Du lundi au samedi, 9 h – 19 h. Une vraie personne répond.
             </p>
             <a
-              href={waLink("Bonjour, j'ai une question sur mon compte")}
+              href={waLink("Bonjour, j'ai une question sur mon compte", reglages.telephone)}
               target="_blank"
               rel="noreferrer"
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-rose px-5 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"

@@ -126,17 +126,61 @@ class CampagneSerializer(serializers.ModelSerializer):
         ]
 
 
+class CampagnePubliqueSerializer(serializers.ModelSerializer):
+    """
+    Une campagne telle que la boutique l'annonce.
+
+    Ni la note interne ni la portée technique : de quoi écrire un bandeau et
+    faire tourner un compte à rebours. Le code y figure — c'est fait pour être
+    tapé —, et la condition avec, sinon la cliente découvre à la caisse que la
+    remise ne la concernait pas.
+    """
+
+    date_fin = serializers.DateField(read_only=True)
+    rayon_nom = serializers.CharField(source="rayon.nom", read_only=True, default="")
+    produit_slug = serializers.CharField(source="produit.slug", read_only=True, default="")
+
+    class Meta:
+        model = Campagne
+        fields = [
+            "libelle", "code", "type", "valeur", "date_fin",
+            "portee", "rayon_nom", "produit_slug",
+            "condition", "montant_minimum",
+        ]
+
+
 class AvisSerializer(serializers.ModelSerializer):
     auteur_nom = serializers.CharField(source="auteur.nom", read_only=True)
     produit_nom = serializers.CharField(source="produit.nom", read_only=True, default="")
+    produit_slug = serializers.CharField(source="produit.slug", read_only=True, default="")
+    est_le_mien = serializers.SerializerMethodField()
 
     class Meta:
         model = Avis
         fields = [
             "id", "note", "commentaire", "auteur_nom", "produit", "produit_nom",
-            "commande", "etat", "ecrit_le",
+            "produit_slug", "est_le_mien", "commande", "etat", "ecrit_le",
         ]
         read_only_fields = ["etat", "ecrit_le"]
+
+    def get_est_le_mien(self, obj) -> bool:
+        """
+        Le sien, à modifier ou à retirer.
+
+        Reconnaître son avis au nom de l'autrice ne tiendrait pas : deux
+        clientes peuvent s'appeler pareil, et le nom seul ne dit rien de la
+        session en cours. L'identifiant du compte, lui, ne sort jamais d'ici.
+        """
+        requete = self.context.get("request")
+        return bool(
+            requete
+            and requete.user.is_authenticated
+            and obj.auteur_id == requete.user.id
+        )
+
+    # La référence de la commande n'est volontairement pas rendue : elle
+    # circulerait publiquement sous chaque avis et donnerait le compte des
+    # ventes à qui sait lire. « Achat vérifié » dit ce qu'il faut savoir.
 
 
 class CreationAvisSerializer(serializers.ModelSerializer):
@@ -204,7 +248,10 @@ class AgregatSerializer(serializers.Serializer):
 class AvisPossibleSerializer(serializers.Serializer):
     """Ce qu'une cliente peut encore noter, après livraison."""
 
-    commande = serializers.CharField()
+    # L'identifiant, parce que c'est lui qu'il faudra renvoyer pour déposer
+    # l'avis ; la référence en plus, parce que c'est elle qu'on montre.
+    commande = serializers.IntegerField()
+    commande_reference = serializers.CharField()
     livree_le = serializers.DateTimeField()
     produit = serializers.IntegerField(allow_null=True)
     nom_produit = serializers.CharField()

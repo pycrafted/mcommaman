@@ -4,10 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatXOF } from "@/lib/format";
-import { METHODS, ZONES, findCode, zoneIndex, type MethodKey } from "@/lib/livraison";
+import { ErreurApi, envoyer, type DevisApi } from "@/lib/api";
+import {
+  METHODS,
+  ZONES,
+  descriptionZone,
+  fraisDeZone,
+  francoDeZone,
+  zoneIndex,
+  type MethodKey,
+} from "@/lib/livraison";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
 import { useOrders } from "./orders-context";
+import { useReglages } from "./reglages-context";
 import { TextField } from "./form-kit";
 import { IconCheck, IconLock, IconMail, IconPhone, IconPin, IconUser } from "./icons";
 
@@ -18,6 +28,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   const { lignes, subtotal, complet, bump, remove, clear } = useCart();
   const { account, defaultAddress } = useAuth();
   const { placeOrder } = useOrders();
+  const reglages = useReglages();
 
   const [step, setStep] = useState(startAt);
   const [zone, setZone] = useState(0);
@@ -35,8 +46,16 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   const [envoi, setEnvoi] = useState(false);
 
   const [codeSaisi, setCodeSaisi] = useState("");
-  const [codeApplique, setCodeApplique] = useState<{ code: string; percent: number; label: string } | null>(null);
+  /* Le code retenu par le serveur, pas celui qu'on a tapé : c'est lui qui dit
+     si la campagne existe, si elle court encore et ce qu'elle retire. */
+  const [codeApplique, setCodeApplique] = useState("");
   const [codeErreur, setCodeErreur] = useState<string | null>(null);
+  const [erreurCaisse, setErreurCaisse] = useState<string | null>(null);
+
+  /* Le chiffrage vient de `/api/devis/`. Tant qu'il n'est pas revenu — premier
+     rendu, changement de zone — on annonce l'estimation locale faite avec les
+     réglages : la même règle, mais sans autorité. Le serveur tranche. */
+  const [devis, setDevis] = useState<DevisApi | null>(null);
 
   /* Ce que le compte sait déjà remplit le formulaire, sans jamais écraser une
      saisie en cours : `(v) => v || …` ne pose la valeur que si le champ est
@@ -66,9 +85,62 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
     if (!codDisponible && method === "cod") setMethod("wave");
   }, [codDisponible, method]);
 
-  const shipping = subtotal >= z.free ? 0 : z.cost;
-  const discount = codeApplique ? Math.round((subtotal * codeApplique.percent) / 100) : 0;
-  const total = Math.max(0, subtotal + shipping - discount);
+  /* L'estimation locale, le temps que le serveur réponde. Elle applique la
+     même règle que `Reglages.frais_pour`, mais n'engage rien : aucune remise
+     n'y figure, un code ne se vérifie pas dans le navigateur. */
+  const estimation = useMemo<DevisApi>(() => {
+    const frais = subtotal >= francoDeZone(reglages, z.key) ? 0 : fraisDeZone(reglages, z.key);
+    return {
+      sous_total: subtotal,
+      frais_livraison: subtotal > 0 ? frais : 0,
+      remise: 0,
+      code_promo: "",
+      total: Math.max(0, subtotal + (subtotal > 0 ? frais : 0)),
+    };
+  }, [reglages, subtotal, z.key]);
+
+  const chiffrage = devis ?? estimation;
+  const shipping = chiffrage.frais_livraison;
+  const discount = chiffrage.remise;
+  const total = chiffrage.total;
+
+  /* Le panier envoyé à la caisse : une variante, une quantité. Jamais un prix. */
+  const lignesDemandees = useMemo(
+    () => lignes.map((l) => ({ variante: l.variante, quantite: l.quantite })),
+    [lignes],
+  );
+
+  /**
+   * Demande le chiffrage au serveur.
+   *
+   * Rejoué à chaque changement de panier, de zone ou de code. Le nettoyage
+   * écarte les réponses arrivées dans le désordre : sans lui, un vieux devis
+   * pouvait recouvrir le bon et afficher les frais de la zone précédente.
+   */
+  useEffect(() => {
+    if (lignesDemandees.length === 0) {
+      setDevis(null);
+      return;
+    }
+    let vivant = true;
+    void (async () => {
+      try {
+        const reponse = await envoyer<DevisApi>("/api/devis/", "POST", {
+          lignes: lignesDemandees,
+          zone: z.key,
+          code_promo: codeApplique,
+        });
+        if (vivant) setDevis(reponse);
+      } catch {
+        /* Le serveur refusera de nouveau à la validation, avec son message.
+           Ici on retombe sur l'estimation plutôt que d'effacer le total. */
+        if (vivant) setDevis(null);
+      }
+    })();
+    return () => {
+      vivant = false;
+    };
+  }, [lignesDemandees, z.key, codeApplique]);
 
   const erreurs = useMemo(() => {
     const liste: Partial<Record<Champ, string>> = {};
@@ -87,18 +159,34 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   const erreurDe = (champ: Champ) => (tente || touches.has(champ) ? erreurs[champ] : undefined);
   const valideDe = (champ: Champ) => (tente || touches.has(champ)) && !erreurs[champ];
 
-  const appliquerCode = () => {
-    const trouve = findCode(codeSaisi);
-    if (!trouve) {
-      setCodeApplique(null);
-      setCodeErreur("Ce code n'est pas reconnu.");
-      return;
-    }
-    setCodeApplique({ code: codeSaisi.trim().toUpperCase(), ...trouve });
+  /**
+   * Vérifie le code auprès du serveur.
+   *
+   * Le navigateur ne connaît plus la liste des codes : il demande un devis avec
+   * celui qu'on a saisi. Si la campagne n'existe pas, a expiré ou ne s'applique
+   * pas à ce panier, c'est le serveur qui le dit — et il le dit en français.
+   */
+  const appliquerCode = async () => {
+    const code = codeSaisi.trim().toUpperCase();
+    if (!code || lignesDemandees.length === 0) return;
     setCodeErreur(null);
+    try {
+      const reponse = await envoyer<DevisApi>("/api/devis/", "POST", {
+        lignes: lignesDemandees,
+        zone: z.key,
+        code_promo: code,
+      });
+      setDevis(reponse);
+      setCodeApplique(reponse.code_promo || code);
+    } catch (erreur) {
+      setCodeApplique("");
+      setCodeErreur(
+        erreur instanceof ErreurApi ? erreur.message : "Ce code n'a pas pu être vérifié.",
+      );
+    }
   };
 
-  const valider = () => {
+  const valider = async () => {
     if (lignes.length === 0) return;
 
     if (step === 1) {
@@ -122,41 +210,48 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
       return;
     }
 
-    /* La commande est enregistrée, le panier vidé, et on part sur son suivi. En
-       ligne, ce bouton lancera le paiement et c'est le webhook signé du
+    /* La commande part au serveur : c'est lui qui refait les prix, retire le
+       stock et numérote. Aucun montant n'est envoyé — les accepter reviendrait
+       à laisser le navigateur fixer ses prix.
+
+       En ligne, ce bouton lancera le paiement et c'est le webhook signé du
        prestataire qui validera — jamais ce retour-ci. */
     setEnvoi(true);
-    const commande = placeOrder({
-      lines: lignes.map((l) => ({
-        productId: String(l.produit),
-        slug: l.slug,
-        name: l.nom,
-        image: l.image,
-        variante: l.variante,
-        option: l.option,
-        price: l.prix_unitaire,
-        quantity: l.quantite,
-      })),
-      subtotal,
-      shipping,
-      discount,
-      promoCode: codeApplique?.code ?? "",
-      total,
-      customer: { name: nom.trim(), phone: tel.trim(), email: email.trim() },
-      delivery: {
-        zone: z.key,
-        city: ville.trim(),
-        address: repere.trim(),
-        notes: instructions.trim(),
-      },
-      payment: method,
+    setErreurCaisse(null);
+
+    const resultat = await placeOrder({
+      lignes: lignesDemandees,
+      nom_client: nom.trim(),
+      telephone: tel.trim(),
+      email: email.trim(),
+      zone: z.key,
+      ville: ville.trim(),
+      adresse: repere.trim(),
+      notes: instructions.trim(),
+      moyen_paiement: method,
+      code_promo: codeApplique,
     });
 
-    clear();
-    router.push(`/commandes/${commande.ref}?nouvelle=1`);
+    if (!resultat.ok || !resultat.order) {
+      /* Rupture pendant la saisie, code expiré entre-temps, caisse fermée : le
+         panier est laissé intact et le refus est dit tel que le serveur l'a
+         formulé. Le vider ici ferait perdre la sélection pour rien. */
+      setEnvoi(false);
+      setErreurCaisse(resultat.error ?? "La commande n'a pas pu être enregistrée.");
+      return;
+    }
+
+    await clear();
+    router.push(`/commandes/${resultat.order.ref}?nouvelle=1`);
   };
 
-  const cta = ["Passer à la livraison", "Passer au paiement", `Payer ${formatXOF(total)}`][step - 1];
+  /* Les congés se déclarent dans le back-office : la boutique reste
+     consultable, la caisse seule ferme. */
+  const caisseFermee = !reglages.accepte_commandes;
+
+  const cta = caisseFermee
+    ? "Commandes suspendues"
+    : ["Passer à la livraison", "Passer au paiement", `Payer ${formatXOF(total)}`][step - 1];
 
   if (envoi) {
     return (
@@ -165,6 +260,9 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
           <IconCheck className="h-6 w-6 text-rose" />
         </span>
         <p className="mt-5 text-[15px] font-semibold">Enregistrement de votre commande…</p>
+        <p className="mt-1.5 text-[13px] text-muted">
+          Le serveur revérifie les prix et le stock avant de la retenir.
+        </p>
       </div>
     );
   }
@@ -376,7 +474,9 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                       }`}
                     >
                       <span className="text-sm font-bold">{zz.t}</span>
-                      <span className="text-[12.5px] text-muted">{zz.s}</span>
+                      <span className="text-[12.5px] text-muted">
+                        {descriptionZone(reglages, zz.key)}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -443,8 +543,8 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
 
               <p className="mt-4 flex gap-2.5 rounded-2xl bg-mist px-5 py-4 text-[12.5px] leading-relaxed text-muted">
                 <IconLock className="mt-0.5 h-4 w-4 shrink-0 text-rose" />
-                Maquette : aucun paiement n&apos;est déclenché. La commande est enregistrée dans ce
-                navigateur pour que le suivi ait quelque chose à montrer.
+                Aucun paiement n&apos;est encore déclenché : la commande part à la boutique, qui
+                vous rappelle pour la confirmer. Le stock est réservé dès maintenant.
               </p>
             </>
           )}
@@ -466,10 +566,13 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
             {codeApplique && (
               <div className="flex justify-between text-[#2e7d52]">
                 <span>
-                  Code {codeApplique.code}
+                  Code {codeApplique}
                   <button
                     type="button"
-                    onClick={() => setCodeApplique(null)}
+                    onClick={() => {
+                      setCodeApplique("");
+                      setCodeSaisi("");
+                    }}
                     className="ml-2 text-[12px] text-muted underline underline-offset-2"
                   >
                     retirer
@@ -495,15 +598,17 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                     setCodeSaisi(e.target.value);
                     setCodeErreur(null);
                   }}
-                  onKeyDown={(e) => e.key === "Enter" && appliquerCode()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void appliquerCode();
+                  }}
                   placeholder="Code de réduction"
                   aria-label="Code de réduction"
                   className="w-full min-w-0 rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3 text-sm uppercase outline-none transition-colors placeholder:normal-case placeholder:text-[#b3a5aa] focus:border-rose"
                 />
                 <button
                   type="button"
-                  onClick={appliquerCode}
-                  disabled={!codeSaisi.trim()}
+                  onClick={() => void appliquerCode()}
+                  disabled={!codeSaisi.trim() || lignes.length === 0}
                   className="shrink-0 rounded-2xl border-[1.5px] border-[#e5d9de] px-4 text-[13px] font-bold transition-colors duration-300 hover:border-rose hover:text-rose disabled:opacity-40"
                 >
                   Appliquer
@@ -516,8 +621,8 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
           )}
 
           <button
-            onClick={valider}
-            disabled={lignes.length === 0 || !complet}
+            onClick={() => void valider()}
+            disabled={lignes.length === 0 || !complet || caisseFermee}
             className="mt-5 w-full rounded-full bg-rose py-4 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-transform hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
           >
             {cta}
@@ -525,7 +630,15 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
 
           {/* Un bouton grisé sans explication laisse croire à une panne : on dit
               pourquoi il ne part pas. */}
-          {lignes.length === 0 ? (
+          {caisseFermee ? (
+            <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
+              La boutique ne prend pas de commande en ce moment. Votre panier vous attend.
+            </p>
+          ) : erreurCaisse ? (
+            <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
+              {erreurCaisse}
+            </p>
+          ) : lignes.length === 0 ? (
             <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
               Votre panier est vide, il n&apos;y a rien à commander.{" "}
               <Link href="/boutique" className="underline underline-offset-2">

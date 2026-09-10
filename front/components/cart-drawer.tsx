@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { formatXOF, waLink } from "@/lib/format";
 import { useCart } from "./cart-context";
+import { useReglages } from "./reglages-context";
 
 export function CartDrawer() {
   const { drawerOpen, closeDrawer, lignes, subtotal, complet, bump, erreur } = useCart();
+  const reglages = useReglages();
 
   if (!drawerOpen) return null;
 
@@ -88,7 +90,7 @@ export function CartDrawer() {
             Commander
           </Link>
           <a
-            href={waLink(message)}
+            href={waLink(message, reglages.telephone)}
             target="_blank"
             rel="noreferrer"
             className="mt-2.5 block rounded-full border-[1.5px] border-[#e5d9de] py-3.5 text-center text-[14.5px] font-bold"

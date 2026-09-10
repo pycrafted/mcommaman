@@ -82,9 +82,9 @@ export function OrdersList() {
                 </header>
 
                 <div className="mb-5 flex flex-wrap gap-2">
-                  {commande.lines.slice(0, 5).map((ligne, i) => (
+                  {commande.lines.slice(0, 5).map((ligne) => (
                     <span
-                      key={`${ligne.productId}-${ligne.option}-${i}`}
+                      key={ligne.id}
                       title={ligne.name}
                       className="relative h-16 w-16 overflow-hidden rounded-xl bg-stone bg-cover bg-center"
                       style={{ backgroundImage: `url(${ligne.image})` }}

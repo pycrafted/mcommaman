@@ -15,10 +15,14 @@ class Reglages(models.Model):
     valeurs commerciales, elles changent sans mise en production.
     """
 
+    # Les coordonnées de la boutique, et non des exemples : c'est ce qui
+    # s'affiche en pied de page, sur la page contact et derrière chaque lien
+    # WhatsApp. Un numéro d'exemple par défaut, et une installation neuve
+    # publie un faux numéro sans que personne s'en aperçoive.
     nom_boutique = models.CharField(max_length=120, default="M comme Maman")
     signature = models.CharField(max_length=160, default="Le monde des mamans")
-    email_contact = models.EmailField(default="bonjour@mcommaman.com")
-    telephone = models.CharField(max_length=32, default="+221 77 000 00 00")
+    email_contact = models.EmailField(default="mamand202122@gmail.com")
+    telephone = models.CharField(max_length=32, default="+221 76 208 02 02")
     devise = models.CharField(max_length=8, default="F")
 
     franco_dakar = models.PositiveIntegerField(

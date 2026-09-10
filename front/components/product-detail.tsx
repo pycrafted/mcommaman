@@ -7,9 +7,10 @@ import type { ProduitApi } from "@/lib/api";
 import type { Product } from "@/lib/products";
 import { ProductCard } from "./product-card";
 import { useCart } from "./cart-context";
-import { useReviews } from "./reviews-context";
+import { useAvis } from "./reviews-context";
 import { FavoriteButton } from "./favorite-button";
 import { ReviewForm, ReviewList, StarRow } from "./review-form";
+import { useReglages } from "./reglages-context";
 
 /**
  * La fiche produit.
@@ -28,7 +29,14 @@ export function ProductDetail({
   similaires: Product[];
 }) {
   const { add, erreur } = useCart();
-  const { productReviews, aggregate, hydrated } = useReviews();
+  const reglages = useReglages();
+  /* Les avis de cette fiche, demandés au serveur au montage. Ni la note ni le
+     nombre ne sont écrits dans la page : tant que personne n'a écrit, l'article
+     l'annonce plutôt que d'inventer une moyenne. */
+  const { avis, resume: note, pret: avisPrets } = useAvis({
+    kind: "product",
+    productId: product.id,
+  });
 
   const coloris = fiche.coloris ?? [];
   const tailles = fiche.tailles ?? [];
@@ -115,10 +123,6 @@ export function ProductDetail({
     ? `−${Math.round((1 - product.price / product.compareAt) * 100)} %`
     : null;
 
-  /* La note vient des avis déposés, plus d’un chiffre écrit dans la page :
-     tant que personne n’a écrit, l’article l’annonce au lieu d’inventer. */
-  const avis = productReviews(product.id);
-  const note = aggregate({ kind: "product", productId: product.id });
 
   return (
     <div className="mx-auto max-w-[1400px] px-10 pb-20 pt-7">
@@ -292,6 +296,7 @@ export function ProductDetail({
             <a
               href={waLink(
                 `Bonjour, je suis intéressée par : ${product.name}${variante ? ` (${variante.sku})` : ""}`,
+                reglages.telephone,
               )}
               target="_blank"
               rel="noreferrer"
@@ -365,8 +370,8 @@ export function ProductDetail({
         </div>
 
         <div className="grid grid-cols-[1.35fr_.95fr] items-start gap-14">
-          {/* Avant l’hydratation on ne sait pas encore ce qui existe. */}
-          <div>{hydrated && <ReviewList reviews={avis} />}</div>
+          {/* Avant la réponse du serveur on ne sait pas encore ce qui existe. */}
+          <div>{avisPrets && <ReviewList reviews={avis} />}</div>
 
           <div className="rounded-3xl border border-line bg-mist p-6">
             <h3 className="text-[15px] font-bold">Vous l’avez reçu&nbsp;?</h3>

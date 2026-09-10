@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatXOF } from "@/lib/format";
-import { byId, type Product } from "@/lib/products";
+import { lireProduitsParIds } from "@/lib/catalogue";
+import { type Product } from "@/lib/products";
 import { useCart } from "./cart-context";
 import { useFavorites } from "./favorites-context";
 import { AccountHeader } from "./account-header";
@@ -20,12 +21,19 @@ export function FavoritesPage() {
   const [confirmeVidage, setConfirmeVidage] = useState(false);
   const [ajoutes, setAjoutes] = useState(false);
 
-  /* Un article retiré du catalogue ne doit pas casser la page : on garde son
-     identifiant en mémoire, on ne l'affiche simplement plus. */
-  const favoris = useMemo(
-    () => ids.map((id) => byId(id)).filter((p): p is Product => Boolean(p)),
-    [ids]
-  );
+  /* Les fiches sont demandées au serveur à partir des identifiants mis de
+     côté. Un article dépublié ou retiré du catalogue n'en revient pas : son
+     identifiant reste en mémoire, il ne s'affiche simplement plus. */
+  const [favoris, setFavoris] = useState<Product[]>([]);
+  useEffect(() => {
+    let vivant = true;
+    void lireProduitsParIds(ids).then((fiches) => {
+      if (vivant) setFavoris(fiches);
+    });
+    return () => {
+      vivant = false;
+    };
+  }, [ids]);
 
   const disponibles = favoris.filter((p) => !p.outOfStock);
   const total = favoris.reduce((somme, p) => somme + p.price, 0);

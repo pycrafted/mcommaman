@@ -3,6 +3,7 @@ import { IconArrow, IconInstagram, IconPin, IconTikTok } from "@/components/icon
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart-drawer";
+import { lireReglages } from "@/lib/reglages";
 import {
   ADRESSE,
   INSTAGRAM,
@@ -17,7 +18,7 @@ import {
 export const metadata: Metadata = {
   title: "Nous écrire",
   description:
-    "Une question sur une taille ou une commande ? WhatsApp au +221 76 208 02 02, réponse dans la journée.",
+    "Une question sur une taille ou une commande ? Écrivez-nous sur WhatsApp, réponse dans la journée.",
 };
 
 const FIELDS = [
@@ -32,7 +33,11 @@ const FIELDS = [
    mène à Google Maps. Ne reste ici que ce qui ne s'ouvre nulle part. */
 const CARDS = [{ t: "Horaires", v: "Lundi au samedi\n9 h – 19 h" }];
 
-export default function Page() {
+export default async function Page() {
+  /* Le numéro affiché est celui des réglages : la gérante en change sans
+     attendre une mise en production. */
+  const reglages = await lireReglages();
+
   return (
     <>
       <Header />
@@ -80,7 +85,7 @@ export default function Page() {
 
           <div className="flex flex-col gap-3.5">
             <a
-              href={waLink("Bonjour, j'ai une question")}
+              href={waLink("Bonjour, j'ai une question", reglages.telephone)}
               target="_blank"
               rel="noreferrer"
               className="block rounded-3xl bg-ink p-7 text-white transition-transform hover:-translate-y-0.5"
@@ -91,7 +96,7 @@ export default function Page() {
               <div className="mt-2.5 text-2xl font-extrabold tracking-tight">
                 WhatsApp
                 <br />
-                +221 76 208 02 02
+                {reglages.telephone}
               </div>
             </a>
 

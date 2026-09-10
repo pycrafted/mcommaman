@@ -133,10 +133,13 @@ class SousRayonSerializer(serializers.ModelSerializer):
     """Une sous-catégorie, telle qu'elle apparaît sous sa parente."""
 
     nombre_produits = serializers.SerializerMethodField()
+    # Le visuel choisi dans le back-office. La page d'accueil en fait ses
+    # tuiles : sans lui, elle retomberait sur des photos écrites dans le code.
+    image_url = serializers.CharField(source="image.url", read_only=True, default="")
 
     class Meta:
         model = Rayon
-        fields = ["id", "nom", "slug", "description", "ordre", "nombre_produits"]
+        fields = ["id", "nom", "slug", "description", "image_url", "ordre", "nombre_produits"]
 
     def get_nombre_produits(self, obj) -> int:
         return obj.produits.filter(statut=Produit.Statut.PUBLIE).count()

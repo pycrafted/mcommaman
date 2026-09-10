@@ -1,12 +1,9 @@
-import { TOUS_PRODUITS, PRODUCTS, CATEGORIES, type Product } from "./products";
-
 /**
- * Recherche de la boutique.
+ * Ce qui reste de la recherche côté vitrine : la mise en forme.
  *
- * Tout se passe dans le navigateur : le catalogue tient en mémoire, il n'y a ni
- * appel réseau ni index à tenir à jour. Le jour où le catalogue passera en base,
- * seule `chercherProduits` sera à remplacer par une requête serveur — la forme
- * du résultat, elle, ne bouge pas.
+ * Le tri, lui, est fait par le serveur — `catalogue/recherche.py`, appelé par
+ * `?q=`. Il connaît le catalogue entier, les accents et les synonymes ; le
+ * navigateur ne connaissait que ce qu'on lui avait écrit.
  */
 
 /** Minuscules, sans accent ni ponctuation : « Robe été » et « robe ete » se valent. */
@@ -58,96 +55,16 @@ const mots = (valeur: string) =>
     .filter(Boolean)
     .map((mot) => SYNONYMES[mot] ?? mot);
 
-/** Comment on parle d'un âge quand on ne connaît pas le code interne. */
-const AGE_MOTS: Record<string, string> = {
-  "2-10": "enfant 2 10 ans petite maternelle primaire",
-  "11-14": "grand ado 11 14 ans preado college",
-};
+/* La recherche elle-même est passée au serveur.
+   Elle vivait ici, sur un index construit au chargement du module à partir du
+   tableau statique : elle ne pouvait connaître que les douze fiches écrites
+   dans le code. `catalogue/recherche.py` la fait maintenant en base, avec les
+   accents et la table de synonymes, et `?q=` la rend à la vitrine. Ce qui
+   reste ici est ce qui s'affiche : la normalisation et le surlignage. */
 
-const GENRE_MOTS: Record<string, string> = {
-  fille: "fille filles",
-  garcon: "garcon garcons",
-  mixte: "mixte fille garcon unisexe",
-};
-
-interface Fiche {
-  product: Product;
-  nom: string;
-  rayon: string;
-  contexte: string;
-  reste: string;
-}
-
-/** Index construit une seule fois, au chargement du module. */
-/* Les deux univers sont cherchables : une maman qui tape « bazin » doit le
-   trouver depuis la barre de recherche, pas seulement depuis sa page. */
-const INDEX: Fiche[] = TOUS_PRODUITS.map((product) => ({
-  product,
-  nom: normaliser(product.name),
-  rayon: normaliser(product.category),
-  contexte: normaliser(
-    `${AGE_MOTS[product.age ?? ""] ?? ""} ${GENRE_MOTS[product.gender ?? ""] ?? ""} ${product.univers === "maman" ? "maman tissu voile couture" : ""}`,
-  ),
-  reste: normaliser(`${product.description} ${product.sku} ${product.slug}`),
-}));
-
-export interface ResultatProduit {
-  product: Product;
-  score: number;
-}
-
-/**
- * Chaque mot tapé doit se retrouver quelque part dans la fiche — sinon la pièce
- * sort. Le score décide ensuite de l'ordre : un mot dans le nom pèse plus qu'un
- * mot perdu au fond de la description.
- */
-export function chercherProduits(requete: string, limite = 40): ResultatProduit[] {
-  const termes = mots(requete);
-  if (termes.length === 0) return [];
-
-  const resultats: ResultatProduit[] = [];
-
-  for (const fiche of INDEX) {
-    let score = 0;
-    let complet = true;
-
-    for (const terme of termes) {
-      let point = 0;
-      if (fiche.nom.startsWith(terme)) point = 14;
-      else if (fiche.nom.includes(terme)) point = 10;
-      else if (fiche.rayon.includes(terme)) point = 6;
-      else if (fiche.contexte.includes(terme)) point = 4;
-      else if (fiche.reste.includes(terme)) point = 2;
-
-      if (point === 0) {
-        complet = false;
-        break;
-      }
-      score += point;
-    }
-
-    if (!complet) continue;
-    // À score égal, une pièce en stock passe devant une pièce épuisée.
-    if (!fiche.product.outOfStock) score += 1;
-    resultats.push({ product: fiche.product, score });
-  }
-
-  return resultats.sort((a, b) => b.score - a.score).slice(0, limite);
-}
-
-/** Les rayons qui répondent à la requête — proposés avant les pièces. */
-export function chercherRayons(requete: string): string[] {
-  const termes = mots(requete);
-  if (termes.length === 0) return [];
-  return CATEGORIES.filter((rayon) => {
-    const cible = normaliser(rayon);
-    return termes.every((terme) => cible.includes(terme));
-  });
-}
-
-/** Combien de pièces dans ce rayon — affiché sous la suggestion. */
-export const compterRayon = (rayon: string) =>
-  PRODUCTS.filter((p) => p.category === rayon).length;
+/* La recherche de rayons vivait ici sur une liste figée. Elle est passée dans
+   `components/search-overlay.tsx`, qui déduit les rayons des fiches renvoyées
+   par le serveur : ce sont les catégories du back-office, à jour. */
 
 /** Proposé quand le champ est vide. Ce que les clientes tapent le plus. */
 export const RECHERCHES_FREQUENTES = [

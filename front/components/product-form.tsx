@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatXOF } from "@/lib/format";
 import { TAILLE_UNIQUE, useAdmin } from "@/lib/admin/store";
-import { slugify } from "@/lib/admin/seed";
+import { slugify } from "@/lib/admin/slug";
 import type { AdminColor, AdminMaterial, AdminProduct, SizeValue } from "@/lib/admin/types";
 import {
   Button,

@@ -10,6 +10,7 @@ import { useOrders } from "./orders-context";
 import { OrderStatusBadge } from "./order-status-badge";
 import { OrderJourney } from "./order-journey";
 import { IconCheck, IconChevron, IconPackage, IconPhone, IconPin, IconRefresh } from "./icons";
+import { useReglages } from "./reglages-context";
 
 const SHELL = "mx-auto w-full max-w-[1180px] px-5 md:px-8 lg:px-10";
 
@@ -25,10 +26,17 @@ const dateComplete = (iso: string) =>
 export function OrderDetail({ orderRef }: { orderRef: string }) {
   const params = useSearchParams();
   const nouvelle = params.get("nouvelle") === "1";
-  const { getOrder, cancelOrder, confirmDelivery, hydrated } = useOrders();
+  const { getOrder, cancelOrder, trackOrder, hydrated } = useOrders();
   const { addBySlug } = useCart();
+  const reglages = useReglages();
   const [confirmeAnnulation, setConfirmeAnnulation] = useState(false);
   const [recommandee, setRecommandee] = useState(false);
+  const [refus, setRefus] = useState<string | null>(null);
+  /* Le suivi d'une commande passée ailleurs : la référence est dans l'adresse,
+     le téléphone est demandé — seul il prouve que la commande est la sienne. */
+  const [telephone, setTelephone] = useState("");
+  const [recherche, setRecherche] = useState(false);
+  const [erreurSuivi, setErreurSuivi] = useState<string | null>(null);
 
   const commande = getOrder(orderRef);
 
@@ -49,16 +57,49 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
           <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-mist">
             <IconPackage className="h-7 w-7 text-rose" />
           </span>
-          <h1 className="text-xl font-extrabold tracking-tight">Commande introuvable</h1>
+          <h1 className="text-xl font-extrabold tracking-tight">Suivre cette commande</h1>
           <p className="mx-auto mt-3 max-w-[46ch] text-[14px] leading-relaxed text-muted text-pretty">
-            Aucune commande ne porte la référence{" "}
-            <span className="font-bold text-ink tabular-nums">{orderRef}</span> dans ce navigateur.
-            Les commandes ne sont pas encore enregistrées sur un serveur : elles ne suivent pas d&apos;un
-            appareil à l&apos;autre.
+            La commande{" "}
+            <span className="font-bold text-ink tabular-nums">{orderRef}</span> n&apos;est pas
+            rattachée à cet appareil. Indiquez le téléphone donné lors de la commande : une
+            référence circule sur un ticket, elle ne prouve rien à elle seule.
           </p>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setRecherche(true);
+              setErreurSuivi(null);
+              const resultat = await trackOrder(orderRef, telephone.trim());
+              setRecherche(false);
+              if (!resultat.ok) setErreurSuivi(resultat.error ?? "Commande introuvable.");
+            }}
+            className="mx-auto mt-6 flex max-w-sm gap-2"
+          >
+            <input
+              value={telephone}
+              onChange={(e) => setTelephone(e.target.value)}
+              type="tel"
+              inputMode="tel"
+              placeholder="77 123 45 67"
+              aria-label="Téléphone de la commande"
+              className="w-full min-w-0 rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-rose"
+            />
+            <button
+              type="submit"
+              disabled={telephone.trim().length < 6 || recherche}
+              className="shrink-0 rounded-2xl bg-rose px-5 text-[13.5px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
+            >
+              {recherche ? "…" : "Suivre"}
+            </button>
+          </form>
+          {erreurSuivi && (
+            <p className="mt-2.5 text-[12.5px] font-semibold text-rose-deep">{erreurSuivi}</p>
+          )}
+
           <Link
             href="/commandes"
-            className="shine mt-7 inline-block rounded-full bg-rose px-8 py-3.5 text-[14px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
+            className="mt-7 inline-block text-[13.5px] font-semibold text-muted underline underline-offset-2 transition-colors hover:text-ink"
           >
             Voir mes commandes
           </Link>
@@ -138,8 +179,8 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
           <h2 className="mb-5 text-base font-extrabold tracking-tight">Articles</h2>
 
           <ul className="flex flex-col gap-4">
-            {commande.lines.map((ligne, i) => (
-              <li key={`${ligne.productId}-${ligne.option}-${i}`} className="flex items-center gap-4">
+            {commande.lines.map((ligne) => (
+              <li key={ligne.id} className="flex items-center gap-4">
                 <Link
                   href={`/p/${ligne.slug}`}
                   aria-label={ligne.name}
@@ -224,20 +265,9 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
           </section>
 
           <div className="flex flex-col gap-2">
-            {/* Tant que le back-office ne pilote pas les statuts, c'est la
-                cliente qui confirme la réception — et c'est cette confirmation
-                qui lui ouvre le droit de laisser un avis. */}
-            {commande.status !== "livree" && commande.status !== "annulee" && (
-              <button
-                type="button"
-                onClick={() => confirmDelivery(commande.ref)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
-              >
-                <IconCheck className="h-4 w-4" />
-                J&apos;ai reçu ma commande
-              </button>
-            )}
-
+            {/* La réception n'est plus déclarée par la cliente : c'est la
+                boutique qui fait avancer le suivi depuis son back-office, et
+                c'est le passage en « Livrée » qui ouvre le droit à l'avis. */}
             {commande.status === "livree" && (
               <Link
                 href="/avis"
@@ -273,9 +303,11 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      cancelOrder(commande.ref);
+                    onClick={async () => {
+                      setRefus(null);
+                      const resultat = await cancelOrder(commande.ref);
                       setConfirmeAnnulation(false);
+                      if (!resultat.ok) setRefus(resultat.error ?? "L'annulation n'a pas abouti.");
                     }}
                     className="flex-1 rounded-full border-[1.5px] border-rose-deep/30 px-4 py-3 text-[13.5px] font-bold text-rose-deep transition-colors duration-300 hover:bg-rose-soft"
                   >
@@ -300,13 +332,20 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
               ))}
 
             <a
-              href={waLink(`Bonjour, je souhaite suivre ma commande ${commande.ref}`)}
+              href={waLink(`Bonjour, je souhaite suivre ma commande ${commande.ref}`, reglages.telephone)}
               target="_blank"
               rel="noreferrer"
               className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-center text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
             >
               Suivre sur WhatsApp
             </a>
+
+            {/* Une commande déjà en préparation ne s'annule plus toute seule :
+                le serveur le dit, on le répète ici plutôt que de laisser le
+                bouton retomber sans rien expliquer. */}
+            {refus && (
+              <p className="text-center text-[12.5px] font-semibold text-rose-deep">{refus}</p>
+            )}
           </div>
         </aside>
       </div>

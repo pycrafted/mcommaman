@@ -189,9 +189,9 @@ export function AccountProfile() {
                         className="group flex flex-wrap items-center gap-4 rounded-2xl bg-mist p-4 transition-colors duration-300 hover:bg-stone"
                       >
                         <div className="flex -space-x-2">
-                          {commande.lines.slice(0, 3).map((ligne, i) => (
+                          {commande.lines.slice(0, 3).map((ligne) => (
                             <span
-                              key={`${ligne.productId}-${i}`}
+                              key={ligne.id}
                               className="h-12 w-11 rounded-lg border-2 border-white bg-stone bg-cover bg-center"
                               style={{ backgroundImage: `url(${ligne.image})` }}
                             />

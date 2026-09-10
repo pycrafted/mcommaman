@@ -20,6 +20,7 @@ from vitrine.models import EntreeJournal
 
 from .models import Avis, Campagne, Commande, LigneCommande
 from .serializers import (
+    CampagnePubliqueSerializer,
     CampagneSerializer,
     CommandeGestionSerializer,
     CommandeSerializer,
@@ -27,6 +28,27 @@ from .serializers import (
     DevisSerializer,
 )
 from .tarification import ErreurTarification, chiffrer, prochaine_reference
+
+
+def _rendre_le_stock(commande, auteur=None):
+    """
+    Remet en stock ce qu'une commande annulée avait retiré.
+
+    Sans ce retour, chaque annulation ferait disparaître des articles du stock
+    sans que personne ne comprenne pourquoi. Partagé par l'annulation de la
+    gérante et par celle de la cliente : deux chemins, une seule règle.
+    """
+    for ligne in commande.lignes.select_related("variante"):
+        if not ligne.variante:
+            continue
+        variante = Variante.objects.select_for_update().get(pk=ligne.variante.pk)
+        variante.stock += ligne.quantite
+        variante.save(update_fields=["stock"])
+        MouvementStock.objects.create(
+            variante=variante, quantite=ligne.quantite,
+            motif=MouvementStock.Motif.ANNULATION,
+            reference=commande.reference, reste=variante.stock, auteur=auteur,
+        )
 
 
 def _variantes_verrouillees(lignes_demandees):
@@ -134,6 +156,49 @@ class CommandeViewSet(
             {"detail": "Indiquez le téléphone utilisé lors de la commande."},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def annuler(self, request, reference=None):
+        """
+        L'annulation par la cliente elle-même.
+
+        Tant que la boutique n'a rien préparé, se raviser doit rester possible
+        sans passer par un coup de téléphone. Dès la préparation lancée, non :
+        les articles sont sortis, l'annulation appartient alors à la gérante.
+
+        La commande doit être la sienne. Passée sans compte, la référence seule
+        ne prouve rien — le téléphone est demandé, comme pour la consulter.
+        """
+        commande = self.get_object()
+
+        sienne = request.user.is_authenticated and commande.cliente_id == request.user.id
+        if not sienne:
+            telephone = request.data.get("telephone", "").replace(" ", "")
+            if not telephone or telephone != commande.telephone.replace(" ", ""):
+                return Response(
+                    {"detail": "Indiquez le téléphone utilisé lors de la commande."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        if commande.statut == Commande.Statut.ANNULEE:
+            return Response({"detail": "Cette commande est déjà annulée."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if commande.statut != Commande.Statut.EN_ATTENTE:
+            return Response(
+                {"detail": "Cette commande est déjà en préparation : appelez-nous pour l'annuler."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        _rendre_le_stock(commande)
+        commande.statut = Commande.Statut.ANNULEE
+        commande.save(update_fields=["statut", "modifiee_le"])
+        EntreeJournal.objects.create(
+            auteur=request.user if request.user.is_authenticated else None,
+            nom_auteur=commande.nom_client,
+            action="a annulé sa commande", cible=commande.reference,
+        )
+        return Response(self.get_serializer(commande).data)
 
     @transaction.atomic
     def create(self, request):
@@ -270,12 +335,7 @@ class CommandeGestionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     @transaction.atomic
     def annuler(self, request, reference=None):
-        """
-        Annule la commande et **remet le stock**.
-
-        Sans ce retour, chaque annulation ferait disparaître des articles du
-        stock sans que personne ne comprenne pourquoi.
-        """
+        """Annule la commande et remet le stock, à n'importe quelle étape."""
         commande = self.get_object()
         if commande.statut == Commande.Statut.ANNULEE:
             return Response({"detail": "Cette commande est déjà annulée."},
@@ -284,17 +344,7 @@ class CommandeGestionViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": "Une commande livrée ne s'annule pas : passez par un retour."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        for ligne in commande.lignes.select_related("variante"):
-            if not ligne.variante:
-                continue
-            variante = Variante.objects.select_for_update().get(pk=ligne.variante.pk)
-            variante.stock += ligne.quantite
-            variante.save(update_fields=["stock"])
-            MouvementStock.objects.create(
-                variante=variante, quantite=ligne.quantite,
-                motif=MouvementStock.Motif.ANNULATION,
-                reference=commande.reference, reste=variante.stock, auteur=request.user,
-            )
+        _rendre_le_stock(commande, auteur=request.user)
 
         commande.statut = Commande.Statut.ANNULEE
         commande.save(update_fields=["statut", "modifiee_le"])
@@ -315,6 +365,29 @@ class MesCommandesView(APIView):
             Commande.objects.filter(cliente=request.user).prefetch_related("lignes")
         )
         return Response(CommandeSerializer(commandes, many=True).data)
+
+
+class CampagnePubliqueViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Les campagnes que la boutique annonce.
+
+    Seulement celles qui courent aujourd'hui, et jamais les campagnes de
+    commande à condition cachée : le bandeau d'accueil et le compte à rebours
+    lisent ici. Sans cette porte, la vitrine ne connaissait des remises que ce
+    que le prix des fiches en laissait deviner — c'est-à-dire rien des codes,
+    qui ne s'appliquent pas d'eux-mêmes.
+
+    La fenêtre se calcule en Python : `date_fin` se déduit de la durée, il n'y
+    a pas de colonne à comparer en base.
+    """
+
+    permission_classes = [AllowAny]
+    serializer_class = CampagnePubliqueSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        candidates = Campagne.objects.filter(active=True).select_related("rayon", "produit")
+        return candidates.filter(pk__in=[c.pk for c in candidates if c.en_cours])
 
 
 class CampagneViewSet(viewsets.ModelViewSet):
@@ -369,7 +442,20 @@ class AvisViewSet(
                 return selection.none()
             return selection.filter(auteur=self.request.user)
 
-        selection = selection.filter(etat=Avis.Etat.PUBLIE)
+        # Publiés pour tout le monde ; plus les siens, quel que soit leur état,
+        # pour l'autrice connectée. Sans ça, un avis déposé disparaît sous les
+        # yeux de qui vient de l'écrire, et un avis refusé reste invisible alors
+        # qu'il occupe la place — un seul avis par achat — et empêche d'en
+        # écrire un autre.
+        if self.request.user.is_authenticated:
+            from django.db.models import Q
+
+            selection = selection.filter(
+                Q(etat=Avis.Etat.PUBLIE) | Q(auteur=self.request.user)
+            )
+        else:
+            selection = selection.filter(etat=Avis.Etat.PUBLIE)
+
         if produit := self.request.query_params.get("produit"):
             selection = selection.filter(produit_id=produit)
         elif self.request.query_params.get("boutique") == "1":
@@ -393,7 +479,9 @@ class AvisViewSet(
         from .serializers import AvisSerializer
         return Response(
             {
-                **AvisSerializer(avis).data,
+                # Le contexte porte la requête : sans lui, l'avis qu'on vient
+                # d'écrire reviendrait marqué comme n'étant pas le sien.
+                **AvisSerializer(avis, context=self.get_serializer_context()).data,
                 "detail": "Merci. Votre avis paraîtra après relecture.",
             },
             status=status.HTTP_201_CREATED,
@@ -427,7 +515,11 @@ class AvisViewSet(
                 if produit is None or (commande.id, produit.id) in deja:
                     continue
                 attendus.append({
-                    "commande": commande.reference,
+                    # L'identifiant sert à déposer l'avis, la référence à le
+                    # dire à la cliente. Ne rendre que la seconde obligeait la
+                    # vitrine à deviner la première.
+                    "commande": commande.id,
+                    "commande_reference": commande.reference,
                     "livree_le": commande.modifiee_le,
                     "produit": produit.id,
                     "nom_produit": ligne.nom_produit,
@@ -437,7 +529,8 @@ class AvisViewSet(
             # L'avis sur la boutique : une fois par commande livrée.
             if (commande.id, None) not in deja:
                 attendus.append({
-                    "commande": commande.reference,
+                    "commande": commande.id,
+                    "commande_reference": commande.reference,
                     "livree_le": commande.modifiee_le,
                     "produit": None,
                     "nom_produit": "La boutique",

@@ -38,7 +38,6 @@ import {
   type ReglagesApi,
   type TailleApi,
 } from "./passage";
-import { REFERENCE_DATE } from "./seed";
 import { useAuth } from "@/components/auth-context";
 import type {
   ActivityEntry,
@@ -58,7 +57,18 @@ import type {
   TeamMember,
 } from "./types";
 
-export { REFERENCE_DATE } from "./seed";
+/**
+ * Aujourd'hui.
+ *
+ * Le back-office travaillait sur une date figée au 15 août 2026 — celle de la
+ * graine de démonstration. Les commandes viennent maintenant de la base : les
+ * trente derniers jours doivent se compter à partir du vrai jour, sinon les
+ * indicateurs se figent avec elle.
+ *
+ * Une fonction et non une constante : un onglet laissé ouvert une nuit doit
+ * changer de jour comme tout le monde.
+ */
+export const maintenant = () => new Date();
 
 /**
  * La clé qui portait autrefois tout le back-office dans le navigateur.
@@ -926,7 +936,7 @@ export function computePeriod(
   orders: Order[],
   days: number,
   offset = 0,
-  now: Date = REFERENCE_DATE,
+  now: Date = maintenant(),
 ): PeriodStats {
   const fin = new Date(now);
   fin.setUTCDate(fin.getUTCDate() - offset * days);
@@ -966,7 +976,7 @@ export interface DayPoint {
 export function buildDailySeries(
   orders: Order[],
   days: number,
-  now: Date = REFERENCE_DATE,
+  now: Date = maintenant(),
 ): DayPoint[] {
   const paniers = new Map<string, DayPoint>();
   for (let i = days - 1; i >= 0; i--) {
@@ -1025,7 +1035,7 @@ export interface CustomerStats {
 export function computeCustomerStats(
   customers: Customer[],
   orders: Order[],
-  now: Date = REFERENCE_DATE,
+  now: Date = maintenant(),
 ): CustomerStats[] {
   const parCliente = new Map<string, { orders: number; spent: number; last: string | null }>();
   for (const order of orders) {

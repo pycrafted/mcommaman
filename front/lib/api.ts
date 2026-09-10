@@ -268,6 +268,8 @@ export type SousRayonApi = {
   nom: string;
   slug: string;
   description: string;
+  /** Le visuel choisi dans le back-office, vide tant qu'il n'y en a pas. */
+  image_url: string;
   ordre: number;
   nombre_produits: number;
 };
@@ -291,6 +293,164 @@ export type RayonApi = {
   visible: boolean;
   ordre: number;
   nombre_produits: number;
+};
+
+/* ---------------------------------------------------------------- réglages */
+
+/**
+ * Les réglages publics de la boutique.
+ *
+ * L'identité, les frais de livraison et le bandeau d'annonce, tels que la
+ * gérante les règle dans le back-office. Rien de tout cela n'est écrit dans le
+ * code de la vitrine : changer un franco de port ne demande pas une livraison.
+ */
+export type ReglagesApi = {
+  nom_boutique: string;
+  signature: string;
+  email_contact: string;
+  telephone: string;
+  devise: string;
+  /** Montant à partir duquel la livraison sur Dakar ne coûte rien. */
+  franco_dakar: number;
+  frais_dakar: number;
+  frais_thies: number;
+  frais_regions: number;
+  /** Faux pendant les congés : la boutique reste consultable, la caisse ferme. */
+  accepte_commandes: boolean;
+  affiche_bandeau_promo: boolean;
+  texte_bandeau_promo: string;
+};
+
+/** Une photo du bandeau d'accueil, avec l'article qu'elle met en avant. */
+export type BandeauApi = {
+  id: number;
+  titre: string;
+  accroche: string;
+  url: string;
+  texte_alternatif: string;
+  /** Recadrage CSS, quand le sujet n'est pas au centre : « 50% 40% ». */
+  cadrage: string;
+  etiquette: string;
+  produit_slug: string;
+  produit_nom: string;
+  produit_prix: number;
+  ordre: number;
+};
+
+/* ---------------------------------------------------------------- commandes */
+
+/** Une ligne de commande, figée telle qu'elle a été achetée. */
+export type LigneCommandeApi = {
+  id: number;
+  nom_produit: string;
+  slug_produit: string;
+  url_image: string;
+  /** « Rose poudré · 4 ans », composé au moment de l'achat. */
+  libelle_option: string;
+  prix_unitaire: number;
+  quantite: number;
+  sous_total: number;
+};
+
+/**
+ * Une commande, telle que la cliente la suit.
+ *
+ * `statut` est celui de la boutique — il distingue « en attente » de « payée » —
+ * et `statut_cliente` sa traduction en suivi. C'est le second qui s'affiche.
+ */
+export type CommandeApi = {
+  reference: string;
+  creee_le: string;
+  statut: "en_attente" | "payee" | "preparation" | "expediee" | "livree" | "annulee";
+  statut_cliente: string;
+  nom_client: string;
+  telephone: string;
+  email: string;
+  zone: "dakar" | "thies" | "regions";
+  ville: string;
+  adresse: string;
+  notes: string;
+  sous_total: number;
+  frais_livraison: number;
+  remise: number;
+  code_promo: string;
+  total: number;
+  moyen_paiement: "wave" | "om" | "cb" | "cod";
+  moyen_paiement_libelle: string;
+  lignes: LigneCommandeApi[];
+};
+
+/** Le chiffrage d'un panier, refait par le serveur avant chaque affichage. */
+export type DevisApi = {
+  sous_total: number;
+  frais_livraison: number;
+  remise: number;
+  code_promo: string;
+  total: number;
+};
+
+/* --------------------------------------------------------------- campagnes */
+
+/**
+ * Une campagne telle que la boutique l'annonce.
+ *
+ * `code` vide veut dire que la remise s'applique d'elle-même ; sinon c'est ce
+ * mot qu'il faut taper à la caisse. `condition` ne compte que pour une remise
+ * de commande — première commande, ou montant minimum.
+ */
+export type CampagneApi = {
+  libelle: string;
+  code: string | null;
+  type: "pourcentage" | "montant";
+  valeur: number;
+  /** Dernier jour inclus. C'est la date que lit le compte à rebours. */
+  date_fin: string;
+  portee: "boutique" | "rayon" | "produit" | "commande";
+  rayon_nom: string;
+  produit_slug: string;
+  condition: "premiere" | "montant_minimum";
+  montant_minimum: number;
+};
+
+/* -------------------------------------------------------------------- avis */
+
+export type AvisApi = {
+  id: number;
+  note: number;
+  commentaire: string;
+  auteur_nom: string;
+  /** L'article noté, ou `null` pour un avis sur la boutique entière. */
+  produit: number | null;
+  produit_nom: string;
+  produit_slug: string;
+  /** Vrai pour l'autrice connectée : c'est ce qui ouvre modification et retrait. */
+  est_le_mien: boolean;
+  commande: number;
+  /** Un avis n'apparaît publiquement qu'une fois relu. Son autrice, elle, le
+      voit dans tous les états — sans quoi il disparaîtrait sous ses yeux. */
+  etat: "en_attente" | "publie" | "refuse";
+  ecrit_le: string;
+};
+
+/** Le résumé affiché sous une fiche : combien d'avis, quelle moyenne. */
+export type AgregatAvisApi = {
+  nombre: number;
+  moyenne: number;
+  /** Le nombre d'avis par note, de « 1 » à « 5 ». */
+  repartition: Record<string, number>;
+};
+
+/** Ce qu'une cliente peut encore noter : ses achats livrés, non déjà notés. */
+export type AvisPossibleApi = {
+  /** L'identifiant de la commande : c'est lui qu'il faut renvoyer pour écrire. */
+  commande: number;
+  /** Sa référence, celle qu'on montre à la cliente. */
+  commande_reference: string;
+  livree_le: string;
+  produit: number | null;
+  nom_produit: string;
+  slug_produit: string;
+  image: string;
 };
 
 /* ------------------------------------------------------------------- panier */

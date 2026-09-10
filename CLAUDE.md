@@ -26,7 +26,7 @@ docker compose up -d                         # PostgreSQL
 .venv\Scripts\python.exe manage.py migrate
 .venv\Scripts\python.exe manage.py peupler   # données de démonstration
 .venv\Scripts\python.exe manage.py runserver
-.venv\Scripts\python.exe manage.py test      # 121 tests, le vrai filet
+.venv\Scripts\python.exe manage.py test      # 152 tests, le vrai filet
 
 # front/
 npm install            # déclenche postinstall → fix-routes (obligatoire, voir ci-dessous)
@@ -98,6 +98,9 @@ Les constantes commerciales vivent dans `lib/`, une source par sujet : `shipping
 
 - **Aucune dépendance hors Next/React/Tailwind.** Les animations sont écrites à la main : keyframes dans `app/globals.css`, primitives dans `components/motion.tsx` (`Carousel`, `Parallax`, `Magnetic`, `CountUp`, `SplitText`, `Marquee`, `GlowCard`) et `components/reveal.tsx`. Ne pas introduire de bibliothèque d'animation pour ajouter un effet.
 - Deux règles tenues partout, expliquées dans le README : `animation-fill-mode: backwards` jamais `forwards` (sinon les `hover:` des cartes sont neutralisés), et un bloc `prefers-reduced-motion` que les hooks JS testent aussi avant de poser le moindre écouteur.
-- `lib/products.ts` est un tableau statique **déjà à la forme du modèle Prisma visé** (prix entier, `slug` distinct du `sku`, `age`, `gender`). Le passage en base remplace `PRODUCTS`, `bySlug`, `byId` par des requêtes serveur, sans toucher aux composants.
-- `components/admin.tsx` est une **maquette statique** (tableaux en dur dans `PANELS`). Seul `components/product-form.tsx` a une vraie logique : cinq conditions avant publication, appliquées côté client uniquement — à reproduire dans la validation serveur le jour où l'API existe.
+- **Plus rien n'est écrit en dur dans la vitrine.** Catalogue, rayons, tailles, coloris, frais de livraison, coordonnées, bandeau d'accueil, campagnes, commandes et avis viennent tous de `back`. `lib/products.ts` ne garde que le type `Product` et les deux vidéos du bandeau ; le tableau `README.md` § « Ce que la vitrine lit sur le serveur » liste chaque route.
+- Les réglages de la boutique sont lus **une seule fois**, par `app/layout.tsx`, et posés dans `components/reglages-context.tsx` (`useReglages()`). Ne pas refaire l'appel ailleurs.
+- `components/header.tsx` est un composant **serveur** qui va chercher rayons et décompte ; l'affichage est dans `header-barre.tsx` (client). Même découpage à reprendre si un autre composant partagé a besoin de données serveur.
+- **Aucun montant ne se calcule dans le navigateur.** Le tunnel demande `POST /api/devis/` à chaque changement de panier, de zone ou de code, et la commande part sans le moindre prix : `ventes/tarification.py` refait tout. Un code de réduction se vérifie en base, jamais dans une table locale.
+- `components/product-form.tsx` applique cinq conditions avant publication côté client ; `Produit.manque_pour_publier()` les réapplique côté serveur, et c'est celle-là qui est opposable.
 - Les images pointent vers le CDN Shopify de production, autorisé dans `next.config.ts` (`remotePatterns`). Provisoire, en attente d'une séance photo.

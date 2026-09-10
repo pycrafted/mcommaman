@@ -91,6 +91,43 @@ class AvisTest(APITestCase):
         publics = self.client.get(reverse("avis-list"), {"produit": self.variante.produit.pk})
         self.assertEqual(len(publics.data["results"]), 0)
 
+    def test_l_autrice_retrouve_son_avis_en_attente(self):
+        """
+        Un avis déposé ne doit pas disparaître sous les yeux de qui l'écrit.
+
+        Il reste invisible des autres — c'est le test précédent —, mais son
+        autrice doit le revoir : c'est aussi le seul moyen de comprendre
+        pourquoi elle ne peut pas en écrire un second sur le même achat.
+        """
+        self._livrer()
+        self.client.post(reverse("avis-list"), {
+            "note": 5, "commentaire": "Déposé, pas encore relu.",
+            "produit": self.variante.produit.pk, "commande": self.commande.pk,
+        }, format="json")
+
+        sien = self.client.get(reverse("avis-list"), {"produit": self.variante.produit.pk})
+        self.assertEqual(len(sien.data["results"]), 1)
+        self.assertEqual(sien.data["results"][0]["etat"], "en_attente")
+
+        # Une autre cliente, elle, ne le voit toujours pas.
+        self.client.force_authenticate(self.autre)
+        ailleurs = self.client.get(reverse("avis-list"), {"produit": self.variante.produit.pk})
+        self.assertEqual(len(ailleurs.data["results"]), 0)
+
+    def test_la_liste_a_noter_donne_de_quoi_deposer_l_avis(self):
+        """L'identifiant de commande, pas seulement sa référence : c'est lui qu'il faut renvoyer."""
+        self._livrer()
+        attendus = self.client.get(reverse("avis-a-noter")).data
+        entree = next(a for a in attendus if a["produit"] == self.variante.produit.pk)
+        self.assertEqual(entree["commande"], self.commande.pk)
+        self.assertEqual(entree["commande_reference"], self.commande.reference)
+
+        depot = self.client.post(reverse("avis-list"), {
+            "note": 4, "commentaire": "Envoyé avec ce que la liste a donné.",
+            "produit": entree["produit"], "commande": entree["commande"],
+        }, format="json")
+        self.assertEqual(depot.status_code, status.HTTP_201_CREATED)
+
     def test_le_resume_ne_compte_que_les_avis_publies(self):
         self._livrer()
         avis = Avis.objects.create(

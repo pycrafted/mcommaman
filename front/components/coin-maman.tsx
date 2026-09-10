@@ -1,22 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Reveal } from "./reveal";
 import { ProductCard } from "./product-card";
 import { QuickView } from "./quick-view";
 import { IconArrow } from "./icons";
-import { CATEGORIES_MAMAN, PRODUITS_MAMAN, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
+import type { LienRayon } from "@/lib/catalogue";
 
 const SHELL = "mx-auto w-full max-w-[1400px] px-5 md:px-8 lg:px-10";
 
 /* Ni âge ni genre ici : un coupon de bazin n'en a pas. Le seul tri qui compte
-   est celui du rayon — tissu ou voile —, et il tient en trois pastilles. */
-const RAYONS = ["Tout", ...CATEGORIES_MAMAN] as const;
+   est celui du rayon — tissu, voile, ce que la boutique range là —, et il tient
+   en quelques pastilles. Elles ne sont plus écrites ici : ce sont les
+   sous-catégories du Coin Maman, telles que le back-office les tient. */
 
-export function CoinMaman({ produits = PRODUITS_MAMAN }: { produits?: Product[] }) {
-  const [rayon, setRayon] = useState<string>("Tout");
+export function CoinMaman({
+  produits = [],
+  rayons = [],
+  rayonInitial = "Tout",
+}: {
+  produits?: Product[];
+  /** Les catégories du Coin Maman, dans l'ordre du back-office. */
+  rayons?: LienRayon[];
+  /** La pastille ouverte à l'arrivée, quand un lien en a demandé une. */
+  rayonInitial?: string;
+}) {
+  const pastilles = ["Tout", ...rayons.map((r) => r.nom)];
+  const [rayon, setRayon] = useState<string>(rayonInitial);
   const [quick, setQuick] = useState<Product | null>(null);
+
+  /* On peut arriver ici depuis l'accueil alors qu'on y est déjà : l'adresse
+     change sans que le composant soit remonté, il faut resynchroniser. */
+  useEffect(() => setRayon(rayonInitial), [rayonInitial]);
 
   const visibles =
     rayon === "Tout" ? produits : produits.filter((p) => p.category === rayon);
@@ -38,7 +55,7 @@ export function CoinMaman({ produits = PRODUITS_MAMAN }: { produits?: Product[] 
         </Reveal>
 
         <Reveal className="mt-7 flex flex-wrap gap-2">
-          {RAYONS.map((nom) => {
+          {pastilles.map((nom) => {
             const actif = rayon === nom;
             return (
               <button
