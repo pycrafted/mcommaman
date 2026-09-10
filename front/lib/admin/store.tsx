@@ -20,6 +20,7 @@ import {
   versColoris,
   versCommande,
   versMedia,
+  versMembre,
   versMatiere,
   versProduit,
   versPromotion,
@@ -30,6 +31,7 @@ import {
   type ColorisApi,
   type CommandeApi,
   type MediaApi,
+  type MembreApi,
   type MatiereApi,
   type PhotoProduitApi,
   type ProduitGestionApi,
@@ -52,6 +54,7 @@ import type {
   ProductLibrary,
   SizeValue,
   StoreSettings,
+  TeamMember,
 } from "./types";
 
 export { REFERENCE_DATE } from "./seed";
@@ -89,6 +92,10 @@ interface AdminState {
   products: AdminProduct[];
   orders: Order[];
   customers: Customer[];
+  /* L'equipe : les comptes qui ouvrent le back-office, par opposition aux
+     clientes. Les deux vivent dans la meme table cote serveur, separes par
+     leur role, et la page Utilisateurs les montre en deux onglets. */
+  team: TeamMember[];
   categories: AdminCategory[];
   promotions: AdminPromotion[];
   library: ProductLibrary;
@@ -101,6 +108,7 @@ const VIDE: AdminState = {
   products: [],
   orders: [],
   customers: [],
+  team: [],
   categories: [],
   promotions: [],
   library: { sizes: [], sizeGuide: "", colors: [], materials: [], media: [] },
@@ -140,6 +148,15 @@ interface AdminContextValue extends AdminState {
   setStock: (id: string, stock: number) => void;
   /* Commandes */
   setOrderStatus: (id: string, status: OrderStatus) => void;
+
+  /* Renvoie `true` si le serveur a accepte. La fenetre appelante en a besoin :
+     elle ne se referme que sur un succes, sinon l'adresse deja saisie serait
+     perdue avec le message qui explique pourquoi elle a ete refusee. */
+  saveTeamMember: (
+    membre: { id?: string; name: string; email: string; phone: string },
+    motDePasse: string,
+  ) => Promise<boolean>;
+  setTeamMemberActive: (id: string, active: boolean) => void;
   /* Rayons */
   saveCategory: (category: AdminCategory) => void;
   deleteCategory: (
@@ -222,7 +239,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    * latérale ont besoin des commandes même sur la page des rayons.
    */
   const relire = useCallback(async () => {
-    const [produits, rayons, commandes, clientes, campagnes, tailles, coloris, matieres, medias, reglages] =
+    const [produits, rayons, commandes, clientes, equipe, campagnes, tailles, coloris, matieres, medias, reglages] =
       await Promise.all([
         tout<ProduitGestionApi>("/api/gestion/produits/"),
         // La route publique masque les rayons invisibles : lus par là, ceux
@@ -231,6 +248,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         tout<RayonApi>("/api/gestion/rayons/"),
         tout<CommandeApi>("/api/gestion/commandes/"),
         tout<ClienteApi>("/api/gestion/clientes/"),
+        tout<MembreApi>("/api/gestion/equipe/"),
         tout<CampagneApi>("/api/gestion/campagnes/"),
         envoyer<TailleApi[]>("/api/gestion/tailles/").catch(() => null),
         envoyer<ColorisApi[]>("/api/gestion/coloris/").catch(() => null),
@@ -250,6 +268,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       categories,
       orders: contenu(commandes).map(versCommande),
       customers: contenu(clientes).map(versCliente),
+      team: contenu(equipe).map(versMembre),
       promotions: contenu(campagnes).map((campagne) => versPromotion(campagne, rayonsParId)),
       library: {
         ...courant.library,
@@ -569,6 +588,62 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [ecrire],
   );
 
+  /* ----------------------------------------------------------- equipe */
+
+  /**
+   * Ouvre un compte du back-office, ou corrige celui d'un collegue.
+   *
+   * Ne passe pas par `ecrire` : celui-ci avale l'erreur dans une bandeau et
+   * renvoie `void`, alors que la fenetre de saisie doit savoir si elle peut se
+   * refermer. Le message du serveur — adresse deja prise, mot de passe trop
+   * court — remonte donc tel quel jusqu'au formulaire.
+   */
+  const saveTeamMember = useCallback<AdminContextValue["saveTeamMember"]>(
+    async (membre, motDePasse) => {
+      // Pas de role dans la requete : le serveur n'ouvre que des comptes de
+      // gerante, et refuse de le laisser choisir. Rien a envoyer, donc.
+      const corps: Record<string, unknown> = {
+        email: membre.email.trim().toLowerCase(),
+        nom: membre.name.trim(),
+        telephone: membre.phone.trim(),
+      };
+      // A la modification, un mot de passe vide veut dire « garde celui en
+      // place » : on ne l'envoie pas du tout plutot que d'envoyer du vide.
+      if (motDePasse) corps.mot_de_passe = motDePasse;
+
+      setEnCours(true);
+      setErreur("");
+      try {
+        await (membre.id
+          ? envoyer(`/api/gestion/equipe/${membre.id}/`, "PATCH", corps)
+          : envoyer("/api/gestion/equipe/", "POST", corps));
+        await relire();
+        setNotification({
+          type: "success",
+          message: membre.id ? "Compte mis a jour." : "Compte cree.",
+        });
+        return true;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "L'enregistrement a echoue.";
+        setErreur(message);
+        setNotification({ type: "error", message });
+        return false;
+      } finally {
+        setEnCours(false);
+      }
+    },
+    [relire],
+  );
+
+  /* Desactiver plutot que supprimer : le compte perd l'acces, son nom reste
+     lisible sur ce qu'il a fait. Le serveur refuse qu'on se ferme la porte a
+     soi-meme, l'interface cache deja le bouton dans ce cas. */
+  const setTeamMemberActive = useCallback<AdminContextValue["setTeamMemberActive"]>(
+    (id, active) =>
+      void ecrire(() => envoyer(`/api/gestion/equipe/${id}/`, "PATCH", { is_active: active })),
+    [ecrire],
+  );
+
   /* ----------------------------------------------------------- rayons */
 
   const saveCategory = useCallback<AdminContextValue["saveCategory"]>(
@@ -773,6 +848,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setProductStatus,
       setStock,
       setOrderStatus,
+      saveTeamMember,
+      setTeamMemberActive,
       saveCategory,
       deleteCategory,
       savePromotion,
@@ -791,7 +868,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }),
     [
       state, hydrated, enCours, erreur, notification, saveProduct, createProduct, deleteProduct,
-      duplicateProduct, setProductStatus, setStock, setOrderStatus, saveCategory,
+      duplicateProduct, setProductStatus, setStock, setOrderStatus, saveTeamMember, setTeamMemberActive, saveCategory,
       deleteCategory, savePromotion, deletePromotion, saveSizes,
       saveColor, deleteColor, saveMaterial, deleteMaterial, addMedia, televerserMedia, removeMedia, updateHero,
       updateSettings, resetDemoData,

@@ -20,14 +20,13 @@ import { IconLockAdmin, IconX } from "@/components/admin/icons";
 type Utilisateur = {
   nom: string;
   email: string;
-  role: "cliente" | "preparatrice" | "gerante";
+  role: "cliente" | "gerante";
   telephone: string;
   ville: string;
 };
 
 const ROLES: Record<Utilisateur["role"], string> = {
   cliente: "Cliente",
-  preparatrice: "Préparatrice",
   gerante: "Gérante",
 };
 

@@ -18,6 +18,7 @@ import type {
   Order,
   SizeValue,
   StoreSettings,
+  TeamMember,
 } from "./types";
 
 /* ------------------------------------------------------------------ produits */
@@ -195,6 +196,30 @@ export function versCliente(brut: ClienteApi): Customer {
     email: brut.email,
     phone: brut.telephone,
     city: brut.ville,
+    createdAt: brut.date_creation,
+  };
+}
+
+/* -------------------------------------------------------------------- equipe */
+
+export type MembreApi = {
+  id: number;
+  nom: string;
+  email: string;
+  telephone: string;
+  role: "gerante";
+  is_active: boolean;
+  date_creation: string;
+};
+
+export function versMembre(brut: MembreApi): TeamMember {
+  return {
+    id: String(brut.id),
+    name: brut.nom,
+    email: brut.email,
+    phone: brut.telephone,
+    role: brut.role,
+    active: brut.is_active,
     createdAt: brut.date_creation,
   };
 }

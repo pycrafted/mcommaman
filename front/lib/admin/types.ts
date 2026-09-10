@@ -85,6 +85,28 @@ export interface Customer {
 }
 
 /* ------------------------------------------------------------------ */
+/* Equipe                                                              */
+/* ------------------------------------------------------------------ */
+
+/* Le role qui ouvre le back-office — il n'y en a qu'un. « cliente » n'en fait
+   pas partie : c'est ce qui separe les deux onglets de la page Utilisateurs.
+   Le type reste nomme au singulier d'un role pour que le jour ou un acces
+   partiel apparait, il n'y ait qu'ici a l'ajouter. */
+export type TeamRole = "gerante";
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: TeamRole;
+  /* Un compte ne se supprime pas, il se desactive : l'historique des commandes
+     et des publications garde le nom de qui les a faites. */
+  active: boolean;
+  createdAt: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* Rayons                                                              */
 /* ------------------------------------------------------------------ */
 

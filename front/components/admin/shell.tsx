@@ -32,7 +32,7 @@ export const NAV = [
   { href: "/admin/categories", label: "Catégories", Icone: IconTagAdmin },
   { href: "/admin/promotions", label: "Promotions", Icone: IconPercent },
   { href: "/admin/commandes", label: "Commandes", Icone: IconCart },
-  { href: "/admin/clients", label: "Clients", Icone: IconUsers },
+  { href: "/admin/clients", label: "Utilisateurs", Icone: IconUsers },
   { href: "/admin/configuration", label: "Configuration", Icone: IconSliders },
   { href: "/admin/reglages", label: "Réglages", Icone: IconGear },
 ];
