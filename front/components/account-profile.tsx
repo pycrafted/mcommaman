@@ -8,7 +8,7 @@ import { ZONES } from "@/lib/livraison";
 import { useAuth, type ZoneKey } from "./auth-context";
 import { useOrders } from "./orders-context";
 import { OrderStatusBadge } from "./order-status-badge";
-import { AccountNav } from "./account-nav";
+import { AccountHeader } from "./account-header";
 import { PasswordField, SectionCard, TextField } from "./form-kit";
 import { IconArrow, IconCheck, IconClose, IconLock, IconMail, IconPackage, IconPhone, IconPin, IconPlus, IconStar, IconTrash, IconUser } from "./icons";
 
@@ -146,17 +146,18 @@ export function AccountProfile() {
 
   return (
     <div className={`${SHELL} pb-22 pt-10`}>
+      <AccountHeader />
+
       <div className="mb-8">
         <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Espace client</span>
-        <h1 className="mt-3 text-[clamp(2rem,4.6vw,2.9rem)] font-extrabold leading-[1.05] tracking-[-.035em]">
+        <h2 className="mt-3 text-[clamp(1.55rem,3.4vw,2.1rem)] font-extrabold leading-[1.08] tracking-[-.035em]">
           Mon profil
-        </h1>
+        </h2>
         <p className="mt-2.5 max-w-[52ch] text-[14.5px] leading-relaxed text-muted text-pretty">
           Vos informations, vos adresses de livraison et les tailles que vous suivez.
         </p>
       </div>
 
-      <AccountNav />
 
       <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr] lg:items-start">
         <div className="flex flex-col gap-5">

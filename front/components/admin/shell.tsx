@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { formatXOF } from "@/lib/format";
+import { formatXOF, initiales } from "@/lib/format";
+import { useAuth } from "@/components/auth-context";
 import { useAdmin } from "@/lib/admin/store";
-import { envoyer } from "@/lib/api";
 import {
   IconBell,
   IconBox,
@@ -171,37 +171,22 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
  */
 export function AdminGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [etat, setEtat] = useState<"lecture" | "ouvert" | "ferme">("lecture");
+  /* La session vient du même contexte que sur la vitrine — plus d'appel à part
+     entière ici. Une seule vérité sur qui est là : se déconnecter d'un côté
+     ferme l'autre à l'instant, et la page de connexion ne peut plus lire une
+     session qui n'existe déjà plus. */
+  const { account, hydrated } = useAuth();
+  const ouvert = hydrated && Boolean(account?.equipe);
 
   useEffect(() => {
-    let vivant = true;
+    if (hydrated && !account?.equipe) router.replace("/admin/connexion");
+  }, [hydrated, account, router]);
 
-    envoyer<{ utilisateur: { est_equipe: boolean } | null }>("/api/compte/moi/")
-      .then((reponse) => {
-        if (!vivant) return;
-        if (reponse.utilisateur?.est_equipe) {
-          setEtat("ouvert");
-        } else {
-          setEtat("ferme");
-          router.replace("/admin/connexion");
-        }
-      })
-      .catch(() => {
-        if (!vivant) return;
-        setEtat("ferme");
-        router.replace("/admin/connexion");
-      });
-
-    return () => {
-      vivant = false;
-    };
-  }, [router]);
-
-  if (etat !== "ouvert") {
+  if (!ouvert) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#faf8f9]">
         <p className="text-[13px] text-muted">
-          {etat === "lecture" ? "Ouverture du back-office…" : "Redirection vers la connexion…"}
+          {hydrated ? "Redirection vers la connexion…" : "Ouverture du back-office…"}
         </p>
       </div>
     );
@@ -218,6 +203,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const chemin = usePathname();
   const router = useRouter();
   const { settings, orders, products, hydrated, notification, dismissNotification } = useAdmin();
+  const { account, logout } = useAuth();
   const [menu, setMenu] = useState(false);
   const [palette, setPalette] = useState(false);
 
@@ -243,8 +229,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const ruptures = products.filter((p) => p.status === "publie" && p.stock <= 0).length;
 
   const deconnecter = () => {
-    // On ferme la session côté serveur : retirer une clé locale ne fermait rien.
-    envoyer("/api/compte/deconnexion/", "POST").catch(() => undefined);
+    // `logout` vide le compte dans le contexte avant même que le serveur ait
+    // répondu : la page de connexion, qui lit ce même contexte, ne voit donc
+    // jamais une session encore ouverte — c'est ce qui la faisait rebondir ici.
+    logout();
     router.replace("/admin/connexion");
   };
 
@@ -390,8 +378,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 {aPreparer} à préparer
               </span>
             )}
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-rose text-[11px] font-extrabold text-white">
-              MM
+            {/* Les initiales de qui est entré — elles étaient écrites en dur,
+                et l'admin affichait « MM » quel que soit le compte. */}
+            <span
+              title={account?.name}
+              className="grid h-8 w-8 place-items-center rounded-full bg-rose text-[11px] font-extrabold text-white"
+            >
+              {account ? initiales(account.name) : ""}
             </span>
           </div>
         </header>

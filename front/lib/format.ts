@@ -39,3 +39,15 @@ export const MAPS_EMBED = `https://www.google.com/maps?q=${MAPS_COORDS}&z=16&hl=
 
 export const waLink = (message: string) =>
   `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`;
+
+/** Les initiales servent d'avatar : deux lettres suffisent à se reconnaître.
+    Partagées entre la vitrine et le back-office — les deux saluent la même
+    personne, elles doivent la dessiner pareil. */
+export const initiales = (nom: string) =>
+  nom
+    .split(" ")
+    .filter(Boolean)
+    .map((mot) => mot[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();

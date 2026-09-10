@@ -6,6 +6,7 @@ import { formatXOF } from "@/lib/format";
 import { byId, type Product } from "@/lib/products";
 import { useCart } from "./cart-context";
 import { useFavorites } from "./favorites-context";
+import { AccountHeader } from "./account-header";
 import { ProductCard } from "./product-card";
 import { QuickView } from "./quick-view";
 import { IconArrow, IconBag, IconCheck, IconClose, IconHeart, IconTrash } from "./icons";
@@ -38,14 +39,22 @@ export function FavoritesPage() {
 
   return (
     <div className={`${SHELL} pb-22 pt-10`}>
-      <div className="mb-8 text-center">
+      {/* L'en-tête garde la largeur des trois autres pages de l'espace : ici
+          c'est la grille de pièces qui s'élargit, pas le bonjour. */}
+      <div className="mx-auto w-full max-w-[1180px]">
+        <AccountHeader />
+      </div>
+
+      {/* Aligné à gauche comme « Mes commandes » et « Mon profil » : un titre
+          centré sous des pastilles alignées à gauche se voyait. */}
+      <div className="mb-8">
         <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">
           Ma sélection
         </span>
-        <h1 className="mt-3 text-[clamp(2rem,4.6vw,2.9rem)] font-extrabold leading-[1.05] tracking-[-.035em]">
+        <h2 className="mt-3 text-[clamp(1.55rem,3.4vw,2.1rem)] font-extrabold leading-[1.08] tracking-[-.035em]">
           Mes favoris
-        </h1>
-        <p className="mx-auto mt-2.5 max-w-[54ch] text-[14.5px] leading-relaxed text-muted text-pretty">
+        </h2>
+        <p className="mt-2.5 max-w-[54ch] text-[14.5px] leading-relaxed text-muted text-pretty">
           Les pièces mises de côté en attendant la bonne taille ou le bon moment. Une fois
           connectée, elles vous suivent d&apos;un appareil à l&apos;autre.
         </p>

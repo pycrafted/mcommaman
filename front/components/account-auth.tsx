@@ -8,8 +8,16 @@ import { IconLock, IconMail, IconPhone, IconPin, IconUser } from "./icons";
 import { Alert, AuthShell, Checkbox, PasswordField, PasswordMeter, SubmitButton, TextField } from "./form-kit";
 
 /* Après connexion, on repart d'où l'on venait. `?suite=` est posé par les liens
-   qui exigent un compte — pour l'instant le tunnel de commande. */
-const suivant = (params: URLSearchParams) => params.get("suite") ?? "/compte";
+   qui exigent un compte — pour l'instant le tunnel de commande.
+
+   On ne suit que les chemins du site : un `?suite=https://ailleurs` collé dans
+   un lien envoyé par courriel ferait atterrir la cliente, une fois connectée,
+   sur une page qui n'est pas la nôtre. Un chemin commence par un seul `/` —
+   `//ailleurs` est une adresse absolue déguisée, le navigateur la suivrait. */
+const suivant = (params: URLSearchParams) => {
+  const suite = params.get("suite") ?? "";
+  return suite.startsWith("/") && !suite.startsWith("//") ? suite : "/compte";
+};
 
 const lienAvecSuite = (base: string, suite: string) =>
   suite !== "/compte" ? `${base}?suite=${encodeURIComponent(suite)}` : base;

@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { formatXOF } from "@/lib/format";
 import { zoneLabel } from "@/lib/livraison";
-import { useAuth } from "./auth-context";
-import { AccountNav } from "./account-nav";
+import { AccountHeader } from "./account-header";
 import { ORDER_STEPS, useOrders } from "./orders-context";
 import { OrderStatusBadge } from "./order-status-badge";
 import { IconArrow, IconPackage, IconTruck } from "./icons";
@@ -16,21 +15,21 @@ const dateLongue = (iso: string) =>
 
 export function OrdersList() {
   const { orders, hydrated } = useOrders();
-  const { account } = useAuth();
 
   return (
     <div className={`${SHELL} pb-22 pt-10`}>
+      <AccountHeader />
+
       <div className="mb-8">
         <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Suivi</span>
-        <h1 className="mt-3 text-[clamp(2rem,4.6vw,2.9rem)] font-extrabold leading-[1.05] tracking-[-.035em]">
+        <h2 className="mt-3 text-[clamp(1.55rem,3.4vw,2.1rem)] font-extrabold leading-[1.08] tracking-[-.035em]">
           Mes commandes
-        </h1>
+        </h2>
         <p className="mt-2.5 max-w-[52ch] text-[14.5px] leading-relaxed text-muted text-pretty">
           Chaque commande passée depuis ce navigateur, avec l&apos;avancement de son colis.
         </p>
       </div>
 
-      {account && <AccountNav />}
 
       {/* Le stockage local n'est relu qu'après le premier rendu. */}
       {!hydrated && (

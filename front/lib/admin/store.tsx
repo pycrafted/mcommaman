@@ -39,6 +39,7 @@ import {
   type TailleApi,
 } from "./passage";
 import { REFERENCE_DATE } from "./seed";
+import { useAuth } from "@/components/auth-context";
 import type {
   ActivityEntry,
   AdminCategory,
@@ -219,6 +220,15 @@ async function tout<T>(chemin: string): Promise<T[]> {
 }
 
 export function AdminProvider({ children }: { children: ReactNode }) {
+  /* Le back-office ne se lit que pour une session d'équipe. Ce fournisseur est
+     monté au-dessus de la page de connexion aussi : sans cette condition, il
+     partait à vide sur `/admin/connexion` — treize appels, treize 403 avalés
+     en silence — puis ne repartait plus après la connexion, qui est une
+     navigation client sans remontage. Le tableau de bord restait à zéro
+     jusqu'à un rechargement complet. */
+  const { account, hydrated: sessionPrete } = useAuth();
+  const equipe = Boolean(account?.equipe);
+
   const [state, setState] = useState<AdminState>(VIDE);
   const [hydrated, setHydrated] = useState(false);
   const [enCours, setEnCours] = useState(false);
@@ -282,8 +292,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!sessionPrete) return;
+    if (!equipe) {
+      // Session fermée ou étrangère à l'équipe : on ne garde rien de ce qui a
+      // pu être lu — la personne suivante sur ce navigateur n'a pas à voir les
+      // commandes de la précédente.
+      setState(VIDE);
+      setHydrated(true);
+      return;
+    }
+    setHydrated(false);
     relire().finally(() => setHydrated(true));
-  }, [relire]);
+  }, [relire, sessionPrete, equipe]);
 
   /**
    * Exécute une écriture, puis relit.

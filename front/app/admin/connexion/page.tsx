@@ -4,14 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconClose, IconLock, IconMail } from "@/components/icons";
-import { ErreurApi, envoyer as appeler } from "@/lib/api";
+import { useAuth } from "@/components/auth-context";
 
-/* La connexion passe par la même route que celle des clientes : c'est le rôle
-   du compte qui ouvre le back-office, pas une adresse particulière. Il n'y a
-   plus d'identifiants en clair dans ce fichier. */
+/* La connexion passe par le contexte de session, le même que sur la vitrine,
+   et par la porte réservée au back-office : le serveur vérifie le rôle avant
+   d'ouvrir quoi que ce soit. Cette page ne refait plus d'appel à part entière
+   — elle lit le compte là où tout le monde le lit, et n'a donc jamais sous les
+   yeux une session que la déconnexion vient de fermer. */
 
 export default function Page() {
   const router = useRouter();
+  const { loginEquipe, account, hydrated } = useAuth();
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [erreur, setErreur] = useState("");
@@ -19,12 +22,8 @@ export default function Page() {
 
   /* Déjà entrée : on ne redemande pas. */
   useEffect(() => {
-    appeler<{ utilisateur: { est_equipe: boolean } | null }>("/api/compte/moi/")
-      .then((r) => {
-        if (r.utilisateur?.est_equipe) router.replace("/admin");
-      })
-      .catch(() => undefined);
-  }, [router]);
+    if (hydrated && account?.equipe) router.replace("/admin");
+  }, [hydrated, account, router]);
 
   useEffect(() => {
     if (!erreur) return;
@@ -36,27 +35,15 @@ export default function Page() {
     e.preventDefault();
     setErreur("");
     setEnvoi(true);
-    try {
-      const compte = await appeler<{ est_equipe: boolean }>(
-        "/api/compte/connexion/",
-        "POST",
-        { email: email.trim(), mot_de_passe: motDePasse },
-      );
-      // Un compte cliente peut se connecter ici sans que la porte s'ouvre :
-      // on referme aussitôt plutôt que de laisser une session ambiguë.
-      if (!compte.est_equipe) {
-        await appeler("/api/compte/deconnexion/", "POST").catch(() => undefined);
-        setErreur("Ce compte n'a pas accès au back-office.");
-        return;
-      }
-      router.replace("/admin");
-    } catch (e) {
-      setErreur(
-        e instanceof ErreurApi ? e.message : "Le serveur ne répond pas. Réessayez.",
-      );
-    } finally {
-      setEnvoi(false);
+    // Le serveur refuse un compte cliente avant d'ouvrir une session : plus
+    // de connexion suivie d'une déconnexion pour le découvrir.
+    const resultat = await loginEquipe(email.trim(), motDePasse);
+    setEnvoi(false);
+    if (!resultat.ok) {
+      setErreur(resultat.error ?? "Le serveur ne répond pas. Réessayez.");
+      return;
     }
+    router.replace("/admin");
   };
 
   const champ =

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { envoyer } from "@/lib/api";
+import { useAuth } from "@/components/auth-context";
 import { formatXOF } from "@/lib/format";
 import { SEGMENT_LABELS, computeCustomerStats, useAdmin } from "@/lib/admin/store";
 import type { CustomerSegment, TeamMember } from "@/lib/admin/types";
@@ -50,13 +50,10 @@ export default function Page() {
 
   /* Qui est en train de regarder. Sert à deux choses : marquer sa propre ligne,
      et masquer le geste qui la fermerait — le serveur le refuse déjà, mais
-     proposer un bouton voué à l'échec est une mauvaise manière. */
-  const [moi, setMoi] = useState<number | null>(null);
-  useEffect(() => {
-    envoyer<{ utilisateur: { id: number } | null }>("/api/compte/moi/")
-      .then((r) => setMoi(r.utilisateur?.id ?? null))
-      .catch(() => setMoi(null));
-  }, []);
+     proposer un bouton voué à l'échec est une mauvaise manière. Lu dans le
+     contexte de session, pas refait à la main : une seule vérité sur qui est là. */
+  const { account } = useAuth();
+  const moi = account ? Number(account.id) : null;
 
   /* ---------------------------------------------------------------- clientes */
 

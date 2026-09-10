@@ -127,6 +127,9 @@ type Ctx = {
     password: string;
   }) => Promise<AuthResult>;
   login: (email: string, password: string) => Promise<AuthResult>;
+  /** La même chose par la porte du back-office : refusée avant d'ouvrir une
+      session si le compte n'est pas de l'équipe. */
+  loginEquipe: (email: string, password: string) => Promise<AuthResult>;
   logout: () => void;
   updateProfile: (patch: Partial<Pick<Account, "name" | "phone" | "city">>) => void;
   updatePreferences: (patch: Partial<AccountPreferences>) => void;
@@ -184,6 +187,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback<Ctx["login"]>(async (email, password) => {
     try {
       const brut = await envoyer<UtilisateurApi>("/api/compte/connexion/", "POST", {
+        email,
+        mot_de_passe: password,
+      });
+      setAccount(versCompte(brut));
+      return { ok: true };
+    } catch (erreur) {
+      return { ok: false, error: raison(erreur) };
+    }
+  }, []);
+
+  /**
+   * Entrer dans le back-office.
+   *
+   * Passe par `/api/gestion/connexion/` et non par la route des clientes : le
+   * serveur y vérifie le rôle avant `login()`, un refus ne laisse aucune
+   * session derrière lui. Et le compte arrive dans ce contexte comme n'importe
+   * quelle connexion — la vitrine et l'admin ne se contredisent plus sur qui
+   * est là.
+   */
+  const loginEquipe = useCallback<Ctx["loginEquipe"]>(async (email, password) => {
+    try {
+      const brut = await envoyer<UtilisateurApi>("/api/gestion/connexion/", "POST", {
         email,
         mot_de_passe: password,
       });
@@ -307,6 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       account,
       register,
       login,
+      loginEquipe,
       logout,
       updateProfile,
       updatePreferences,
@@ -319,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hydrated,
     }),
     [
-      account, register, login, logout, updateProfile, updatePreferences,
+      account, register, login, loginEquipe, logout, updateProfile, updatePreferences,
       addAddress, removeAddress, setDefaultAddress, changePassword,
       deleteAccount, defaultAddress, hydrated,
     ],
