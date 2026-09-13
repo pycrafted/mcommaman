@@ -207,9 +207,13 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # ------------------------------------------------- photothèque sur Cloudflare R2
 #
-# L'instance de l'hébergeur n'a pas de disque persistant : ce qu'elle écrit dans
-# `media/` disparaît à la livraison suivante. Les visuels envoyés depuis le
-# back-office partent donc sur un entrepôt d'objets.
+# En ligne, un disque persistant (option payante de l'hébergeur) est monté sur
+# `MEDIA_ROOT` : les visuels envoyés depuis le back-office survivent aux
+# livraisons, et R2 n'est plus nécessaire à leur conservation. Il reste
+# disponible comme option — un entrepôt d'objets derrière un CDN sert les
+# images depuis un point proche de Dakar, là où le serveur, lui, est en Oregon.
+# Sans le disque, tout ce qui est écrit dans `media/` disparaîtrait à la
+# livraison suivante : c'est ce qu'il y avait avant, et ce qui a motivé R2.
 #
 # Les cinq variables vont ensemble : s'il en manque une, on retombe sur le
 # disque local — le comportement de développement, où les fichiers déjà présents

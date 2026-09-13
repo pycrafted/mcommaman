@@ -24,10 +24,10 @@ urlpatterns = [
 # serveur de fichiers ou un CDN irait plus vite — mais la boutique n'en a que
 # quelques centaines et cela évite un service de plus à installer.
 #
-# À savoir : sur une instance sans disque persistant, le dossier `media/` est
-# reconstruit à chaque livraison. Les visuels envoyés depuis le back-office
-# disparaissent alors. Monter un disque, ou passer à un stockage externe, avant
-# que la gérante n'y range son catalogue.
+# À savoir : `media/` ne survit aux livraisons que parce qu'un disque persistant
+# de l'hébergeur y est monté (point de montage = `MEDIA_ROOT`). Si ce disque
+# est détaché, ou monté ailleurs, le dossier est reconstruit à chaque livraison
+# et les visuels du back-office disparaissent — brancher R2 avant, dans ce cas.
 urlpatterns += [
     re_path(
         rf"^{settings.MEDIA_URL.lstrip('/')}(?P<path>.*)$",
