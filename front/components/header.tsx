@@ -9,24 +9,22 @@ import { HeaderBarre } from "./header-barre";
  * dans le HTML servi — un menu qui n'apparaîtrait qu'une fois le JavaScript
  * arrivé sauterait à chaque changement de page.
  *
- * Le panneau « Boutique » ouvre `/boutique`, qui ne montre que le vestiaire
- * enfant : on ne demande donc que cet univers-là. Le Coin Maman garde son
- * entrée propre, et ses tissus leurs pastilles sur `/coin-maman`.
+ * Le panneau « Boutique » montre les deux univers, chacun avec ses
+ * sous-catégories : le vestiaire enfant, puis le Coin Maman. Les deux pages
+ * filtrent sur `?cat=` par le nom — le menu envoie vers l'une ou l'autre selon
+ * l'univers de la sous-catégorie.
  *
- * Deux lectures et pas une : le décompte et la vignette viennent du catalogue,
- * les rayons du menu. Additionner les rayons à la main compterait deux fois une
- * sous-catégorie rangée sous deux parentes.
- *
- * La pièce mise en avant est la dernière publiée. Elle ne se choisit plus dans
- * le code : une fiche écrite en dur finit par pointer vers un article retiré.
+ * Le décompte vient du catalogue, pas des rayons : les additionner à la main
+ * compterait deux fois une sous-catégorie rangée sous deux parentes. Il ne
+ * porte que sur le vestiaire enfant, comme le lien « Toute la boutique » qui
+ * l'affiche et qui ouvre `/boutique`.
  */
 export async function Header() {
-  const [rayons, entete] = await Promise.all([
+  const [rayons, rayonsMaman, entete] = await Promise.all([
     lireRayonsNavigables("enfant"),
+    lireRayonsNavigables("maman"),
     lireEnTeteCatalogue("enfant"),
   ]);
 
-  return (
-    <HeaderBarre rayons={rayons} nombrePieces={entete.nombre} vedette={entete.derniere} />
-  );
+  return <HeaderBarre rayons={rayons} rayonsMaman={rayonsMaman} nombrePieces={entete.nombre} />;
 }

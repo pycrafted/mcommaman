@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LOGO, type Product } from "@/lib/products";
+import { LOGO } from "@/lib/products";
 import type { LienRayon } from "@/lib/catalogue";
-import { formatXOF } from "@/lib/format";
 import { ScrollProgress } from "./motion";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
@@ -56,18 +55,37 @@ const COMPTE = [
  * qui va les chercher sur le serveur. Ici on n'écrit aucune catégorie à la
  * main — elles viennent toutes du back-office.
  */
+/* Les deux univers de la boutique, dans l'ordre de la barre. Chacun a sa page,
+   qui filtre sur `?cat=` par le nom de la sous-catégorie : le menu envoie donc
+   vers `/boutique` ou `/coin-maman` selon l'univers d'où vient le rayon. */
+/* Longueur d'une colonne du panneau. Au-delà, la liste reprend dans la
+   colonne d'à côté — une colonne de trente rayons ferait sortir le panneau de
+   l'écran. Six entrées font une colonne qui se lit d'un regard. */
+const PAR_COLONNE = 6;
+
+const UNIVERS = [
+  { cle: "enfant", label: "Enfants", href: "/boutique" },
+  { cle: "maman", label: "Coin Maman", href: "/coin-maman" },
+] as const;
+
 export function HeaderBarre({
   rayons,
+  rayonsMaman,
   nombrePieces,
-  vedette = null,
 }: {
-  /** Les catégories cliquables du vestiaire enfant, dans l'ordre du back-office. */
+  /** Les sous-catégories cliquables du vestiaire enfant, dans l'ordre du back-office. */
   rayons: LienRayon[];
-  /** Les fiches publiées de ce même univers. Zéro tant que rien n'est en ligne. */
+  /** Celles du Coin Maman — même découpage, l'autre univers. */
+  rayonsMaman: LienRayon[];
+  /** Les fiches publiées du vestiaire enfant. Zéro tant que rien n'est en ligne. */
   nombrePieces: number;
-  /** La dernière pièce publiée, mise en avant dans le menu. */
-  vedette?: Product | null;
 }) {
+  /* Un univers sans rayon connu — serveur endormi, boutique qui ouvre — ne
+     laisse pas un titre seul : il disparaît du panneau et du tiroir. */
+  const sections = UNIVERS.map((u) => ({
+    ...u,
+    liste: u.cle === "enfant" ? rayons : rayonsMaman,
+  })).filter((u) => u.liste.length > 0);
   const { count, pulse, openDrawer } = useCart();
   const { account } = useAuth();
   const { count: favoris } = useFavorites();
@@ -180,23 +198,35 @@ export function HeaderBarre({
                       souris quitte le survol en descendant et le panneau se
                       referme au milieu du trajet. */}
                   <div className="pointer-events-none absolute left-1/2 top-full z-40 -mt-8 w-[min(820px,calc(100vw-3rem))] -translate-x-1/2 translate-y-2 pt-8 opacity-0 transition-[opacity,transform] duration-300 ease-soft group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
-                    {/* Sans rayon connu — serveur endormi, boutique qui ouvre —
-                        la colonne disparaît au lieu de laisser un titre seul. */}
-                    <div
-                      className={`grid gap-8 rounded-[24px] border border-line bg-cream p-6 shadow-[0_40px_80px_-40px_rgba(36,26,32,.45)] ${
-                        rayons.length > 0 ? "grid-cols-[1fr_1fr_1.15fr]" : "grid-cols-[1fr_1.15fr]"
-                      }`}
-                    >
-                      {rayons.length > 0 && (
-                        <div>
-                          <div className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">
-                            Les rayons
-                          </div>
-                          <div className="mt-3 flex flex-col">
-                            {rayons.map((r) => (
+                    {/* Deux univers, chacun avec ses sous-catégories — celles que
+                        le back-office tient, jamais une liste écrite ici. Elles
+                        se lisent de haut en bas, comme une liste ; passé
+                        PAR_COLONNE entrées, la liste continue dans la colonne
+                        d'à côté plutôt que de s'allonger. Plus de carte
+                        produit : la place est aux rayons, c'est ce qu'on vient
+                        chercher dans un menu. */}
+                    <div className="rounded-[24px] border border-line bg-cream p-6 shadow-[0_40px_80px_-40px_rgba(36,26,32,.45)]">
+                      {/* Les deux univers côte à côte, chacun sa liste sous son
+                          titre. `flex-wrap` : si la largeur manque — deux listes
+                          longues, écran étroit — le second passe à la ligne
+                          plutôt que d'écraser le premier. */}
+                      <div className="flex flex-wrap gap-x-14 gap-y-6">
+                      {sections.map((u) => (
+                        <div key={u.cle} className="min-w-0">
+                          <Link
+                            href={u.href}
+                            className="text-[11px] font-bold uppercase tracking-[.14em] text-muted transition-colors hover:text-rose"
+                          >
+                            {u.label}
+                          </Link>
+                          <div
+                            className="mt-3 grid grid-flow-col justify-start gap-x-8"
+                            style={{ gridTemplateRows: `repeat(${PAR_COLONNE}, auto)` }}
+                          >
+                            {u.liste.map((r) => (
                               <Link
                                 key={r.slug}
-                                href={`/boutique?cat=${encodeURIComponent(r.nom)}`}
+                                href={`${u.href}?cat=${encodeURIComponent(r.nom)}`}
                                 className="group/l flex items-center justify-between rounded-lg py-1.5 pr-2 text-[13.5px] font-medium transition-colors hover:text-rose"
                               >
                                 {r.nom}
@@ -205,51 +235,18 @@ export function HeaderBarre({
                             ))}
                           </div>
                         </div>
-                      )}
-
-                      <div>
-                        <div className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">
-                          Les univers
-                        </div>
-                        <div className="mt-3 flex flex-col gap-1">
-                          <Link href="/boutique" className="rounded-xl px-3 py-2 text-[13.5px] font-semibold transition-colors hover:bg-stone">
-                            Enfants
-                          </Link>
-                          <Link href="/coin-maman" className="rounded-xl px-3 py-2 text-[13.5px] font-semibold transition-colors hover:bg-stone">
-                            Coin Maman
-                          </Link>
-                        </div>
-                        <Link
-                          href="/boutique"
-                          className="mt-3 flex items-center gap-1.5 px-3 text-[13px] font-bold text-rose"
-                        >
-                          {nombrePieces > 0 ? `Les ${nombrePieces} pièces` : "Toute la boutique"}
-                          <IconArrow className="h-3.5 w-3.5" />
-                        </Link>
+                      ))}
                       </div>
 
-                      {vedette && (
-                        <Link href={`/p/${vedette.slug}`} className="group/v block">
-                          {/* Les pièces sont photographiées sur cintre, en
-                              portrait : un cadre paysage n'en montrerait que
-                              l'ourlet. Carré, calé sur le haut du vêtement. */}
-                          <div className="relative aspect-square overflow-hidden rounded-[18px] bg-stone">
-                            <div
-                              className="absolute inset-0 bg-cover transition-transform duration-700 ease-soft group-hover/v:scale-105"
-                              style={{ backgroundImage: `url(${vedette.image})`, backgroundPosition: "50% 22%" }}
-                            />
-                            <span className="absolute left-3 top-3 rounded-full bg-cream/95 px-2.5 py-1 text-[11px] font-bold backdrop-blur">
-                              Dernière arrivée
-                            </span>
-                          </div>
-                          <div className="mt-2.5 text-[13.5px] font-semibold leading-snug transition-colors group-hover/v:text-rose">
-                            {vedette.name}
-                          </div>
-                          <div className="mt-0.5 text-[13px] font-extrabold tabular-nums">
-                            {formatXOF(vedette.price)}
-                          </div>
-                        </Link>
-                      )}
+                      <Link
+                        href="/boutique"
+                        className={`flex items-center gap-1.5 text-[13px] font-bold text-rose ${
+                          sections.length > 0 ? "mt-5" : ""
+                        }`}
+                      >
+                        {nombrePieces > 0 ? `Les ${nombrePieces} pièces` : "Toute la boutique"}
+                        <IconArrow className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -365,19 +362,25 @@ export function HeaderBarre({
                     {n.label}
                   </Link>
                 ))}
-                {rayons.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2 border-t border-line pt-4">
-                    {rayons.map((r) => (
-                      <Link
-                        key={r.slug}
-                        href={`/boutique?cat=${encodeURIComponent(r.nom)}`}
-                        className="rounded-full bg-stone px-3.5 py-1.5 text-[13px] font-medium"
-                      >
-                        {r.nom}
-                      </Link>
-                    ))}
+                {/* Le même découpage qu'en grand : un univers, ses pastilles. */}
+                {sections.map((u) => (
+                  <div key={u.cle} className="mt-2 border-t border-line pt-4">
+                    <div className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">
+                      {u.label}
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {u.liste.map((r) => (
+                        <Link
+                          key={r.slug}
+                          href={`${u.href}?cat=${encodeURIComponent(r.nom)}`}
+                          className="rounded-full bg-stone px-3.5 py-1.5 text-[13px] font-medium"
+                        >
+                          {r.nom}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                )}
+                ))}
 
                 {/* Les mêmes raccourcis qu'à droite de la barre, qui n'y tiennent
                     pas au doigt. */}
