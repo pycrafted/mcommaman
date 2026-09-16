@@ -86,22 +86,18 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
 
         params = self.request.query_params
 
-        # Par défaut, la grille de la boutique montre le vestiaire enfant : le
-        # Coin Maman a sa propre entrée, et mélanger tissus et pyjamas
-        # appliquerait des filtres d'âge à des coupons de tissu.
-        #
-        # Le filtre ne vaut que pour la liste. Une fiche doit rester atteignable
-        # par son adresse quel que soit son univers, sinon un lien vers un
-        # coupon de bazin renverrait « page introuvable ».
+        # La boutique montre toutes les catégories ensemble — le Coin Maman en
+        # est une comme Filles ou Garçons. L'univers ne filtre que si on le
+        # demande, et seulement la liste : une fiche reste atteignable par son
+        # adresse quel que soit son rangement.
         # Une poignée de fiches désignées par leur identifiant : ce que la page
-        # des favoris demande pour dessiner ses cartes. Elle traverse les deux
-        # univers — on peut mettre de côté un pyjama et un coupon de bazin —,
-        # d'où le filtre d'univers écarté dans ce cas.
+        # des favoris demande pour dessiner ses cartes.
         demandes = params.get("ids", "")
         voulus = [int(x) for x in demandes.split(",") if x.strip().isdigit()][:100]
 
         if self.action == "list" and not voulus:
-            selection = selection.filter(rayon__univers=params.get("univers", "enfant"))
+            if univers := params.get("univers"):
+                selection = selection.filter(rayon__univers=univers)
         elif voulus:
             selection = selection.filter(pk__in=voulus)
 
