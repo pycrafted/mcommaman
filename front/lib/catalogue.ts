@@ -189,6 +189,44 @@ export async function lireRayonsNavigables(univers?: Univers): Promise<LienRayon
   return rayonsNavigables(await lireRayons(univers));
 }
 
+/** Une catégorie de premier niveau, avec ce qu'elle contient. */
+export type BrancheRayon = LienRayon & { enfants: LienRayon[] };
+
+/**
+ * Le catalogue tel qu'il se déplie, sur deux étages.
+ *
+ * `rayonsNavigables` aplatit l'arborescence — c'est ce que veulent le pied de
+ * page et les pastilles de filtre, qui n'ont qu'un niveau à offrir. Le menu,
+ * lui, a la place de montrer le classement : une catégorie, ses
+ * sous-catégories dessous. D'où cette seconde lecture des mêmes données.
+ *
+ * Le nombre porté par une catégorie compte ses sous-catégories (c'est le
+ * serveur qui l'établit, voir `RayonSerializer.get_nombre_produits`) : les
+ * additionner ici compterait deux fois une sous-catégorie rangée à deux
+ * endroits.
+ */
+export function arborescenceRayons(rayons: RayonApi[]): BrancheRayon[] {
+  return rayons.map((racine) => ({
+    nom: racine.nom,
+    slug: racine.slug,
+    nombre: racine.nombre_produits,
+    description: racine.description,
+    image: racine.image_url,
+    enfants: racine.enfants.map((enfant) => ({
+      nom: enfant.nom,
+      slug: enfant.slug,
+      nombre: enfant.nombre_produits,
+      description: enfant.description,
+      image: enfant.image_url,
+    })),
+  }));
+}
+
+/** L'arborescence d'un univers, en un appel. */
+export async function lireArborescence(univers?: Univers): Promise<BrancheRayon[]> {
+  return arborescenceRayons(await lireRayons(univers));
+}
+
 /**
  * Ce que la barre du haut a besoin de savoir : combien de pièces sont en ligne,
  * et quelle est la dernière arrivée.

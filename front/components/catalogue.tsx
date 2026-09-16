@@ -45,9 +45,24 @@ export function Catalogue({
   const toggle = (key: string) =>
     setFilters((f) => (f.includes(key) ? f.filter((x) => x !== key) : [...f, key]));
 
+  /* Une fiche est rangée dans la catégorie la plus fine : son `category` est
+     toujours une feuille. Le menu, lui, propose aussi les parentes — cliquer
+     sur « Vêtements » doit ramener robes, bas et t-shirts, pas une grille
+     vide. D'où cette table, qui déplie un nom de parente en ceux de ses
+     sous-catégories. Une catégorie sans enfant ne se couvre qu'elle-même. */
+  const couverture = useMemo(() => {
+    const table = new Map<string, string[]>();
+    for (const r of rayons) {
+      table.set(r.nom, r.enfants.length ? r.enfants.map((e) => e.nom) : [r.nom]);
+    }
+    return table;
+  }, [rayons]);
+
   const matches = (p: Product, f: string) => {
-    const [kind, value] = f.split(":");
-    return p.category === value;
+    /* Le nom peut contenir un « : » — on ne coupe qu'au premier. */
+    const value = f.slice(f.indexOf(":") + 1);
+    const couverts = couverture.get(value);
+    return couverts ? couverts.includes(p.category) : p.category === value;
   };
 
   const base = useMemo(
@@ -71,12 +86,9 @@ export function Catalogue({
     if (sort === 2) return [...out].sort((a, b) => b.price - a.price);
     if (sort === 3) return [...out].sort((a, b) => a.name.localeCompare(b.name, "fr"));
     return out;
-  }, [base, filters, prixMax, prixMin, sort]);
+  }, [base, couverture, filters, prixMax, prixMin, sort]);
 
-  const chipLabel = (f: string) => {
-    const [kind, value] = f.split(":");
-    return value;
-  };
+  const chipLabel = (f: string) => f.slice(f.indexOf(":") + 1);
 
   const countFor = (f: string) => base.filter((p) => matches(p, f)).length;
 

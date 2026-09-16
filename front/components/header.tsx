@@ -1,4 +1,4 @@
-import { lireEnTeteCatalogue, lireRayonsNavigables } from "@/lib/catalogue";
+import { lireArborescence, lireEnTeteCatalogue } from "@/lib/catalogue";
 import { HeaderBarre } from "./header-barre";
 
 /**
@@ -9,22 +9,39 @@ import { HeaderBarre } from "./header-barre";
  * dans le HTML servi — un menu qui n'apparaîtrait qu'une fois le JavaScript
  * arrivé sauterait à chaque changement de page.
  *
- * Le panneau « Boutique » montre les deux univers, chacun avec ses
- * sous-catégories : le vestiaire enfant, puis le Coin Maman. Les deux pages
- * filtrent sur `?cat=` par le nom — le menu envoie vers l'une ou l'autre selon
- * l'univers de la sous-catégorie.
+ * Chaque univers a son panneau, et chaque panneau déplie l'arborescence sur
+ * ses deux étages : les catégories, et sous chacune ses sous-catégories. C'est
+ * `lireArborescence` qui la conserve — `lireRayonsNavigables`, dont vivent le
+ * pied de page et les filtres, l'aplatit.
  *
- * Le décompte vient du catalogue, pas des rayons : les additionner à la main
- * compterait deux fois une sous-catégorie rangée sous deux parentes. Il ne
- * porte que sur le vestiaire enfant, comme le lien « Toute la boutique » qui
- * l'affiche et qui ouvre `/boutique`.
+ * Le décompte vient du catalogue et non des rayons : les additionner à la main
+ * compterait deux fois une sous-catégorie rangée sous deux parentes. La
+ * dernière fiche arrivée vient du même appel, qui en ramène une seule — la
+ * vignette du panneau ne coûte donc aucune requête de plus.
+ *
+ * Quatre appels, tous mis en cache par `lire` et lancés ensemble : la barre
+ * s'affiche sur chaque page, elle ne peut pas les enchaîner.
  */
 export async function Header() {
-  const [rayons, rayonsMaman, entete] = await Promise.all([
-    lireRayonsNavigables("enfant"),
-    lireRayonsNavigables("maman"),
+  const [branchesEnfant, branchesMaman, enteteEnfant, enteteMaman] = await Promise.all([
+    lireArborescence("enfant"),
+    lireArborescence("maman"),
     lireEnTeteCatalogue("enfant"),
+    lireEnTeteCatalogue("maman"),
   ]);
 
-  return <HeaderBarre rayons={rayons} rayonsMaman={rayonsMaman} nombrePieces={entete.nombre} />;
+  return (
+    <HeaderBarre
+      enfant={{
+        branches: branchesEnfant,
+        nombre: enteteEnfant.nombre,
+        derniere: enteteEnfant.derniere,
+      }}
+      maman={{
+        branches: branchesMaman,
+        nombre: enteteMaman.nombre,
+        derniere: enteteMaman.derniere,
+      }}
+    />
+  );
 }

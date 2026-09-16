@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LOGO } from "@/lib/products";
-import type { LienRayon } from "@/lib/catalogue";
+import { LOGO, type Product } from "@/lib/products";
+import { formatXOF } from "@/lib/format";
+import type { BrancheRayon, LienRayon } from "@/lib/catalogue";
 import { ScrollProgress } from "./motion";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
@@ -28,19 +29,28 @@ import {
    d'annonce, la jauge de lecture court sous la barre et se remplit au
    défilement — elle sert aussi de trait de séparation. */
 
-/* La barre ne nomme plus trois rayons choisis à la main — ils changent au gré
-   du catalogue, et le panneau « Boutique » les liste déjà tous. Restent les
+/* La barre ne nomme plus de rayon choisi à la main — ils changent au gré du
+   catalogue, et chaque univers déplie les siens dans son panneau. Restent les
    deux univers, qui eux ne bougent pas : « /boutique » est celui des enfants,
    « /coin-maman » celui des mamans.
 
    Le premier s'affiche « Catalogue » et non « Enfants » : c'est la porte
    d'entrée de la boutique, et une cliente qui cherche à parcourir les pièces
-   lit ce mot-là en premier. Le panneau « Boutique » et le tiroir, eux, gardent
-   le titre « Enfants » (UNIVERS plus bas) — ils opposent les deux univers, et
-   « Catalogue » n'y distinguerait rien puisque le Coin Maman en fait partie. */
-const NAV = [
-  { href: "/boutique", label: "Catalogue" },
-  { href: "/coin-maman", label: "Coin Maman" },
+   lit ce mot-là en premier.
+
+   Il n'y a plus d'entrée « Boutique » distincte : elle menait à « /boutique »
+   comme « Catalogue », et deux libellés pour une seule page faisaient hésiter
+   pour rien. C'est « Catalogue » qui porte désormais le panneau. */
+type EntreeNav = {
+  href: string;
+  label: string;
+  /** Renseigné quand l'entrée déplie ses rayons au survol. */
+  univers?: "enfant" | "maman";
+};
+
+const NAV: EntreeNav[] = [
+  { href: "/boutique", label: "Catalogue", univers: "enfant" },
+  { href: "/coin-maman", label: "Coin Maman", univers: "maman" },
   { href: "/avis", label: "Avis" },
   { href: "/contact", label: "Contact" },
 ];
@@ -54,6 +64,236 @@ const COMPTE = [
   { href: "/compte/connexion", label: "Se connecter", Icone: IconUser },
 ];
 
+/* Longueur d'une colonne quand le panneau n'a qu'une catégorie à montrer et
+   liste donc ses sous-catégories directement. Au-delà, la liste reprend dans
+   la colonne d'à côté — une colonne de trente rayons sortirait de l'écran.
+   Sept entrées font une colonne qui se lit d'un regard. */
+const PAR_COLONNE = 7;
+
+/** Ce qu'un univers donne à son panneau. */
+export type RayonsUnivers = {
+  /** Les catégories de premier niveau, chacune avec ses sous-catégories. */
+  branches: BrancheRayon[];
+  /** Les fiches publiées dans cet univers. Zéro tant que rien n'est en ligne. */
+  nombre: number;
+  /** La dernière arrivée, quand il y en a une. */
+  derniere: Product | null;
+};
+
+/** Un bloc du menu : une catégorie et ce qu'elle contient. */
+type BlocRayons = {
+  cle: string;
+  titre: string;
+  /** Les sous-catégories à lister — ou les catégories feuilles, regroupées. */
+  entrees: LienRayon[];
+  /** Le décompte de la catégorie. Zéro pour le bloc de regroupement. */
+  nombre: number;
+  /** Le nom de la catégorie, quand le titre en est une et mène quelque part. */
+  categorie: string | null;
+};
+
+/**
+ * Les blocs d'un univers, dans l'ordre du back-office.
+ *
+ * Une catégorie qui a des sous-catégories fait son bloc. Celles qui n'en ont
+ * aucune portent leurs fiches elles-mêmes : elles se regroupent en un seul
+ * bloc de fin, sinon chacune ouvrirait un bloc d'une ligne sous son propre
+ * titre — le nom serait écrit deux fois et le classement deviendrait illisible
+ * sur un catalogue à plat.
+ *
+ * Le panneau du grand écran et le tiroir au doigt partagent ce calcul : deux
+ * découpages différents donneraient deux menus différents.
+ */
+function blocsDe(branches: BrancheRayon[]): BlocRayons[] {
+  const groupes = branches.filter((b) => b.enfants.length > 0);
+  const seules = branches.filter((b) => b.enfants.length === 0);
+
+  const blocs: BlocRayons[] = groupes.map((b) => ({
+    cle: b.slug,
+    titre: b.nom,
+    entrees: b.enfants,
+    nombre: b.nombre,
+    categorie: b.nom,
+  }));
+
+  if (seules.length > 0) {
+    blocs.push({
+      cle: "rayons-sans-sous-categorie",
+      titre: groupes.length > 0 ? "Autres rayons" : "Rayons",
+      entrees: seules,
+      nombre: 0,
+      categorie: null,
+    });
+  }
+  return blocs;
+}
+
+/** Une sous-catégorie du panneau : son nom, son décompte, sa flèche au survol. */
+function LigneRayon({ href, nom, nombre }: { href: string; nom: string; nombre: number }) {
+  return (
+    <Link
+      href={href}
+      className="group/l flex items-center gap-2 rounded-lg py-[5px] pl-2 pr-2 -ml-2 text-[13.5px] font-medium text-ink/80 transition-colors hover:bg-mist hover:text-rose"
+    >
+      <span className="truncate">{nom}</span>
+      {/* Un « 0 » n'apprend rien et fait douter du rayon : le décompte ne
+          s'affiche que lorsqu'il y a quelque chose à compter. */}
+      {nombre > 0 && (
+        <span className="text-[11px] tabular-nums text-muted transition-colors group-hover/l:text-rose/70">
+          {nombre}
+        </span>
+      )}
+      <IconArrow className="ml-auto h-3.5 w-3.5 shrink-0 -translate-x-1 opacity-0 transition-all duration-300 group-hover/l:translate-x-0 group-hover/l:opacity-100" />
+    </Link>
+  );
+}
+
+/**
+ * Un département du panneau : la catégorie en titre, ses sous-catégories
+ * dessous, en colonnes de `PAR_COLONNE` au plus.
+ *
+ * Le découpage en colonnes se fait bloc par bloc et non sur le panneau entier :
+ * une catégorie doit rester d'un seul tenant, sinon ses sous-catégories se
+ * retrouvent à cheval sur deux colonnes et le classement ne se lit plus.
+ */
+function BlocRayon({
+  titre,
+  href,
+  entrees,
+  nombre,
+  lien,
+}: {
+  titre: string;
+  /** Où mène le titre. Vide pour un bloc qui n'est pas une vraie catégorie. */
+  href: string | null;
+  entrees: LienRayon[];
+  nombre: number;
+  lien: (nom: string) => string;
+}) {
+  const rangs = Math.min(PAR_COLONNE, Math.max(entrees.length, 1));
+  const titreClasses =
+    "truncate text-[11px] font-extrabold uppercase tracking-[.14em] text-ink";
+
+  return (
+    <div className="min-w-[9.5rem]">
+      {href ? (
+        <Link href={href} className="group/t flex items-baseline gap-2 border-b border-line pb-2">
+          <span className={`${titreClasses} transition-colors group-hover/t:text-rose`}>
+            {titre}
+          </span>
+          {nombre > 0 && <span className="text-[11px] tabular-nums text-muted">{nombre}</span>}
+        </Link>
+      ) : (
+        <div className="border-b border-line pb-2">
+          <span className={titreClasses}>{titre}</span>
+        </div>
+      )}
+
+      <div
+        className="mt-2 grid grid-flow-col justify-start gap-x-8"
+        style={{ gridTemplateRows: `repeat(${rangs}, auto)` }}
+      >
+        {entrees.map((e) => (
+          <LigneRayon key={e.slug} href={lien(e.nom)} nom={e.nom} nombre={e.nombre} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Le panneau d'un univers : son classement, déplié sur deux étages.
+ *
+ * Un bloc par catégorie de premier niveau, ses sous-catégories dessous. Les
+ * catégories qui n'en ont aucune portent leurs fiches elles-mêmes : elles se
+ * regroupent en fin de panneau plutôt que d'ouvrir chacune un bloc d'une
+ * ligne — c'est ce qui rendrait illisible un catalogue à plat.
+ *
+ * Le panneau se dimensionne sur son contenu (`w-max` côté appelant) : cinq
+ * rayons ne doivent pas ouvrir une carte de mille pixels aux trois quarts
+ * vide. C'est aussi pourquoi les blocs sont en `flex-wrap` et non en grille à
+ * colonnes fixes — une grille réserverait la place de trois colonnes même
+ * quand il n'y a qu'un bloc.
+ *
+ * Le titre d'un bloc mène à `?cat=<son nom>`. La page « /boutique » sait
+ * déplier une catégorie en ses sous-catégories (`components/catalogue.tsx`) ;
+ * « /coin-maman » ne filtre que sur les feuilles, un nom de parente y
+ * retomberait sur « Tout ». D'où `filtrable` : sans lui le titre mène à la
+ * page entière, ce qui est de toute façon ce que « toute la catégorie » veut
+ * dire quand il n'y en a qu'une.
+ */
+function PanneauRayons({
+  href,
+  rayons,
+  filtrable,
+}: {
+  /** La page de l'univers — celle que les liens filtrent. */
+  href: string;
+  rayons: RayonsUnivers;
+  /** Vrai quand la page sait filtrer sur le nom d'une catégorie parente. */
+  filtrable: boolean;
+}) {
+  const { branches, nombre, derniere } = rayons;
+  const lien = (nom: string) => `${href}?cat=${encodeURIComponent(nom)}`;
+
+  return (
+    <div className="overflow-hidden rounded-[26px] border border-line bg-cream shadow-[0_44px_90px_-44px_rgba(36,26,32,.5)]">
+      <div className="flex flex-col gap-7 p-7 lg:flex-row lg:gap-9">
+        {/* ------------------------------------------------ le classement */}
+        <div className="flex flex-wrap gap-x-11 gap-y-7">
+          {blocsDe(branches).map((b) => (
+            <BlocRayon
+              key={b.cle}
+              titre={b.titre}
+              href={b.categorie ? (filtrable ? lien(b.categorie) : href) : null}
+              entrees={b.entrees}
+              nombre={b.nombre}
+              lien={lien}
+            />
+          ))}
+        </div>
+
+        {/* ------------------------------------------------------ la colonne
+            de droite : la dernière arrivée, puis l'entrée sans filtre. La
+            vignette ne coûte aucune requête — `lireEnTeteCatalogue` la ramène
+            avec le décompte, dans le même appel. */}
+        <div className="flex w-full shrink-0 flex-col gap-3.5 border-line lg:ml-auto lg:w-[13.5rem] lg:border-l lg:pl-9">
+          {derniere && (
+            <Link href={`/p/${derniere.slug}`} className="group/n block">
+              <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-stone">
+                {derniere.image && (
+                  <Image
+                    src={derniere.image}
+                    alt={derniere.name}
+                    fill
+                    sizes="216px"
+                    className="object-cover transition-transform duration-700 ease-soft group-hover/n:scale-105"
+                  />
+                )}
+                <span className="absolute left-3 top-3 rounded-full bg-cream/95 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[.12em] text-rose">
+                  Dernière arrivée
+                </span>
+              </div>
+              <div className="mt-2.5 truncate text-[13.5px] font-semibold transition-colors group-hover/n:text-rose">
+                {derniere.name}
+              </div>
+              <div className="text-[13px] tabular-nums text-muted">{formatXOF(derniere.price)}</div>
+            </Link>
+          )}
+
+          <Link
+            href={href}
+            className="group/v mt-auto flex items-center gap-1.5 text-[13px] font-bold text-rose"
+          >
+            {nombre > 0 ? `Voir les ${nombre} pièces` : "Voir tout le rayon"}
+            <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 group-hover/v:translate-x-1" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * La barre du haut, telle qu'elle se dessine.
  *
@@ -61,37 +301,22 @@ const COMPTE = [
  * qui va les chercher sur le serveur. Ici on n'écrit aucune catégorie à la
  * main — elles viennent toutes du back-office.
  */
-/* Les deux univers de la boutique, dans l'ordre de la barre. Chacun a sa page,
-   qui filtre sur `?cat=` par le nom de la sous-catégorie : le menu envoie donc
-   vers `/boutique` ou `/coin-maman` selon l'univers d'où vient le rayon. */
-/* Longueur d'une colonne du panneau. Au-delà, la liste reprend dans la
-   colonne d'à côté — une colonne de trente rayons ferait sortir le panneau de
-   l'écran. Six entrées font une colonne qui se lit d'un regard. */
-const PAR_COLONNE = 6;
-
-const UNIVERS = [
-  { cle: "enfant", label: "Enfants", href: "/boutique" },
-  { cle: "maman", label: "Coin Maman", href: "/coin-maman" },
-] as const;
 
 export function HeaderBarre({
-  rayons,
-  rayonsMaman,
-  nombrePieces,
+  enfant,
+  maman,
 }: {
-  /** Les sous-catégories cliquables du vestiaire enfant, dans l'ordre du back-office. */
-  rayons: LienRayon[];
-  /** Celles du Coin Maman — même découpage, l'autre univers. */
-  rayonsMaman: LienRayon[];
-  /** Les fiches publiées du vestiaire enfant. Zéro tant que rien n'est en ligne. */
-  nombrePieces: number;
+  /** Le vestiaire enfant : son classement, son décompte, sa dernière arrivée. */
+  enfant: RayonsUnivers;
+  /** Le Coin Maman — même découpage, l'autre univers. */
+  maman: RayonsUnivers;
 }) {
-  /* Un univers sans rayon connu — serveur endormi, boutique qui ouvre — ne
-     laisse pas un titre seul : il disparaît du panneau et du tiroir. */
-  const sections = UNIVERS.map((u) => ({
-    ...u,
-    liste: u.cle === "enfant" ? rayons : rayonsMaman,
-  })).filter((u) => u.liste.length > 0);
+  const parUnivers = { enfant, maman };
+  /* Un univers sans rayon connu — serveur endormi, boutique qui ouvre — n'ouvre
+     pas de panneau vide : l'entrée reste un lien simple vers sa page. Seule
+     « /boutique » sait filtrer sur le nom d'une catégorie parente, d'où
+     `filtrable` (voir `PanneauRayons`). */
+  const nombrePieces = enfant.nombre;
   const { count, pulse, openDrawer } = useCart();
   const { account } = useAuth();
   const { count: favoris } = useFavorites();
@@ -118,6 +343,9 @@ export function HeaderBarre({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  /* L'entrée du menu au doigt dont les rayons sont dépliés — une seule à la
+     fois, sinon le tiroir dépasse l'écran et la liste ne se lit plus. */
+  const [replie, setReplie] = useState<string | null>(null);
 
   /* Raccourcis : Ctrl/Cmd+K partout, « / » quand on n'est pas en train d'écrire. */
   useEffect(() => {
@@ -137,8 +365,13 @@ export function HeaderBarre({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  /* Changer de page referme le menu — sinon il reste ouvert par-dessus. */
-  useEffect(() => setMenuOpen(false), [pathname]);
+  /* Changer de page referme le menu — sinon il reste ouvert par-dessus. Le
+     repli suit : rouvrir le tiroir sur une section dépliée d'une page
+     précédente n'aurait pas de sens. */
+  useEffect(() => {
+    setMenuOpen(false);
+    setReplie(null);
+  }, [pathname]);
 
   const actif = (href: string) => pathname === href.split("?")[0] && !href.includes("?");
   const lien = (href: string) =>
@@ -184,84 +417,51 @@ export function HeaderBarre({
 
               {/* --------------------------------- navigation, grand écran */}
               <nav className="hidden items-center justify-center gap-7 lg:flex xl:gap-9">
-                {/* « Boutique » ouvre le rayon complet ; le panneau s'ouvre au
-                    survol et au clavier (focus-within), jamais au clic seul. */}
-                <div className="group">
-                  <Link
-                    href="/boutique"
-                    className={`flex items-center gap-1.5 ${lien("/boutique")} ${
-                      pathname === "/boutique" ? "text-rose" : ""
-                    }`}
-                  >
-                    Boutique
-                    <IconChevron className="h-3 w-3 transition-transform duration-300 group-hover:rotate-180" />
-                  </Link>
+                {NAV.map((n) => {
+                  const rayons = n.univers ? parUnivers[n.univers] : null;
+                  /* Un univers dont on ne connaît aucun rayon — serveur
+                     endormi, boutique qui ouvre — ne déplie rien : l'entrée
+                     reste un lien simple plutôt qu'un panneau vide. */
+                  const deplie = rayons !== null && rayons.branches.length > 0;
 
-                  {/* Le panneau se cale sur la rangée d'en-tête, pas sur
-                      « Boutique » : centré sur le lien, il sortait du cadre par
-                      la gauche dès 1280 px. `-mt-8 pt-8` ménage une bande
-                      transparente entre le lien et la carte — sans elle, la
-                      souris quitte le survol en descendant et le panneau se
-                      referme au milieu du trajet. */}
-                  <div className="pointer-events-none absolute left-1/2 top-full z-40 -mt-8 w-[min(820px,calc(100vw-3rem))] -translate-x-1/2 translate-y-2 pt-8 opacity-0 transition-[opacity,transform] duration-300 ease-soft group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
-                    {/* Deux univers, chacun avec ses sous-catégories — celles que
-                        le back-office tient, jamais une liste écrite ici. Elles
-                        se lisent de haut en bas, comme une liste ; passé
-                        PAR_COLONNE entrées, la liste continue dans la colonne
-                        d'à côté plutôt que de s'allonger. Plus de carte
-                        produit : la place est aux rayons, c'est ce qu'on vient
-                        chercher dans un menu. */}
-                    <div className="rounded-[24px] border border-line bg-cream p-6 shadow-[0_40px_80px_-40px_rgba(36,26,32,.45)]">
-                      {/* Les deux univers côte à côte, chacun sa liste sous son
-                          titre. `flex-wrap` : si la largeur manque — deux listes
-                          longues, écran étroit — le second passe à la ligne
-                          plutôt que d'écraser le premier. */}
-                      <div className="flex flex-wrap gap-x-14 gap-y-6">
-                      {sections.map((u) => (
-                        <div key={u.cle} className="min-w-0">
-                          <Link
-                            href={u.href}
-                            className="text-[11px] font-bold uppercase tracking-[.14em] text-muted transition-colors hover:text-rose"
-                          >
-                            {u.label}
-                          </Link>
-                          <div
-                            className="mt-3 grid grid-flow-col justify-start gap-x-8"
-                            style={{ gridTemplateRows: `repeat(${PAR_COLONNE}, auto)` }}
-                          >
-                            {u.liste.map((r) => (
-                              <Link
-                                key={r.slug}
-                                href={`${u.href}?cat=${encodeURIComponent(r.nom)}`}
-                                className="group/l flex items-center justify-between rounded-lg py-1.5 pr-2 text-[13.5px] font-medium transition-colors hover:text-rose"
-                              >
-                                {r.nom}
-                                <IconArrow className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-all duration-300 group-hover/l:translate-x-0 group-hover/l:opacity-100" />
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      </div>
-
-                      <Link
-                        href="/boutique"
-                        className={`flex items-center gap-1.5 text-[13px] font-bold text-rose ${
-                          sections.length > 0 ? "mt-5" : ""
-                        }`}
-                      >
-                        {nombrePieces > 0 ? `Les ${nombrePieces} pièces` : "Toute la boutique"}
-                        <IconArrow className="h-3.5 w-3.5" />
+                  if (!deplie) {
+                    return (
+                      <Link key={n.label} href={n.href} className={lien(n.href)}>
+                        {n.label}
                       </Link>
-                    </div>
-                  </div>
-                </div>
+                    );
+                  }
 
-                {NAV.map((n) => (
-                  <Link key={n.label} href={n.href} className={lien(n.href)}>
-                    {n.label}
-                  </Link>
-                ))}
+                  return (
+                    /* Le panneau s'ouvre au survol et au clavier
+                       (focus-within), jamais au clic seul : le lien doit
+                       rester un lien. */
+                    <div key={n.label} className="group">
+                      <Link
+                        href={n.href}
+                        className={`flex items-center gap-1.5 ${lien(n.href)}`}
+                        aria-haspopup="true"
+                      >
+                        {n.label}
+                        <IconChevron className="h-3 w-3 transition-transform duration-300 group-hover:rotate-180" />
+                      </Link>
+
+                      {/* Le panneau se cale sur la rangée d'en-tête, pas sur le
+                          lien : centré sur celui-ci, il sortait du cadre par la
+                          gauche dès 1280 px. `-mt-8 pt-8` ménage une bande
+                          transparente entre le lien et la carte — sans elle, la
+                          souris quitte le survol en descendant et le panneau se
+                          referme au milieu du trajet. */}
+                      <div className="pointer-events-none absolute left-1/2 top-full z-40 -mt-8 w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 translate-y-2 pt-8 opacity-0 transition-[opacity,transform] duration-300 ease-soft group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                        <PanneauRayons
+                          href={n.href}
+                          rayons={rayons}
+                          filtrable={n.href === "/boutique"}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </nav>
 
               {/* -------------------------------------- actions, à droite */}
@@ -347,10 +547,19 @@ export function HeaderBarre({
             </div>
 
             {/* ------------------------------------------ menu au doigt, déplié */}
+            {/* Le tiroir défile plutôt que de tronquer : une section dépliée
+                dépasse largement la hauteur d'un téléphone, et les entrées du
+                bas — compte, commandes — deviendraient inatteignables.
+                `overscroll-contain` empêche le défilement de se propager à la
+                page une fois la liste au bout. */}
             <div
-              className={`overflow-hidden transition-[max-height] duration-400 ease-soft lg:hidden ${
-                menuOpen ? "max-h-[44rem]" : "max-h-0"
+              className={`transition-[max-height] duration-400 ease-soft lg:hidden ${
+                menuOpen ? "overflow-y-auto overscroll-contain" : "overflow-hidden"
               }`}
+              /* La hauteur est une mesure, pas une décoration : elle dépend de
+                 l'écran, et une classe utilitaire la figerait. En ligne, elle
+                 reste animable et le tiroir ne dépasse jamais la fenêtre. */
+              style={{ maxHeight: menuOpen ? "80vh" : 0 }}
             >
               <div className="flex flex-col border-t border-line py-2">
                 <Link
@@ -359,34 +568,90 @@ export function HeaderBarre({
                 >
                   Toute la boutique{nombrePieces > 0 ? ` · ${nombrePieces} pièces` : ""}
                 </Link>
-                {NAV.map((n) => (
-                  <Link
-                    key={n.label}
-                    href={n.href}
-                    className="py-3 text-[15px] font-medium text-ink/80 transition-colors hover:text-rose"
-                  >
-                    {n.label}
-                  </Link>
-                ))}
-                {/* Le même découpage qu'en grand : un univers, ses pastilles. */}
-                {sections.map((u) => (
-                  <div key={u.cle} className="mt-2 border-t border-line pt-4">
-                    <div className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">
-                      {u.label}
-                    </div>
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {u.liste.map((r) => (
+                {/* Au doigt, le classement se déplie sur place : l'entrée
+                    reste un lien vers sa page, et le chevron à côté ouvre ses
+                    rayons. Deux gestes distincts, parce qu'ils veulent dire
+                    deux choses — « emmène-moi au rayon » et « montre-moi ce
+                    qu'il contient ». */}
+                {NAV.map((n) => {
+                  const rayons = n.univers ? parUnivers[n.univers] : null;
+                  const deplie = rayons !== null && rayons.branches.length > 0;
+                  const blocs = rayons ? blocsDe(rayons.branches) : [];
+                  const ouvert = replie === n.label;
+
+                  return (
+                    <div key={n.label} className={deplie ? "border-b border-line/70" : ""}>
+                      <div className="flex items-center">
                         <Link
-                          key={r.slug}
-                          href={`${u.href}?cat=${encodeURIComponent(r.nom)}`}
-                          className="rounded-full bg-stone px-3.5 py-1.5 text-[13px] font-medium"
+                          href={n.href}
+                          className="flex-1 py-3 text-[15px] font-medium text-ink/80 transition-colors hover:text-rose"
                         >
-                          {r.nom}
+                          {n.label}
                         </Link>
-                      ))}
+                        {deplie && (
+                          <button
+                            type="button"
+                            onClick={() => setReplie(ouvert ? null : n.label)}
+                            aria-expanded={ouvert}
+                            aria-label={`${ouvert ? "Replier" : "Déplier"} les rayons — ${n.label}`}
+                            className="grid h-11 w-11 place-items-center text-ink/60 transition-colors hover:text-rose"
+                          >
+                            <IconChevron
+                              className={`h-3.5 w-3.5 transition-transform duration-300 ${
+                                ouvert ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
+                        )}
+                      </div>
+
+                      {deplie && (
+                        <div
+                          className={`overflow-hidden transition-[max-height,opacity] duration-400 ease-soft ${
+                            ouvert ? "opacity-100" : "opacity-0"
+                          }`}
+                          /* Même raison : le repli doit pouvoir s'ouvrir sur
+                             une liste de trente rayons comme sur une de deux.
+                             Le tiroir qui l'englobe se charge de défiler. */
+                          style={{ maxHeight: ouvert ? "200vh" : 0 }}
+                        >
+                          <div className="flex flex-col gap-4 pb-4 pl-1">
+                            {blocs.map((b) => (
+                              <div key={b.cle}>
+                                {/* Le titre ne se répète pas quand il n'y a
+                                    qu'un bloc : l'entrée juste au-dessus le
+                                    nomme déjà. */}
+                                {blocs.length > 1 && (
+                                  <div className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">
+                                    {b.titre}
+                                  </div>
+                                )}
+                                <div
+                                  className={`flex flex-wrap gap-2 ${blocs.length > 1 ? "mt-2.5" : ""}`}
+                                >
+                                  {b.entrees.map((r) => (
+                                    <Link
+                                      key={r.slug}
+                                      href={`${n.href}?cat=${encodeURIComponent(r.nom)}`}
+                                      className="rounded-full bg-stone px-3.5 py-1.5 text-[13px] font-medium"
+                                    >
+                                      {r.nom}
+                                      {r.nombre > 0 && (
+                                        <span className="ml-1.5 text-[11px] tabular-nums text-muted">
+                                          {r.nombre}
+                                        </span>
+                                      )}
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Les mêmes raccourcis qu'à droite de la barre, qui n'y tiennent
                     pas au doigt. */}
