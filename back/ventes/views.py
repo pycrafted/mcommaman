@@ -76,7 +76,7 @@ class DevisView(APIView):
     """
     Chiffre un panier sans rien enregistrer.
 
-    Le tunnel l'appelle à chaque changement de zone ou de code : c'est le
+    Le tunnel l'appelle à chaque changement de panier ou de zone : c'est le
     serveur qui annonce le prix, pas le navigateur qui le devine.
     """
 
@@ -101,7 +101,6 @@ class DevisView(APIView):
             devis = chiffrer(
                 lignes,
                 zone=serializer.validated_data.get("zone", "dakar"),
-                code_promo=serializer.validated_data.get("code_promo", ""),
                 cliente=request.user,
             )
         except ErreurTarification as erreur:
@@ -218,7 +217,6 @@ class CommandeViewSet(
             devis = chiffrer(
                 lignes,
                 zone=donnees["zone"],
-                code_promo=donnees.get("code_promo", ""),
                 cliente=request.user,
             )
         except ErreurTarification as erreur:
@@ -237,7 +235,6 @@ class CommandeViewSet(
             sous_total=devis.sous_total,
             frais_livraison=devis.frais_livraison,
             remise=devis.remise,
-            code_promo=devis.code_promo,
             total=devis.total,
             moyen_paiement=donnees["moyen_paiement"],
             statut=Commande.Statut.EN_ATTENTE,

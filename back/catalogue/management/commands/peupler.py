@@ -399,14 +399,14 @@ class Command(BaseCommand):
     def _campagnes(self):
         Campagne.objects.update_or_create(
             libelle="Rentrée des classes",
-            defaults={"code": "RENTREE15", "type": Campagne.Type.POURCENTAGE, "valeur": 15,
+            defaults={"type": Campagne.Type.POURCENTAGE, "valeur": 15,
                       "date_effet": date(2026, 8, 15), "duree_jours": 25,
                       "portee": Campagne.Portee.BOUTIQUE, "active": True,
                       "note": "Offre de rentrée sur la sélection signalée en boutique."},
         )
         Campagne.objects.update_or_create(
             libelle="Bienvenue — première commande",
-            defaults={"code": "BIENVENUE", "type": Campagne.Type.MONTANT, "valeur": 2000,
+            defaults={"type": Campagne.Type.MONTANT, "valeur": 2000,
                       "date_effet": date(2026, 8, 1), "duree_jours": 120,
                       "portee": Campagne.Portee.COMMANDE,
                       "condition": Campagne.Condition.PREMIERE, "active": True,

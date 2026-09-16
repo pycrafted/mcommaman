@@ -127,70 +127,81 @@ class StockCommandeTest(APITestCase):
         self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class CodePromoTest(APITestCase):
+class RemiseDeCommandeTest(APITestCase):
+    """Pas de code à saisir : une campagne de commande s'applique d'elle-même."""
+
     def setUp(self):
         self.variante = fabriquer_variante(prix=10000, stock=10)
-        aujourdhui = timezone.localdate()
-        self.valide = Campagne.objects.create(
-            libelle="Rentrée", code="RENTREE15", type=Campagne.Type.POURCENTAGE, valeur=15,
-            date_effet=aujourdhui, duree_jours=30, portee=Campagne.Portee.BOUTIQUE, active=True,
-        )
-        self.expiree = Campagne.objects.create(
-            libelle="Ancienne", code="VIEUX", type=Campagne.Type.POURCENTAGE, valeur=20,
-            date_effet=aujourdhui - timedelta(days=60), duree_jours=10, active=True,
-        )
 
-    def test_un_code_valide_reduit_le_total(self):
+    def _campagne(self, **kwargs):
+        defauts = {
+            "libelle": "Bienvenue", "type": Campagne.Type.MONTANT, "valeur": 2000,
+            "date_effet": timezone.localdate(), "duree_jours": 90,
+            "portee": Campagne.Portee.COMMANDE, "condition": Campagne.Condition.PREMIERE,
+            "active": True,
+        }
+        return Campagne.objects.create(**{**defauts, **kwargs})
+
+    def test_un_code_envoye_n_est_meme_pas_lu(self):
         reponse = self.client.post(reverse("commande-list"),
                                    commande_type(self.variante, code_promo="RENTREE15"),
                                    format="json")
-        self.assertEqual(reponse.data["remise"], 1500)
-        self.assertEqual(reponse.data["total"], 10000 + 2000 - 1500)
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(reponse.data["remise"], 0)
 
-    def test_un_code_inexistant_est_refuse(self):
-        reponse = self.client.post(reverse("commande-list"),
-                                   commande_type(self.variante, code_promo="INVENTE"),
-                                   format="json")
-        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_le_montant_minimum_declenche_la_remise(self):
+        self._campagne(condition=Campagne.Condition.MONTANT_MINIMUM, montant_minimum=15000,
+                       type=Campagne.Type.POURCENTAGE, valeur=10)
+        petite = self.client.post(reverse("commande-list"),
+                                  commande_type(self.variante, quantite=1), format="json")
+        self.assertEqual(petite.data["remise"], 0)
+        grande = self.client.post(reverse("commande-list"),
+                                  commande_type(self.variante, quantite=2), format="json")
+        self.assertEqual(grande.data["remise"], 2000)
+        # Livraison Dakar payante sous le franco : 2 000 F.
+        self.assertEqual(grande.data["total"], 20000 + 2000 - 2000)
 
-    def test_un_code_expire_est_refuse(self):
-        reponse = self.client.post(reverse("commande-list"),
-                                   commande_type(self.variante, code_promo="VIEUX"),
-                                   format="json")
-        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("expiré", reponse.data["detail"])
-
-    def test_le_code_premiere_commande_exige_un_compte(self):
-        Campagne.objects.create(
-            libelle="Bienvenue", code="BIENVENUE", type=Campagne.Type.MONTANT, valeur=2000,
-            date_effet=timezone.localdate(), duree_jours=90,
-            portee=Campagne.Portee.COMMANDE, condition=Campagne.Condition.PREMIERE, active=True,
-        )
+    def test_la_premiere_commande_exige_un_compte(self):
+        self._campagne()
         anonyme = self.client.post(reverse("commande-list"),
-                                   commande_type(self.variante, code_promo="BIENVENUE"),
-                                   format="json")
-        self.assertEqual(anonyme.status_code, status.HTTP_400_BAD_REQUEST)
+                                   commande_type(self.variante), format="json")
+        self.assertEqual(anonyme.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(anonyme.data["remise"], 0)
 
-    def test_le_code_premiere_commande_ne_sert_qu_une_fois(self):
-        Campagne.objects.create(
-            libelle="Bienvenue", code="BIENVENUE", type=Campagne.Type.MONTANT, valeur=2000,
-            date_effet=timezone.localdate(), duree_jours=90,
-            portee=Campagne.Portee.COMMANDE, condition=Campagne.Condition.PREMIERE, active=True,
-        )
+    def test_la_remise_de_premiere_commande_ne_sert_qu_une_fois(self):
+        self._campagne()
         cliente = Utilisateur.objects.create_user(
             email="fidele@test.sn", nom="Fidèle", password="motdepasse123"
         )
         self.client.force_authenticate(cliente)
         premiere = self.client.post(reverse("commande-list"),
-                                    commande_type(self.variante, code_promo="BIENVENUE"),
-                                    format="json")
+                                    commande_type(self.variante), format="json")
         self.assertEqual(premiere.status_code, status.HTTP_201_CREATED)
         self.assertEqual(premiere.data["remise"], 2000)
 
         seconde = self.client.post(reverse("commande-list"),
-                                   commande_type(self.variante, code_promo="BIENVENUE"),
-                                   format="json")
-        self.assertEqual(seconde.status_code, status.HTTP_400_BAD_REQUEST)
+                                   commande_type(self.variante), format="json")
+        self.assertEqual(seconde.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(seconde.data["remise"], 0)
+
+    def test_une_campagne_expiree_ne_remise_rien(self):
+        self._campagne(condition=Campagne.Condition.MONTANT_MINIMUM, montant_minimum=0,
+                       date_effet=timezone.localdate() - timedelta(days=60), duree_jours=10)
+        reponse = self.client.post(reverse("commande-list"),
+                                   commande_type(self.variante), format="json")
+        self.assertEqual(reponse.data["remise"], 0)
+
+    def test_le_devis_nomme_la_campagne(self):
+        self._campagne(libelle="Panier généreux", condition=Campagne.Condition.MONTANT_MINIMUM,
+                       montant_minimum=0)
+        reponse = self.client.post(
+            reverse("devis"),
+            {"lignes": [{"variante": self.variante.pk, "quantite": 1}], "zone": "dakar"},
+            format="json",
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+        self.assertEqual(reponse.data["remise"], 2000)
+        self.assertEqual(reponse.data["remise_libelle"], "Panier généreux")
 
 
 class PaiementLivraisonTest(APITestCase):
@@ -250,15 +261,15 @@ class CampagnesAnnonceesTest(APITestCase):
     def setUp(self):
         aujourdhui = timezone.localdate()
         self.courante = Campagne.objects.create(
-            libelle="Rentrée des classes", code="RENTREE15", valeur=15,
+            libelle="Rentrée des classes", valeur=15,
             date_effet=aujourdhui - timedelta(days=1), duree_jours=10,
         )
         Campagne.objects.create(
-            libelle="Campagne finie", code="FINIE", valeur=10,
+            libelle="Campagne finie", valeur=10,
             date_effet=aujourdhui - timedelta(days=40), duree_jours=5,
         )
         Campagne.objects.create(
-            libelle="Campagne éteinte", code="ETEINTE", valeur=10,
+            libelle="Campagne éteinte", valeur=10,
             date_effet=aujourdhui, duree_jours=10, active=False,
         )
 
@@ -273,7 +284,7 @@ class CampagnesAnnonceesTest(APITestCase):
         self.courante.save()
         annonce = self.client.get(reverse("campagne-publique-list")).data[0]
         self.assertNotIn("note", annonce)
-        self.assertEqual(annonce["code"], "RENTREE15")
+        self.assertNotIn("code", annonce)
         self.assertEqual(annonce["valeur"], 15)
 
 

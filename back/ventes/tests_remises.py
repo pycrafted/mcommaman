@@ -2,7 +2,7 @@
 Ce que le moteur de remises doit garantir.
 
 Les tests portent sur les règles commerciales, pas sur le code : une campagne
-qui court baisse le prix, une campagne à code ne s'applique pas toute seule, et
+qui court baisse le prix, une campagne de commande ne touche pas aux prix, et
 la caisse facture exactement ce que la boutique affiche.
 
     python manage.py test ventes.tests_remises
@@ -68,11 +68,6 @@ class MoteurRemisesTest(TestCase):
     def test_une_campagne_visant_un_autre_rayon_ne_s_applique_pas(self):
         ailleurs = Rayon.objects.create(nom="Chaussures", slug="chaussures")
         self._campagne(portee=Campagne.Portee.RAYON, rayon=ailleurs, valeur=50)
-        self.assertEqual(prix_effectif(self.produit), 12_000)
-
-    def test_une_campagne_a_code_ne_s_applique_pas_toute_seule(self):
-        """Le code est ce qui la déclenche : l'offrir d'office la viderait de son sens."""
-        self._campagne(code="SOLDES20", valeur=20)
         self.assertEqual(prix_effectif(self.produit), 12_000)
 
     def test_une_campagne_de_commande_ne_touche_pas_aux_prix(self):

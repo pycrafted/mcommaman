@@ -73,7 +73,6 @@ class Commande(models.Model):
     sous_total = models.PositiveIntegerField(validators=[MinValueValidator(0)])
     frais_livraison = models.PositiveIntegerField(default=0)
     remise = models.PositiveIntegerField(default=0)
-    code_promo = models.CharField(max_length=32, blank=True)
     total = models.PositiveIntegerField(validators=[MinValueValidator(0)])
 
     moyen_paiement = models.CharField(max_length=6, choices=Paiement.choices)
@@ -209,6 +208,10 @@ class Campagne(models.Model):
     La fin se calcule à partir de la date d'effet et de la durée : c'est la
     saisie du back-office, et elle évite les campagnes qui finissent avant de
     commencer.
+
+    La boutique n'a pas de code de réduction : une campagne s'applique
+    d'elle-même tant qu'elle court, et celle « sur la commande » dès que sa
+    condition est remplie.
     """
 
     class Type(models.TextChoices):
@@ -226,10 +229,6 @@ class Campagne(models.Model):
         MONTANT_MINIMUM = "montant_minimum", "À partir d'un montant"
 
     libelle = models.CharField(max_length=120)
-    code = models.CharField(
-        max_length=32, blank=True, unique=True, null=True,
-        help_text="Laisser vide pour une remise appliquée sans code",
-    )
     type = models.CharField(max_length=12, choices=Type.choices, default=Type.POURCENTAGE)
     valeur = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 

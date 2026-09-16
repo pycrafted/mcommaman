@@ -1,17 +1,13 @@
 """
 Ce que coûte un article aujourd'hui.
 
-Une campagne de portée « boutique », « rayon » ou « produit » n'est pas un code
-à saisir : elle s'applique d'elle-même tant qu'elle court. Ce module est le seul
+Une campagne de portée « boutique », « rayon » ou « produit » s'applique
+d'elle-même tant qu'elle court — la boutique n'a pas de code à saisir. Ce module est le seul
 endroit qui décide du prix affiché, et `ventes.tarification` l'appelle avant de
 chiffrer un panier — sinon la boutique annoncerait 9 600 F et la caisse en
 demanderait 12 000.
 
-Trois règles tiennent tout :
-
-**Une campagne qui porte un code ne s'applique jamais toute seule.** Le code est
-précisément ce qui la déclenche ; l'appliquer d'office reviendrait à l'offrir à
-qui ne le connaît pas.
+Deux règles tiennent tout :
 
 **La portée « commande » ne touche pas aux prix.** Elle remise un panier entier,
 pas un article — c'est `tarification.chiffrer` qui s'en occupe.
@@ -55,12 +51,9 @@ def campagnes_automatiques():
     Renvoie une liste, pas un `QuerySet` : elle est parcourue une fois par
     article et on ne veut pas la redemander à la base à chaque fois.
     """
-    from django.db.models import Q
-
     aujourdhui = timezone.localdate()
     candidates = (
         Campagne.objects.filter(active=True)
-        .filter(Q(code__isnull=True) | Q(code=""))
         .exclude(portee=Campagne.Portee.COMMANDE)
         .select_related("rayon", "produit")
     )

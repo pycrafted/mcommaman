@@ -36,7 +36,7 @@ class CommandeSerializer(serializers.ModelSerializer):
             "reference", "creee_le", "statut", "statut_cliente",
             "nom_client", "telephone", "email",
             "zone", "ville", "adresse", "notes",
-            "sous_total", "frais_livraison", "remise", "code_promo", "total",
+            "sous_total", "frais_livraison", "remise", "total",
             "moyen_paiement", "moyen_paiement_libelle", "lignes",
         ]
 
@@ -78,7 +78,6 @@ class CreationCommandeSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 
     moyen_paiement = serializers.ChoiceField(choices=Commande.Paiement.choices)
-    code_promo = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate(self, donnees):
         # Le paiement à la livraison n'existe que sur Dakar. La base porte la
@@ -109,7 +108,8 @@ class DevisSerializer(serializers.Serializer):
     sous_total = serializers.IntegerField()
     frais_livraison = serializers.IntegerField()
     remise = serializers.IntegerField()
-    code_promo = serializers.CharField()
+    # Le nom de la campagne qui fait la remise, pour la nommer au récapitulatif.
+    remise_libelle = serializers.CharField(source="campagne.libelle", default="")
     total = serializers.IntegerField()
 
 
@@ -120,7 +120,7 @@ class CampagneSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campagne
         fields = [
-            "id", "libelle", "code", "type", "valeur", "date_effet", "duree_jours",
+            "id", "libelle", "type", "valeur", "date_effet", "duree_jours",
             "date_fin", "en_cours", "portee", "rayon", "produit",
             "condition", "montant_minimum", "active", "note",
         ]
@@ -131,9 +131,8 @@ class CampagnePubliqueSerializer(serializers.ModelSerializer):
     Une campagne telle que la boutique l'annonce.
 
     Ni la note interne ni la portée technique : de quoi écrire un bandeau et
-    faire tourner un compte à rebours. Le code y figure — c'est fait pour être
-    tapé —, et la condition avec, sinon la cliente découvre à la caisse que la
-    remise ne la concernait pas.
+    faire tourner un compte à rebours. La condition y figure, sinon la cliente
+    découvre à la caisse que la remise ne la concernait pas.
     """
 
     date_fin = serializers.DateField(read_only=True)
@@ -143,7 +142,7 @@ class CampagnePubliqueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campagne
         fields = [
-            "libelle", "code", "type", "valeur", "date_fin",
+            "libelle", "type", "valeur", "date_fin",
             "portee", "rayon_nom", "produit_slug",
             "condition", "montant_minimum",
         ]

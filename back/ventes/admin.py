@@ -32,9 +32,9 @@ class CommandeAdmin(admin.ModelAdmin):
 
 @admin.register(Campagne)
 class CampagneAdmin(admin.ModelAdmin):
-    list_display = ["libelle", "code", "type", "valeur", "date_effet", "duree_jours", "portee", "active"]
+    list_display = ["libelle", "type", "valeur", "date_effet", "duree_jours", "portee", "active"]
     list_filter = ["type", "portee", "active"]
-    search_fields = ["libelle", "code"]
+    search_fields = ["libelle"]
 
 
 @admin.register(Avis)

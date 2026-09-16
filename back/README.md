@@ -109,13 +109,23 @@ appelle d'abord `GET /api/compte/csrf/`, puis toutes ses requêtes avec
 .venv\Scripts\python.exe manage.py test
 ```
 
-Cent trois tests, qui décrivent des règles et non du code : un brouillon reste
+Cent cinquante-deux tests, qui décrivent des règles et non du code : un brouillon reste
 invisible même en connaissant son adresse, une fiche incomplète ne se publie pas
 — y compris en passant par `PATCH` plutôt que par l'action dédiée —, une
 cliente ne voit pas le carnet d'adresses d'une autre, le message d'erreur de
 connexion ne révèle pas quelles adresses ont un compte, un ajustement de stock
 laisse toujours une trace, un total envoyé par le navigateur n'est jamais lu,
-un code de réduction expiré est refusé, et une annulation remet le stock.
+une campagne expirée ne remise rien, et une annulation remet le stock.
+
+## Les remises
+
+La boutique n'a **pas de code de réduction**. Une campagne de portée boutique,
+rayon ou produit baisse le prix affiché tant qu'elle court (`ventes/remises.py`).
+Une campagne « sur la commande » s'applique à la caisse dès que sa condition est
+remplie (`ventes/tarification.py`) : montant minimum atteint, ou première
+commande d'une cliente connectée. Plusieurs campagnes ne se cumulent pas — la
+cliente garde la plus avantageuse. Un `code_promo` envoyé par un ancien client
+n'est même pas lu.
 
 ## Les commandes
 

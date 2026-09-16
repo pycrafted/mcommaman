@@ -39,12 +39,11 @@ class Devis:
     sous_total: int = 0
     frais_livraison: int = 0
     remise: int = 0
-    code_promo: str = ""
     total: int = 0
     campagne: Campagne | None = None
 
 
-def chiffrer(lignes_demandees, zone: str, code_promo: str = "", cliente=None) -> Devis:
+def chiffrer(lignes_demandees, zone: str, cliente=None) -> Devis:
     """
     Chiffre un panier.
 
@@ -85,51 +84,44 @@ def chiffrer(lignes_demandees, zone: str, code_promo: str = "", cliente=None) ->
     devis.sous_total = sum(ligne.sous_total for ligne in devis.lignes)
     devis.frais_livraison = reglages.frais_pour(zone, devis.sous_total)
 
-    if code_promo:
-        devis.campagne = _campagne_valide(code_promo, devis.sous_total, cliente)
+    devis.campagne = _campagne_de_commande(devis.sous_total, cliente)
+    if devis.campagne:
         devis.remise = _remise(devis.campagne, devis.sous_total)
-        devis.code_promo = devis.campagne.code
 
     devis.total = max(0, devis.sous_total + devis.frais_livraison - devis.remise)
     return devis
 
 
-def _campagne_valide(code: str, sous_total: int, cliente) -> Campagne:
+def _campagne_de_commande(sous_total: int, cliente) -> Campagne | None:
     """
-    Retrouve la campagne et vérifie qu'elle s'applique vraiment.
+    La meilleure remise « sur la commande » à laquelle ce panier a droit.
 
-    Existence, fenêtre de validité, et la condition posée à la saisie : première
-    commande ou montant minimum. Le front affichait la remise sans rien vérifier.
+    Il n'y a pas de code à saisir : une campagne de commande en cours
+    s'applique dès que sa condition est remplie. Première commande : il faut un
+    compte, sans quoi rien ne dit que ce n'est pas la dixième. Montant minimum :
+    le sous-total doit l'atteindre. Plusieurs campagnes ne se cumulent pas — la
+    cliente garde la plus avantageuse.
     """
-    try:
-        campagne = Campagne.objects.get(code__iexact=code.strip(), active=True)
-    except Campagne.DoesNotExist:
-        raise ErreurTarification("Ce code de réduction n'existe pas.")
-
     aujourdhui = timezone.localdate()
-    if aujourdhui < campagne.date_effet:
-        raise ErreurTarification("Ce code n'est pas encore actif.")
-    if aujourdhui > campagne.date_fin:
-        raise ErreurTarification("Ce code a expiré.")
+    candidates = [
+        c for c in Campagne.objects.filter(active=True, portee=Campagne.Portee.COMMANDE)
+        if c.date_effet <= aujourdhui <= c.date_fin
+    ]
+    if not candidates:
+        return None
 
-    if campagne.portee == Campagne.Portee.COMMANDE:
+    connue = cliente is not None and cliente.is_authenticated
+    premiere = connue and not Commande.objects.filter(cliente=cliente).exists()
+
+    eligibles = []
+    for campagne in candidates:
         if campagne.condition == Campagne.Condition.MONTANT_MINIMUM:
-            if sous_total < campagne.montant_minimum:
-                raise ErreurTarification(
-                    f"Ce code s'applique à partir de {campagne.montant_minimum:,} F."
-                    .replace(",", " ")
-                )
-        elif campagne.condition == Campagne.Condition.PREMIERE:
-            # Sans compte, on ne peut pas savoir si c'est une première commande :
-            # on refuse plutôt que d'offrir la remise à chaque visiteur anonyme.
-            if cliente is None or not cliente.is_authenticated:
-                raise ErreurTarification(
-                    "Ce code est réservé à la première commande : connectez-vous pour en profiter."
-                )
-            if Commande.objects.filter(cliente=cliente).exists():
-                raise ErreurTarification("Ce code est réservé à la première commande.")
+            if sous_total >= campagne.montant_minimum:
+                eligibles.append(campagne)
+        elif campagne.condition == Campagne.Condition.PREMIERE and premiere:
+            eligibles.append(campagne)
 
-    return campagne
+    return max(eligibles, key=lambda c: _remise(c, sous_total), default=None)
 
 
 def _remise(campagne: Campagne, sous_total: int) -> int:
