@@ -373,7 +373,6 @@ export type CommandeApi = {
   sous_total: number;
   frais_livraison: number;
   remise: number;
-  code_promo: string;
   total: number;
   moyen_paiement: "wave" | "om" | "cb" | "cod";
   moyen_paiement_libelle: string;
@@ -385,7 +384,8 @@ export type DevisApi = {
   sous_total: number;
   frais_livraison: number;
   remise: number;
-  code_promo: string;
+  /** Le nom de la campagne qui fait la remise, vide sans remise. */
+  remise_libelle: string;
   total: number;
 };
 
@@ -394,13 +394,12 @@ export type DevisApi = {
 /**
  * Une campagne telle que la boutique l'annonce.
  *
- * `code` vide veut dire que la remise s'applique d'elle-même ; sinon c'est ce
- * mot qu'il faut taper à la caisse. `condition` ne compte que pour une remise
- * de commande — première commande, ou montant minimum.
+ * Il n'y a pas de code à taper : une campagne s'applique d'elle-même.
+ * `condition` ne compte que pour une remise de commande — première commande,
+ * ou montant minimum.
  */
 export type CampagneApi = {
   libelle: string;
-  code: string | null;
   type: "pourcentage" | "montant";
   valeur: number;
   /** Dernier jour inclus. C'est la date que lit le compte à rebours. */

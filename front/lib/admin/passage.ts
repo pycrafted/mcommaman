@@ -229,7 +229,6 @@ export function versMembre(brut: MembreApi): TeamMember {
 export type CampagneApi = {
   id: number;
   libelle: string;
-  code: string | null;
   type: "pourcentage" | "montant";
   valeur: number;
   date_effet: string;

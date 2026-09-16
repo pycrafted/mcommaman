@@ -76,10 +76,8 @@ export interface Order {
   lines: OrderLine[];
   subtotal: number;
   shipping: number;
-  /** Remise appliquée, 0 sans code. */
+  /** Remise appliquée par une campagne, 0 sans remise. */
   discount: number;
-  /** Le code retenu par le serveur, chaîne vide sans code. */
-  promoCode: string;
   total: number;
   customer: { name: string; phone: string; email: string };
   delivery: { zone: ZoneKey; city: string; address: string; notes: string };
@@ -97,7 +95,6 @@ export type CommandeADeposer = {
   adresse: string;
   notes: string;
   moyen_paiement: MethodKey;
-  code_promo: string;
 };
 
 type Resultat = { ok: boolean; error?: string };
@@ -147,7 +144,6 @@ export function versCommande(brut: CommandeApi): Order {
     subtotal: brut.sous_total,
     shipping: brut.frais_livraison,
     discount: brut.remise,
-    promoCode: brut.code_promo,
     total: brut.total,
     customer: { name: brut.nom_client, phone: brut.telephone, email: brut.email },
     delivery: {

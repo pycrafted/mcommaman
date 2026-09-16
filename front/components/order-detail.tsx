@@ -216,7 +216,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
             </div>
             {commande.discount > 0 && (
               <div className="flex justify-between text-[#2e7d52]">
-                <dt>Code {commande.promoCode}</dt>
+                <dt>Remise</dt>
                 <dd className="tabular-nums">−{formatXOF(commande.discount)}</dd>
               </div>
             )}

@@ -581,9 +581,7 @@ export function Home({
               </Link>
             </Magnetic>
             <span className="text-[12.5px] text-white/55">
-              Jusqu&apos;au {jusquAu(campagne.date_fin)}
-              {campagne.code ? ` avec le code ${campagne.code}` : ""}, dans la limite des
-              stocks.
+              Jusqu&apos;au {jusquAu(campagne.date_fin)}, dans la limite des stocks.
             </span>
           </div>
         </Reveal>
@@ -820,10 +818,6 @@ export function Home({
               Horaires
             </span>
             <span className="mt-1 text-[14.5px] font-semibold">Lundi au samedi, 9 h – 19 h</span>
-            <p className="mt-4 text-[13px] leading-relaxed text-muted">
-              Retrait sur place sur rendez-vous : prévenez sur WhatsApp avant de passer, la pièce
-              est mise de côté.
-            </p>
             <a
               href={MAPS_URL}
               target="_blank"
@@ -845,11 +839,6 @@ export function Home({
             />
           </div>
         </div>
-
-        <p className="mx-auto mt-6 max-w-[46ch] text-[13px] text-muted">
-          Les pièces sont photographiées dès leur arrivée sur Instagram : beaucoup partent avant
-          même d&apos;être en ligne.
-        </p>
       </Reveal>
       </div>
 

@@ -77,8 +77,8 @@ export const METHODS: {
 
 export const methodOf = (key: MethodKey) => METHODS.find((m) => m.k === key) ?? METHODS[0];
 
-/* Les codes de réduction ne sont plus listés ici.
+/* La boutique n'a pas de code de réduction.
    Une campagne vit en base, avec sa fenêtre de validité, sa portée et sa
-   condition — première commande, montant minimum. C'est `/api/devis/` qui dit
-   si un code s'applique et ce qu'il retire ; le navigateur ne peut plus
-   s'accorder une remise en tapant le bon mot. */
+   condition — première commande, montant minimum — et s'applique d'elle-même.
+   C'est `/api/devis/` qui dit ce qu'elle retire ; le navigateur n'en décide
+   rien. */

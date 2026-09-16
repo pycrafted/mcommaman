@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatXOF } from "@/lib/format";
-import { ErreurApi, envoyer, type DevisApi } from "@/lib/api";
+import { envoyer, type DevisApi } from "@/lib/api";
 import {
   METHODS,
   ZONES,
@@ -45,11 +45,6 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   const [tente, setTente] = useState(false);
   const [envoi, setEnvoi] = useState(false);
 
-  const [codeSaisi, setCodeSaisi] = useState("");
-  /* Le code retenu par le serveur, pas celui qu'on a tapé : c'est lui qui dit
-     si la campagne existe, si elle court encore et ce qu'elle retire. */
-  const [codeApplique, setCodeApplique] = useState("");
-  const [codeErreur, setCodeErreur] = useState<string | null>(null);
   const [erreurCaisse, setErreurCaisse] = useState<string | null>(null);
 
   /* Le chiffrage vient de `/api/devis/`. Tant qu'il n'est pas revenu — premier
@@ -87,14 +82,14 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
 
   /* L'estimation locale, le temps que le serveur réponde. Elle applique la
      même règle que `Reglages.frais_pour`, mais n'engage rien : aucune remise
-     n'y figure, un code ne se vérifie pas dans le navigateur. */
+     n'y figure, seul le serveur les connaît. */
   const estimation = useMemo<DevisApi>(() => {
     const frais = subtotal >= francoDeZone(reglages, z.key) ? 0 : fraisDeZone(reglages, z.key);
     return {
       sous_total: subtotal,
       frais_livraison: subtotal > 0 ? frais : 0,
       remise: 0,
-      code_promo: "",
+      remise_libelle: "",
       total: Math.max(0, subtotal + (subtotal > 0 ? frais : 0)),
     };
   }, [reglages, subtotal, z.key]);
@@ -113,7 +108,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   /**
    * Demande le chiffrage au serveur.
    *
-   * Rejoué à chaque changement de panier, de zone ou de code. Le nettoyage
+   * Rejoué à chaque changement de panier ou de zone. Le nettoyage
    * écarte les réponses arrivées dans le désordre : sans lui, un vieux devis
    * pouvait recouvrir le bon et afficher les frais de la zone précédente.
    */
@@ -128,7 +123,6 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
         const reponse = await envoyer<DevisApi>("/api/devis/", "POST", {
           lignes: lignesDemandees,
           zone: z.key,
-          code_promo: codeApplique,
         });
         if (vivant) setDevis(reponse);
       } catch {
@@ -140,7 +134,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
     return () => {
       vivant = false;
     };
-  }, [lignesDemandees, z.key, codeApplique]);
+  }, [lignesDemandees, z.key]);
 
   const erreurs = useMemo(() => {
     const liste: Partial<Record<Champ, string>> = {};
@@ -158,33 +152,6 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   const toucher = (champ: Champ) => setTouches((s) => new Set(s).add(champ));
   const erreurDe = (champ: Champ) => (tente || touches.has(champ) ? erreurs[champ] : undefined);
   const valideDe = (champ: Champ) => (tente || touches.has(champ)) && !erreurs[champ];
-
-  /**
-   * Vérifie le code auprès du serveur.
-   *
-   * Le navigateur ne connaît plus la liste des codes : il demande un devis avec
-   * celui qu'on a saisi. Si la campagne n'existe pas, a expiré ou ne s'applique
-   * pas à ce panier, c'est le serveur qui le dit — et il le dit en français.
-   */
-  const appliquerCode = async () => {
-    const code = codeSaisi.trim().toUpperCase();
-    if (!code || lignesDemandees.length === 0) return;
-    setCodeErreur(null);
-    try {
-      const reponse = await envoyer<DevisApi>("/api/devis/", "POST", {
-        lignes: lignesDemandees,
-        zone: z.key,
-        code_promo: code,
-      });
-      setDevis(reponse);
-      setCodeApplique(reponse.code_promo || code);
-    } catch (erreur) {
-      setCodeApplique("");
-      setCodeErreur(
-        erreur instanceof ErreurApi ? erreur.message : "Ce code n'a pas pu être vérifié.",
-      );
-    }
-  };
 
   const valider = async () => {
     if (lignes.length === 0) return;
@@ -229,11 +196,10 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
       adresse: repere.trim(),
       notes: instructions.trim(),
       moyen_paiement: method,
-      code_promo: codeApplique,
     });
 
     if (!resultat.ok || !resultat.order) {
-      /* Rupture pendant la saisie, code expiré entre-temps, caisse fermée : le
+      /* Rupture pendant la saisie, caisse fermée : le
          panier est laissé intact et le refus est dit tel que le serveur l'a
          formulé. Le vider ici ferait perdre la sélection pour rien. */
       setEnvoi(false);
@@ -563,21 +529,11 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
               <span>Livraison {z.short}</span>
               <span>{shipping === 0 ? "Offerte" : formatXOF(shipping)}</span>
             </div>
-            {codeApplique && (
+            {/* Pas de code à saisir : une remise ne vient que d'une campagne
+                que le serveur applique de lui-même. */}
+            {discount > 0 && (
               <div className="flex justify-between text-[#2e7d52]">
-                <span>
-                  Code {codeApplique}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCodeApplique("");
-                      setCodeSaisi("");
-                    }}
-                    className="ml-2 text-[12px] text-muted underline underline-offset-2"
-                  >
-                    retirer
-                  </button>
-                </span>
+                <span>{chiffrage.remise_libelle || "Remise"}</span>
                 <span className="tabular-nums">−{formatXOF(discount)}</span>
               </div>
             )}
@@ -586,39 +542,6 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
               <span className="tabular-nums">{formatXOF(total)}</span>
             </div>
           </div>
-
-          {/* La remise ne s'applique plus d'office : il faut saisir le code, comme
-              il faudra le faire valider côté serveur. */}
-          {!codeApplique && (
-            <div className="mt-5">
-              <div className="flex gap-2">
-                <input
-                  value={codeSaisi}
-                  onChange={(e) => {
-                    setCodeSaisi(e.target.value);
-                    setCodeErreur(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void appliquerCode();
-                  }}
-                  placeholder="Code de réduction"
-                  aria-label="Code de réduction"
-                  className="w-full min-w-0 rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3 text-sm uppercase outline-none transition-colors placeholder:normal-case placeholder:text-[#b3a5aa] focus:border-rose"
-                />
-                <button
-                  type="button"
-                  onClick={() => void appliquerCode()}
-                  disabled={!codeSaisi.trim() || lignes.length === 0}
-                  className="shrink-0 rounded-2xl border-[1.5px] border-[#e5d9de] px-4 text-[13px] font-bold transition-colors duration-300 hover:border-rose hover:text-rose disabled:opacity-40"
-                >
-                  Appliquer
-                </button>
-              </div>
-              {codeErreur && (
-                <p className="mt-1.5 text-[11.5px] font-semibold text-rose-deep">{codeErreur}</p>
-              )}
-            </div>
-          )}
 
           <button
             onClick={() => void valider()}

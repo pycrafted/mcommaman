@@ -104,18 +104,9 @@ export function ProductDetail({
     },
   ];
 
-  /* Les vraies photos quand la fiche en porte plusieurs ; sinon les repères de
-     la maquette, en attendant la séance photo. */
-  const photos = fiche.photos?.length ? fiche.photos : [product.image];
-  const gallery =
-    photos.length > 1
-      ? photos.slice(0, 4).map((image) => ({ image, label: "" }))
-      : [
-          { image: product.image, label: "" },
-          { image: null, label: "vue dos" },
-          { image: null, label: "détail tissu" },
-          { image: null, label: "porté" },
-        ];
+  /* Seulement les photos qui existent : pas de case vide en attendant une
+     séance photo. Une fiche d'une seule photo n'affiche aucune miniature. */
+  const gallery = (fiche.photos?.length ? fiche.photos : [product.image]).filter(Boolean);
 
   const [principale, setPrincipale] = useState(0);
 
@@ -132,26 +123,29 @@ export function ProductDetail({
 
       <div className="grid grid-cols-[1.05fr_.95fr] gap-14 pt-5">
         <div>
+          {/* Les autres photos se posent en miniatures sur la grande, en bas à
+              gauche : elles ne repoussent plus le reste de la page. */}
           <div
-            className="aspect-4/5 rounded-3xl bg-stone bg-cover bg-center"
-            style={{ backgroundImage: `url(${gallery[principale]?.image ?? product.image})` }}
-          />
-          <div className="mt-3 grid grid-cols-4 gap-3">
-            {gallery.map((g, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => g.image && setPrincipale(i)}
-                aria-label={g.image ? `Voir la photo ${i + 1}` : g.label}
-                className="flex aspect-square items-end rounded-2xl bg-stone bg-cover bg-center p-2.5"
-                style={{
-                  backgroundImage: g.image ? `url(${g.image})` : undefined,
-                  boxShadow: i === principale ? "0 0 0 2px #241a20" : undefined,
-                }}
-              >
-                <span className="text-[10px] font-semibold leading-tight text-[#a2939a]">{g.label}</span>
-              </button>
-            ))}
+            className="relative aspect-4/5 rounded-3xl bg-stone bg-cover bg-center"
+            style={{ backgroundImage: `url(${gallery[principale] ?? product.image})` }}
+          >
+            {gallery.length > 1 && (
+              <div className="absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] gap-2 overflow-x-auto rounded-2xl bg-white/80 p-1.5 shadow-[0_10px_30px_-12px_rgba(36,26,32,.35)] backdrop-blur">
+                {gallery.map((image, i) => (
+                  <button
+                    key={image + i}
+                    type="button"
+                    onClick={() => setPrincipale(i)}
+                    aria-label={`Voir la photo ${i + 1}`}
+                    aria-pressed={i === principale}
+                    className={`h-16 w-14 shrink-0 rounded-xl bg-stone bg-cover bg-center transition-all duration-300 ${
+                      i === principale ? "ring-2 ring-ink" : "opacity-70 hover:opacity-100"
+                    }`}
+                    style={{ backgroundImage: `url(${image})` }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

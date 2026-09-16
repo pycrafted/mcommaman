@@ -149,10 +149,10 @@ elle remet le stock, et le refus au-delà est expliqué.
 
 Le tunnel (`components/checkout.tsx`) valide toujours la saisie — nom, téléphone, quartier et
 point de repère obligatoires, e-mail facultatif mais vérifié, messages au `blur` — mais **il
-ne calcule plus rien**. Chaque changement de panier, de zone ou de code appelle
-`POST /api/devis/` : c'est le serveur qui annonce les frais, la remise et le total. Le code de
-réduction n'est plus une liste dans le code : il est vérifié en base, avec sa fenêtre de
-validité et sa condition, et le refus est repris tel qu'il est formulé. La caisse se ferme
+ne calcule plus rien**. Chaque changement de panier ou de zone appelle `POST /api/devis/` :
+c'est le serveur qui annonce les frais, la remise et le total. **Il n'y a pas de code de
+réduction** : une campagne s'applique d'elle-même, et le récapitulatif la nomme
+(`remise_libelle`) quand elle retire quelque chose. La caisse se ferme
 d'elle-même quand la gérante décoche « accepter les commandes » pendant ses congés.
 
 ### Panier
