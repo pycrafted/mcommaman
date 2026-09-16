@@ -26,6 +26,11 @@ export function versProduit(brut: ProduitApi): Product {
     promotion: brut.promotion ?? undefined,
     category: brut.rayon_nom,
     categorySlug: brut.rayon_slug,
+    tailles: (brut.tailles ?? []).map((t) => ({
+      valeur: t.valeur,
+      ordre: t.ordre,
+      disponible: t.disponible,
+    })),
     univers: brut.univers as Univers,
     image: brut.image,
     description: brut.description,

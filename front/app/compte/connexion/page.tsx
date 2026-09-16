@@ -18,7 +18,7 @@ export default function Page() {
       <main>
         {/* `useSearchParams` lit `?suite=` : la page doit être rendue sous
             Suspense, comme le catalogue. */}
-        <Suspense fallback={<div className="mx-auto max-w-[1180px] px-10 py-20 text-muted">Chargement…</div>}>
+        <Suspense fallback={<div className="mx-auto max-w-[1180px] px-5 py-20 text-muted md:px-10">Chargement…</div>}>
           <LoginForm />
         </Suspense>
       </main>

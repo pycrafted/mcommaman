@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatXOF, jusquAu, waLink } from "@/lib/format";
 import type { ProduitApi } from "@/lib/api";
+import { lienCategorie } from "@/lib/catalogue";
 import type { Product } from "@/lib/products";
 import { ProductCard } from "./product-card";
 import { useCart } from "./cart-context";
@@ -116,12 +117,16 @@ export function ProductDetail({
 
 
   return (
-    <div className="mx-auto max-w-[1400px] px-10 pb-20 pt-7">
-      <div className="text-[12.5px] text-muted">
-        <Link href="/">Accueil</Link> · <Link href="/boutique">{product.category}</Link> · {product.name}
+    <div className="mx-auto max-w-[1400px] px-5 pb-20 pt-5 md:px-8 md:pt-7 lg:px-10">
+      <div className="truncate text-[12.5px] text-muted">
+        <Link href="/">Accueil</Link> ·{" "}
+        <Link href={product.categorySlug ? lienCategorie(product.categorySlug) : "/boutique"}>
+          {product.category}
+        </Link>{" "}
+        · {product.name}
       </div>
 
-      <div className="grid grid-cols-[1.05fr_.95fr] gap-14 pt-5">
+      <div className="grid gap-7 pt-4 md:grid-cols-[1.05fr_.95fr] md:gap-10 md:pt-5 lg:gap-14">
         <div>
           {/* Les autres photos se posent en miniatures sur la grande, en bas à
               gauche : elles ne repoussent plus le reste de la page. */}
@@ -130,7 +135,7 @@ export function ProductDetail({
             style={{ backgroundImage: `url(${gallery[principale] ?? product.image})` }}
           >
             {gallery.length > 1 && (
-              <div className="absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] gap-2 overflow-x-auto rounded-2xl bg-white/80 p-1.5 shadow-[0_10px_30px_-12px_rgba(36,26,32,.35)] backdrop-blur">
+              <div className="absolute bottom-3 left-3 flex max-w-[calc(100%-1.5rem)] gap-2 sm:bottom-4 sm:left-4 sm:max-w-[calc(100%-2rem)] overflow-x-auto rounded-2xl bg-white/80 p-1.5 shadow-[0_10px_30px_-12px_rgba(36,26,32,.35)] backdrop-blur">
                 {gallery.map((image, i) => (
                   <button
                     key={image + i}
@@ -138,7 +143,7 @@ export function ProductDetail({
                     onClick={() => setPrincipale(i)}
                     aria-label={`Voir la photo ${i + 1}`}
                     aria-pressed={i === principale}
-                    className={`h-16 w-14 shrink-0 rounded-xl bg-stone bg-cover bg-center transition-all duration-300 ${
+                    className={`h-14 w-12 shrink-0 rounded-xl sm:h-16 sm:w-14 bg-stone bg-cover bg-center transition-all duration-300 ${
                       i === principale ? "ring-2 ring-ink" : "opacity-70 hover:opacity-100"
                     }`}
                     style={{ backgroundImage: `url(${image})` }}
@@ -149,13 +154,13 @@ export function ProductDetail({
           </div>
         </div>
 
-        <div className="pt-1.5">
-          <div className="flex items-center justify-between">
+        <div className="min-w-0 md:pt-1.5">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-bold uppercase tracking-[.1em] text-rose">{product.category}</span>
             {variante && <span className="text-xs text-[#9c8d93]">réf. {variante.sku}</span>}
           </div>
 
-          <h1 className="mt-3.5 text-[40px] font-extrabold leading-[1.08] tracking-[-.03em]">
+          <h1 className="mt-3 text-[28px] font-extrabold leading-[1.08] tracking-[-.03em] sm:text-[34px] lg:mt-3.5 lg:text-[40px]">
             {product.name}
           </h1>
 
@@ -179,7 +184,7 @@ export function ProductDetail({
               veut voir en premier. */}
           <div className="mt-5 flex flex-wrap items-baseline gap-3">
             <span
-              className={`text-[30px] font-extrabold tracking-[-.03em] ${
+              className={`text-[26px] font-extrabold tracking-[-.03em] sm:text-[30px] ${
                 product.compareAt ? "text-rose" : ""
               }`}
             >
@@ -279,11 +284,13 @@ export function ProductDetail({
               : "Réassort attendu sous 10 jours"}
           </div>
 
-          <div className="mt-5 flex gap-3">
+          {/* Au doigt, le bouton d'achat prend toute la ligne ; WhatsApp et le
+              favori passent dessous. */}
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={ajouter}
               disabled={!enStock || envoi}
-              className="flex-1 rounded-full bg-rose py-4.5 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-all hover:-translate-y-[3px] active:scale-97 disabled:opacity-50"
+              className="w-full rounded-full sm:w-auto sm:flex-1 bg-rose py-4.5 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-all hover:-translate-y-[3px] active:scale-97 disabled:opacity-50"
             >
               {enStock ? (envoi ? "Ajout…" : "Ajouter au panier") : "Me prévenir du réassort"}
             </button>
@@ -294,7 +301,7 @@ export function ProductDetail({
               )}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full border-[1.5px] border-[#e5d9de] bg-white px-6 py-4.5 text-[15px] font-bold"
+              className="flex-1 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-6 py-4 text-center text-[15px] font-bold sm:flex-none sm:py-4.5"
             >
               WhatsApp
             </a>
@@ -314,7 +321,7 @@ export function ProductDetail({
             </p>
           )}
 
-          <div className="mt-5 flex gap-5 text-[12.5px] text-muted">
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-1.5 text-[12.5px] text-muted">
             <span>Livraison Dakar 24 h</span>
             <span>Échange sous 7 jours</span>
             <span>Paiement à la livraison</span>
@@ -340,9 +347,9 @@ export function ProductDetail({
       </div>
 
       {similaires.length > 0 && (
-        <div className="pt-17">
-          <h2 className="mb-5 text-[32px] font-extrabold tracking-[-.03em]">Dans le même esprit</h2>
-          <div className="grid grid-cols-4 gap-5">
+        <div className="pt-14 lg:pt-17">
+          <h2 className="mb-5 text-[26px] font-extrabold tracking-[-.03em] sm:text-[32px]">Dans le même esprit</h2>
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-5 lg:grid-cols-4">
             {similaires.map((p, i) => (
               <ProductCard key={p.id} product={p} delay={i * 60} />
             ))}
@@ -352,9 +359,9 @@ export function ProductDetail({
 
       {/* Les avis ferment la fiche, sous les recommandations : c’est là que la
           page d’avis renvoie les clientes. */}
-      <section id="avis" className="scroll-mt-28 pt-17">
+      <section id="avis" className="scroll-mt-28 pt-14 lg:pt-17">
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-[32px] font-extrabold tracking-[-.03em]">Avis sur cet article</h2>
+          <h2 className="text-[26px] font-extrabold tracking-[-.03em] sm:text-[32px]">Avis sur cet article</h2>
           {note.count > 0 && (
             <span className="flex items-center gap-2.5 text-[13.5px] text-muted">
               <StarRow rating={note.average} />
@@ -363,11 +370,11 @@ export function ProductDetail({
           )}
         </div>
 
-        <div className="grid grid-cols-[1.35fr_.95fr] items-start gap-14">
+        <div className="grid items-start gap-7 lg:grid-cols-[1.35fr_.95fr] lg:gap-14">
           {/* Avant la réponse du serveur on ne sait pas encore ce qui existe. */}
           <div>{avisPrets && <ReviewList reviews={avis} />}</div>
 
-          <div className="rounded-3xl border border-line bg-mist p-6">
+          <div className="rounded-3xl border border-line bg-mist p-5 sm:p-6">
             <h3 className="text-[15px] font-bold">Vous l’avez reçu&nbsp;?</h3>
             <p className="mb-5 mt-1.5 text-[13px] leading-relaxed text-muted">
               La taille, la matière, la tenue au lavage : ce qui aide la prochaine maman à choisir.

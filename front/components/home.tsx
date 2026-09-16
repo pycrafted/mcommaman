@@ -334,14 +334,14 @@ export function Home({
 
       {/* ======================================================= réassurance */}
       <section className={`${SHELL} pt-4`}>
-        <Reveal className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4" stagger={80}>
+        <Reveal className="grid grid-cols-2 gap-2.5 sm:gap-3.5 lg:grid-cols-4" stagger={80}>
           {REASSURANCE.map((r) => (
             /* Pas de <GlowCard> ici : sa lueur suit le curseur et teinte le
                fond. Ces quatre cartes gardent leur ivoire, elles se contentent
                de se soulever. */
             <div
               key={r.t}
-              className="rounded-2xl bg-mist px-5 py-5 transition-transform duration-400 ease-soft hover:-translate-y-1"
+              className="rounded-2xl bg-mist px-4 py-4 transition-transform duration-400 ease-soft hover:-translate-y-1 sm:px-5 sm:py-5"
             >
               <div className="text-[13.5px] font-bold">{r.t}</div>
               <div className="mt-0.5 text-[12.5px] leading-snug text-muted">{r.s}</div>
@@ -733,12 +733,16 @@ export function Home({
 
         {/* Trois cartes de même hauteur : le médaillon et la note en tête, la
             citation au milieu, la cliente en pied derrière un filet. Sous
-            `sm`, elles s'empilent — un avis coupé ne se lit pas. */}
-        <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-3" stagger={90}>
+            `sm`, elles défilent au doigt, une et demie à l'écran pour montrer
+            qu'il y en a d'autres. */}
+        <Reveal
+          className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0"
+          stagger={90}
+        >
           {avis.map((r) => (
             <article
               key={r.cle}
-              className="flex min-h-[210px] flex-col rounded-[22px] bg-mist p-6 transition-transform duration-400 ease-soft hover:-translate-y-1"
+              className="flex min-h-[210px] w-[82%] shrink-0 snap-start flex-col rounded-[22px] bg-mist p-5 transition-transform duration-400 ease-soft hover:-translate-y-1 sm:w-auto sm:p-6"
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-soft">

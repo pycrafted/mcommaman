@@ -281,7 +281,7 @@ export function HeaderBarre({
                     className="py-3 text-[15px] font-medium text-ink/80 transition-colors hover:text-rose"
                   >
                     {e.cle === "" && nombrePieces > 0
-                      ? `Toute la boutique · ${nombrePieces} pièces`
+                      ? `Toute la boutique · ${nombrePieces} pièce${nombrePieces > 1 ? "s" : ""}`
                       : e.cle === ""
                         ? "Toute la boutique"
                         : e.label}

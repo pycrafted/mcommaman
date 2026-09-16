@@ -88,18 +88,18 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-90 flex items-center justify-center bg-ink/45 p-10 backdrop-blur-[3px]"
+      className="fixed inset-0 z-90 flex items-end justify-center bg-ink/45 backdrop-blur-[3px] sm:items-center sm:p-10"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="anim-fade-up grid max-h-[88vh] w-[900px] max-w-full grid-cols-2 overflow-auto rounded-[26px] bg-cream"
+        className="anim-fade-up grid max-h-[90vh] w-full max-w-[900px] overflow-auto rounded-t-[26px] bg-cream sm:grid-cols-2 sm:rounded-[26px]"
       >
         <div
-          className="min-h-[420px] bg-stone bg-cover bg-center"
+          className="aspect-4/3 bg-stone bg-cover bg-center sm:aspect-auto sm:min-h-[420px]"
           style={{ backgroundImage: `url(${product.image})` }}
         />
 
-        <div className="p-9">
+        <div className="p-5 sm:p-9">
           <div className="flex items-start justify-between gap-4">
             <span className="text-xs font-bold uppercase tracking-[.1em] text-rose">Aperçu rapide</span>
             <button onClick={onClose} aria-label="Fermer" className="text-xl leading-none text-muted">
@@ -107,7 +107,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             </button>
           </div>
 
-          <h2 className="mt-3.5 text-[28px] font-extrabold tracking-tight">{product.name}</h2>
+          <h2 className="mt-3 text-[24px] font-extrabold tracking-tight sm:mt-3.5 sm:text-[28px]">{product.name}</h2>
 
           <div className="mt-3 flex flex-wrap items-baseline gap-2.5">
             <span className={`text-2xl font-extrabold ${product.compareAt ? "text-rose" : ""}`}>

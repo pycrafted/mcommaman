@@ -19,7 +19,7 @@ export default function Page() {
             impose de rendre la page sous Suspense, comme la connexion. */}
         <Suspense
           fallback={
-            <div className="mx-auto max-w-[1180px] px-10 py-20 text-muted">Chargement…</div>
+            <div className="mx-auto max-w-[1180px] px-5 py-20 text-muted md:px-10">Chargement…</div>
           }
         >
           <ResetPasswordForm />

@@ -18,7 +18,7 @@ export default async function Page({ params }: { params: Promise<{ ref: string }
             existe, seul le client peut le dire. `useSearchParams` lit `?nouvelle=1`,
             d'où le Suspense. */}
         <Suspense
-          fallback={<div className="mx-auto max-w-[1180px] px-10 py-20 text-muted">Chargement…</div>}
+          fallback={<div className="mx-auto max-w-[1180px] px-5 py-20 text-muted md:px-10">Chargement…</div>}
         >
           <OrderDetail orderRef={decodeURIComponent(ref)} />
         </Suspense>

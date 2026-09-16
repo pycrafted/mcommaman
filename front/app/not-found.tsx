@@ -6,9 +6,9 @@ export default function NotFound() {
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-[1180px] px-10 py-28 text-center">
+      <main className="mx-auto max-w-[1180px] px-5 py-20 text-center md:px-10 md:py-28">
         <div className="text-xs font-bold uppercase tracking-[.14em] text-rose">Erreur 404</div>
-        <h1 className="mt-4 text-5xl font-extrabold tracking-[-.035em]">Cette page n&apos;existe pas</h1>
+        <h1 className="mt-4 text-[34px] font-extrabold leading-[1.05] tracking-[-.035em] sm:text-5xl">Cette page n&apos;existe pas</h1>
         <p className="mx-auto mt-4 max-w-[440px] text-[15px] leading-relaxed text-muted">
           Le lien est peut-être ancien. Le catalogue tient sur une seule page, vous y retrouverez tout.
         </p>

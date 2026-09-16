@@ -37,6 +37,8 @@ export type Product = {
   /** Le slug de cette catégorie : deux rayons peuvent porter le même nom
       (« T-shirt » chez les filles et chez les garçons), pas le même slug. */
   categorySlug?: string;
+  /** Les tailles de la fiche, dans l'ordre du guide, avec leur disponibilité. */
+  tailles?: { valeur: string; ordre: number; disponible: boolean }[];
   univers: Univers;
   /* Vides pour le Coin Maman. */
   gender?: Gender;
