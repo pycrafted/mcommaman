@@ -31,9 +31,15 @@ import {
 /* La barre ne nomme plus trois rayons choisis à la main — ils changent au gré
    du catalogue, et le panneau « Boutique » les liste déjà tous. Restent les
    deux univers, qui eux ne bougent pas : « /boutique » est celui des enfants,
-   « /coin-maman » celui des mamans. */
+   « /coin-maman » celui des mamans.
+
+   Le premier s'affiche « Catalogue » et non « Enfants » : c'est la porte
+   d'entrée de la boutique, et une cliente qui cherche à parcourir les pièces
+   lit ce mot-là en premier. Le panneau « Boutique » et le tiroir, eux, gardent
+   le titre « Enfants » (UNIVERS plus bas) — ils opposent les deux univers, et
+   « Catalogue » n'y distinguerait rien puisque le Coin Maman en fait partie. */
 const NAV = [
-  { href: "/boutique", label: "Enfants" },
+  { href: "/boutique", label: "Catalogue" },
   { href: "/coin-maman", label: "Coin Maman" },
   { href: "/avis", label: "Avis" },
   { href: "/contact", label: "Contact" },
