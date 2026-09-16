@@ -133,7 +133,7 @@ class CataloguePublicTest(APITestCase):
     def test_le_tri_par_prix(self):
         fabriquer_produit(nom="Petit prix", slug="petit-prix", sku="PET-001", prix=3000)
         reponse = self.client.get(reverse("produit-public-list"), {"tri": "prix-croissant"})
-        prix = [p["prix"] for p in reponse.data["results"]]
+        prix = [p["prix_public"] for p in reponse.data["results"]]
         self.assertEqual(prix, sorted(prix))
 
 
@@ -280,3 +280,165 @@ class PhotothequeTest(APITestCase):
         produit.refresh_from_db()
         self.assertEqual(produit.rayon, destination)
         self.assertFalse(Rayon.objects.filter(pk=ancien_rayon.pk).exists())
+
+
+class ListePagineeTest(APITestCase):
+    """
+    La boutique se lit par pages, filtrée et triée en base.
+
+    Un catalogue qui grossit ne doit ni tout renvoyer, ni coûter une requête
+    par article.
+    """
+
+    def setUp(self):
+        from datetime import date
+
+        from ventes.models import Campagne
+
+        self.parente = Rayon.objects.create(nom="Filles", slug="filles")
+        self.robes = Rayon.objects.create(nom="Robes", slug="robes")
+        self.robes.parents.add(self.parente)
+        self.jupes = Rayon.objects.create(nom="Jupes", slug="jupes")
+        self.jupes.parents.add(self.parente)
+        ailleurs = Rayon.objects.create(nom="Garçons", slug="garcons")
+
+        for i in range(30):
+            fabriquer_produit(nom=f"Robe {i}", slug=f"robe-{i}", sku=f"ROB-{i:03}",
+                              prix=5000 + i * 100, rayon=self.robes)
+        self.jupe = fabriquer_produit(nom="Jupe plissée", slug="jupe", sku="JUP-001",
+                                      prix=20000, rayon=self.jupes)
+        six = Taille.objects.create(valeur="6", ordre=8)
+        Variante.objects.create(produit=self.jupe, taille=six, sku="JUP-001-6", stock=2)
+        fabriquer_produit(nom="Short", slug="short", sku="SHO-001", prix=4000, rayon=ailleurs)
+
+        # La jupe à 20 000 F passe à 10 000 F : c'est ce prix-là qui se filtre.
+        Campagne.objects.create(
+            libelle="Jupes à moitié prix", valeur=50, date_effet=date.today(), duree_jours=5,
+            portee=Campagne.Portee.RAYON, rayon=self.jupes,
+        )
+        self.url = reverse("produit-public-list")
+
+    def test_la_liste_est_paginee(self):
+        page = self.client.get(self.url, {"page_size": 24}).data
+        self.assertEqual(page["count"], 32)
+        self.assertEqual(len(page["results"]), 24)
+        self.assertIsNotNone(page["next"])
+
+    def test_la_carte_ne_porte_que_l_essentiel(self):
+        carte = self.client.get(self.url, {"page_size": 1}).data["results"][0]
+        self.assertEqual(
+            set(carte),
+            {"id", "slug", "nom", "prix_public", "prix_avant", "promotion",
+             "rayon_nom", "rayon_slug", "image", "en_rupture"},
+        )
+        self.assertTrue(carte["image"].startswith("https://"))
+
+    def test_le_nombre_de_requetes_ne_depend_pas_de_la_taille_de_la_page(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.client.get(self.url, {"page_size": 2})  # réchauffe les caches éventuels
+        with CaptureQueriesContext(connection) as petite:
+            self.client.get(self.url, {"page_size": 2})
+        with CaptureQueriesContext(connection) as grande:
+            self.client.get(self.url, {"page_size": 30})
+        self.assertEqual(len(petite), len(grande))
+        self.assertLessEqual(len(grande), 8)
+
+    def test_la_categorie_couvre_ses_sous_categories(self):
+        page = self.client.get(self.url, {"rayon": "filles"}).data
+        self.assertEqual(page["count"], 31)
+
+    def test_plusieurs_sous_categories_s_additionnent(self):
+        page = self.client.get(self.url, {"rayon": "filles", "sous": "jupes"}).data
+        self.assertEqual([p["slug"] for p in page["results"]], ["jupe"])
+        page = self.client.get(self.url, {"rayon": "filles", "sous": "jupes,robes"}).data
+        self.assertEqual(page["count"], 31)
+
+    def test_le_filtre_par_taille(self):
+        page = self.client.get(self.url, {"taille": "6"}).data
+        self.assertEqual([p["slug"] for p in page["results"]], ["jupe"])
+
+    def test_le_prix_filtre_est_celui_du_jour(self):
+        page = self.client.get(self.url, {"prix_min": 9000, "prix_max": 11000}).data
+        self.assertEqual([p["slug"] for p in page["results"]], ["jupe"])
+        self.assertEqual(page["results"][0]["prix_public"], 10000)
+
+    def test_le_tri_par_prix_suit_le_prix_du_jour(self):
+        page = self.client.get(self.url, {"tri": "prix-decroissant", "page_size": 1}).data
+        self.assertEqual(page["results"][0]["slug"], "jupe")
+
+    def test_les_facettes_d_une_categorie(self):
+        facettes = self.client.get(
+            reverse("produit-public-facettes"), {"rayon": "filles", "taille": "6"}
+        ).data
+        self.assertEqual(facettes["total"], 1)
+        # Les tailles se comptent sans leur propre filtre.
+        self.assertEqual(
+            facettes["tailles"], [{"valeur": "4", "nombre": 31}, {"valeur": "6", "nombre": 1}]
+        )
+        self.assertEqual(facettes["sous_categories"], {"jupes": 1})
+        self.assertEqual((facettes["prix_min"], facettes["prix_max"]), (10000, 10000))
+
+
+class ListeGestionTest(APITestCase):
+    def setUp(self):
+        gerante = Utilisateur.objects.create_user(
+            email="liste@test.sn", nom="Gérante", password="motdepasse123",
+            role=Utilisateur.Role.GERANTE,
+        )
+        self.client.force_authenticate(gerante)
+        for i in range(25):
+            fabriquer_produit(nom=f"Robe {i}", slug=f"robe-{i}", sku=f"ROB-{i:03}")
+        fabriquer_produit(nom="Épuisée", slug="epuisee", sku="EPU-001", stock=0)
+        fabriquer_produit(nom="Brouillon", slug="brouillon", sku="BRO-001",
+                          statut=Produit.Statut.BROUILLON)
+
+    def test_la_liste_est_paginee_et_allegee(self):
+        page = self.client.get(reverse("produit-gestion-list"), {"page_size": 20}).data
+        self.assertEqual(page["count"], 27)
+        self.assertEqual(len(page["results"]), 20)
+        self.assertNotIn("variantes", page["results"][0])
+        self.assertIn("stock_total", page["results"][0])
+
+    def test_le_filtre_rupture(self):
+        page = self.client.get(reverse("produit-gestion-list"), {"rupture": "1"}).data
+        self.assertEqual([p["slug"] for p in page["results"]], ["epuisee"])
+
+    def test_la_fiche_garde_ses_variantes(self):
+        produit = Produit.objects.get(slug="robe-1")
+        fiche = self.client.get(reverse("produit-gestion-detail", args=[produit.pk])).data
+        self.assertEqual(len(fiche["variantes"]), 1)
+
+    def test_les_compteurs(self):
+        compteurs = self.client.get(reverse("produit-gestion-compteurs")).data
+        self.assertEqual(compteurs["tous"], 27)
+        self.assertEqual(compteurs["publie"], 26)
+        self.assertEqual(compteurs["brouillon"], 1)
+        self.assertEqual(compteurs["rupture"], 1)
+
+    def test_la_disponibilite_propose_une_reference_libre(self):
+        donnees = self.client.get(
+            reverse("produit-gestion-disponibilite"), {"nom": "Robe d'été"}
+        ).data
+        # ROB-000 à ROB-024 existent, mais pas ROB-0001.
+        self.assertEqual(donnees["reference"], "ROB-0001")
+        self.assertEqual(donnees["slug"], "robe-dete")
+        self.assertFalse(donnees["slug_pris"])
+        pris = self.client.get(reverse("produit-gestion-disponibilite"), {"nom": "Robe 3"}).data
+        self.assertTrue(pris["slug_pris"])
+        produit = Produit.objects.get(slug="robe-3")
+        libre = self.client.get(
+            reverse("produit-gestion-disponibilite"), {"nom": "Robe 3", "exclure": produit.pk}
+        ).data
+        self.assertFalse(libre["slug_pris"])
+
+    def test_les_rayons_comptent_leurs_fiches(self):
+        rayon = Rayon.objects.get(slug="robes-jupes")
+        donnees = self.client.get(reverse("rayon-gestion-detail", args=[rayon.pk])).data
+        self.assertEqual((donnees["fiches"], donnees["fiches_brouillons"]), (27, 1))
+
+    def test_les_tailles_comptent_leurs_fiches(self):
+        tailles = self.client.get(reverse("taille-list")).data
+        self.assertEqual(tailles[0]["nombre_produits"], 27)
+

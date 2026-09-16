@@ -19,6 +19,7 @@ personne ne saurait dire laquelle s'applique en premier.
 
 from dataclasses import dataclass
 
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import Campagne
@@ -77,14 +78,27 @@ def _vise(campagne: Campagne, produit) -> bool:
             return True
         # Viser « Enfants » vise aussi ses sous-catégories : une remise de rayon
         # qui s'arrêterait au premier niveau ne remiserait presque rien.
-        return produit.rayon.parents.filter(pk=campagne.rayon_id).exists()
+        # `.all()` et non `.filter()` : une liste précharge les parentes
+        # (`rayon__parents`), et un filtre ferait une requête par article.
+        return any(parent.pk == campagne.rayon_id for parent in produit.rayon.parents.all())
 
     return False
 
 
+def remise_en_pourcentage(montant: int, pourcentage: int) -> int:
+    """
+    `montant × pourcentage / 100`, arrondi au franc le plus proche, demi vers le haut.
+
+    En entiers, et non avec `round` : Python arrondit un demi au pair, la base
+    au plus loin de zéro. Le prix filtré et trié en base
+    (`annoter_prix_effectif`) doit être exactement celui qu'affiche la fiche.
+    """
+    return (2 * montant * pourcentage + 100) // 200
+
+
 def _prix_apres(campagne: Campagne, prix: int) -> int:
     if campagne.type == Campagne.Type.POURCENTAGE:
-        return max(0, prix - round(prix * campagne.valeur / 100))
+        return max(0, prix - remise_en_pourcentage(prix, campagne.valeur))
     # Une remise fixe ne rend pas l'article gratuit par accident.
     return max(0, prix - campagne.valeur)
 
@@ -118,3 +132,53 @@ def prix_effectif(produit, campagnes=None) -> int:
     """Le prix à payer aujourd'hui : le prix de la fiche, remise déduite."""
     remise = remise_pour(produit, campagnes)
     return remise.prix_remise if remise else produit.prix
+
+
+def annoter_prix_effectif(selection, campagnes=None):
+    """
+    Ajoute `prix_effectif` à une sélection de produits : le prix du jour, en base.
+
+    C'est la même règle que `prix_effectif`, écrite en SQL : la meilleure des
+    campagnes qui visent l'article, jamais sous zéro, jamais au-dessus du prix.
+    Sans elle, filtrer ou trier par prix obligerait à charger tout le catalogue
+    pour le calculer en Python — ce que la pagination veut justement éviter.
+    """
+    from django.db.models import Case, Exists, F, IntegerField, OuterRef, Value, When
+    from django.db.models.functions import Greatest, Least
+
+    from catalogue.models import Rayon
+
+    if campagnes is None:
+        campagnes = campagnes_automatiques()
+
+    prix = F("prix")
+    candidats = [prix]
+    for campagne in campagnes:
+        if campagne.type == Campagne.Type.POURCENTAGE:
+            # Même arrondi que `remise_en_pourcentage` : entiers, demi vers le haut.
+            apres = prix - (prix * Value(2 * campagne.valeur) + Value(100)) / Value(200)
+        else:
+            apres = prix - Value(campagne.valeur)
+        apres = Greatest(apres, Value(0), output_field=IntegerField())
+
+        if campagne.portee == Campagne.Portee.BOUTIQUE:
+            candidats.append(apres)
+            continue
+        if campagne.portee == Campagne.Portee.PRODUIT:
+            condition = When(pk=campagne.produit_id, then=apres)
+        elif campagne.portee == Campagne.Portee.RAYON and campagne.rayon_id:
+            # Viser une catégorie vise aussi ses sous-catégories.
+            sous_rayon = Rayon.parents.through.objects.filter(
+                from_rayon_id=OuterRef("rayon_id"), to_rayon_id=campagne.rayon_id
+            )
+            condition = When(
+                Q(rayon_id=campagne.rayon_id) | Q(Exists(sous_rayon)), then=apres
+            )
+        else:
+            continue
+        candidats.append(Case(condition, default=prix, output_field=IntegerField()))
+
+    if len(candidats) == 1:
+        return selection.annotate(prix_effectif=prix)
+    return selection.annotate(prix_effectif=Least(*candidats, output_field=IntegerField()))
+

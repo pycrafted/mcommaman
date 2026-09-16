@@ -56,6 +56,11 @@ class Utilisateur(AbstractBaseUser, PermissionsMixin):
     # Préférence de la cliente : les tailles qu'elle suit.
     tailles_suivies = models.JSONField(default=list, blank=True)
 
+    # Pour l'équipe : jusqu'où la cloche du back-office a été lue. Tenu sur le
+    # serveur et non dans le navigateur, pour qu'une commande arrivée pendant
+    # que le back-office était fermé reste signalée, sur n'importe quel appareil.
+    notifications_lues_le = models.DateTimeField(null=True, blank=True)
+
     is_active = models.BooleanField("compte actif", default=True)
     is_staff = models.BooleanField("accès à l'admin Django", default=False)
     date_creation = models.DateTimeField("créé le", default=timezone.now)

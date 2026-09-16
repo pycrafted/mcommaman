@@ -39,6 +39,9 @@ def _refuser_doublon(serializer, queryset, champ: str, valeur: str, message: str
     return valeur
 
 class TailleSerializer(serializers.ModelSerializer):
+    # Posé par la vue du back-office ; absent de la vitrine, d'où le défaut.
+    nombre_produits = serializers.IntegerField(read_only=True, default=0)
+
     def validate_valeur(self, valeur):
         valeur = _texte_propre(valeur)
         return _refuser_doublon(
@@ -51,10 +54,12 @@ class TailleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Taille
-        fields = ["id", "valeur", "repere", "ordre"]
+        fields = ["id", "valeur", "repere", "ordre", "nombre_produits"]
 
 
 class ColorisSerializer(serializers.ModelSerializer):
+    nombre_produits = serializers.IntegerField(read_only=True, default=0)
+
     def validate_nom(self, valeur):
         valeur = _texte_propre(valeur)
         return _refuser_doublon(
@@ -77,7 +82,7 @@ class ColorisSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Coloris
-        fields = ["id", "nom", "hexa"]
+        fields = ["id", "nom", "hexa", "nombre_produits"]
 
 
 class MatiereSerializer(serializers.ModelSerializer):
@@ -253,35 +258,8 @@ class VarianteSerializer(serializers.ModelSerializer):
 
 # ------------------------------------------------------------------ vitrine
 
-class ProduitVitrineSerializer(serializers.ModelSerializer):
-    """
-    La fiche telle que la cliente la voit.
-
-    Ni stock ni statut : le premier ne regarde qu'un chiffre — disponible ou
-    non —, le second ne devrait jamais franchir la porte du back-office.
-    """
-
-    rayon_nom = serializers.CharField(source="rayon.nom", read_only=True)
-    rayon_slug = serializers.CharField(source="rayon.slug", read_only=True)
-    univers = serializers.CharField(source="rayon.univers", read_only=True)
-    matiere = serializers.CharField(source="composition", read_only=True)
-    image = serializers.SerializerMethodField()
-    photos = serializers.SerializerMethodField()
-    tailles = serializers.SerializerMethodField()
-    coloris = serializers.SerializerMethodField()
-    en_rupture = serializers.SerializerMethodField()
-    prix_public = serializers.SerializerMethodField()
-    prix_avant = serializers.SerializerMethodField()
-    promotion = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Produit
-        fields = [
-            "id", "slug", "nom", "prix", "prix_barre", "description", "matiere",
-            "prix_public", "prix_avant", "promotion",
-            "rayon_nom", "rayon_slug", "univers",
-            "image", "photos", "tailles", "coloris", "en_rupture",
-        ]
+class _PrixDuJour:
+    """Le prix du jour d'un article et la campagne qui le fait, pour les sérialiseurs vitrine."""
 
     def _remise(self, obj):
         """
@@ -325,6 +303,73 @@ class ProduitVitrineSerializer(serializers.ModelSerializer):
             "economie": remise.economie,
             "jusquau": remise.campagne.date_fin,
         }
+
+
+class ProduitCarteSerializer(_PrixDuJour, serializers.ModelSerializer):
+    """
+    Un article tel qu'une liste le montre : de quoi dessiner une carte, rien de plus.
+
+    Ni description, ni photos, ni tailles : la fiche les porte. La photo et la
+    disponibilité viennent d'annotations posées par la vue (`image_url`,
+    `a_du_stock`) — les lire article par article coûterait deux requêtes chacun.
+    """
+
+    rayon_nom = serializers.CharField(source="rayon.nom", read_only=True)
+    rayon_slug = serializers.CharField(source="rayon.slug", read_only=True)
+    image = serializers.SerializerMethodField()
+    en_rupture = serializers.SerializerMethodField()
+    prix_public = serializers.SerializerMethodField()
+    prix_avant = serializers.SerializerMethodField()
+    promotion = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Produit
+        fields = [
+            "id", "slug", "nom", "prix_public", "prix_avant", "promotion",
+            "rayon_nom", "rayon_slug", "image", "en_rupture",
+        ]
+
+    def get_image(self, obj) -> str:
+        if hasattr(obj, "image_url"):
+            return obj.image_url or ""
+        photo = obj.photo_principale
+        return photo.media.url if photo else ""
+
+    def get_en_rupture(self, obj) -> bool:
+        if hasattr(obj, "a_du_stock"):
+            return not obj.a_du_stock
+        return obj.stock_total == 0
+
+
+class ProduitVitrineSerializer(_PrixDuJour, serializers.ModelSerializer):
+    """
+    La fiche telle que la cliente la voit.
+
+    Ni stock ni statut : le premier ne regarde qu'un chiffre — disponible ou
+    non —, le second ne devrait jamais franchir la porte du back-office.
+    """
+
+    rayon_nom = serializers.CharField(source="rayon.nom", read_only=True)
+    rayon_slug = serializers.CharField(source="rayon.slug", read_only=True)
+    univers = serializers.CharField(source="rayon.univers", read_only=True)
+    matiere = serializers.CharField(source="composition", read_only=True)
+    image = serializers.SerializerMethodField()
+    photos = serializers.SerializerMethodField()
+    tailles = serializers.SerializerMethodField()
+    coloris = serializers.SerializerMethodField()
+    en_rupture = serializers.SerializerMethodField()
+    prix_public = serializers.SerializerMethodField()
+    prix_avant = serializers.SerializerMethodField()
+    promotion = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Produit
+        fields = [
+            "id", "slug", "nom", "prix", "prix_barre", "description", "matiere",
+            "prix_public", "prix_avant", "promotion",
+            "rayon_nom", "rayon_slug", "univers",
+            "image", "photos", "tailles", "coloris", "en_rupture",
+        ]
 
     def get_image(self, obj) -> str:
         photo = obj.photo_principale
@@ -381,6 +426,29 @@ class PhotoProduitSerializer(serializers.ModelSerializer):
         # `produit` est en écriture : sans lui, on ne peut rattacher une photo à
         # aucune fiche, et une fiche sans photo ne se publie jamais.
         fields = ["id", "produit", "media", "url", "position"]
+
+
+class ProduitGestionListeSerializer(serializers.ModelSerializer):
+    """
+    Une ligne de la liste des produits du back-office.
+
+    Le stock et la photo viennent d'annotations de la vue : la liste n'a pas
+    besoin des variantes ni de la galerie, qui restent dans la fiche.
+    """
+
+    rayon_nom = serializers.CharField(source="rayon.nom", read_only=True)
+    image = serializers.CharField(source="image_url", read_only=True, default="")
+    stock_total = serializers.IntegerField(source="stock_somme", read_only=True, default=0)
+    matieres_noms = serializers.SlugRelatedField(
+        source="matieres", many=True, read_only=True, slug_field="nom"
+    )
+
+    class Meta:
+        model = Produit
+        fields = [
+            "id", "slug", "nom", "sku", "prix", "statut", "rayon", "rayon_nom",
+            "image", "stock_total", "matieres_noms", "cree_le", "modifie_le",
+        ]
 
 
 class ProduitAdminSerializer(serializers.ModelSerializer):
@@ -446,3 +514,19 @@ class MouvementStockSerializer(serializers.ModelSerializer):
             "reference", "reste", "auteur_nom", "date",
         ]
         read_only_fields = ["reste", "date"]
+
+
+class RayonGestionSerializer(RayonSerializer):
+    """
+    Un rayon vu du back-office : combien de fiches y sont rangées directement.
+
+    Les nombres viennent d'annotations de la vue — les compter rayon par rayon
+    coûterait deux requêtes chacun.
+    """
+
+    fiches = serializers.IntegerField(read_only=True, default=0)
+    fiches_brouillons = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta(RayonSerializer.Meta):
+        fields = RayonSerializer.Meta.fields + ["fiches", "fiches_brouillons"]
+

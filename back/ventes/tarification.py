@@ -13,7 +13,7 @@ from django.utils import timezone
 from vitrine.models import Reglages
 
 from .models import Campagne, Commande
-from .remises import campagnes_automatiques, prix_effectif
+from .remises import campagnes_automatiques, prix_effectif, remise_en_pourcentage
 
 
 class ErreurTarification(Exception):
@@ -126,7 +126,7 @@ def _campagne_de_commande(sous_total: int, cliente) -> Campagne | None:
 
 def _remise(campagne: Campagne, sous_total: int) -> int:
     if campagne.type == Campagne.Type.POURCENTAGE:
-        return round(sous_total * campagne.valeur / 100)
+        return remise_en_pourcentage(sous_total, campagne.valeur)
     # Une remise fixe ne descend pas le panier sous zéro.
     return min(campagne.valeur, sous_total)
 

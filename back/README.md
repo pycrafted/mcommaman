@@ -117,6 +117,22 @@ connexion ne révèle pas quelles adresses ont un compte, un ajustement de stock
 laisse toujours une trace, un total envoyé par le navigateur n'est jamais lu,
 une campagne expirée ne remise rien, et une annulation remet le stock.
 
+## Les listes
+
+Une liste ne renvoie que ce qu'elle affiche. Le catalogue public est paginé
+(24 par défaut, `page_size` jusqu'à 500), filtré et trié en base : catégorie
+et sous-catégories, tailles en stock, prix du jour (`prix_effectif`, remise
+comprise, calculé en SQL par `ventes.remises.annoter_prix_effectif`). Une
+carte ne porte que dix champs ; la photo et la disponibilité sont des
+sous-requêtes, si bien que le nombre de requêtes ne dépend pas de la taille de
+la page. `produits/facettes/` rend les décomptes des filtres sans charger un
+article.
+
+Côté gestion, `produits/` renvoie des lignes allégées (sans variantes ni
+galerie, que la fiche garde), `produits/compteurs/` les chiffres des onglets et
+du tableau de bord, `produits/disponibilite/` la première référence libre pour
+un nom. Rayons, tailles et coloris portent leur nombre de fiches.
+
 ## Les remises
 
 La boutique n'a **pas de code de réduction**. Une campagne de portée boutique,

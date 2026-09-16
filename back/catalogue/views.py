@@ -7,7 +7,8 @@ permission expose un champ de gestion à la boutique.
 """
 
 from django.db import transaction
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, Subquery, Sum
+from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -34,8 +35,10 @@ from .serializers import (
     MouvementStockSerializer,
     PhotoProduitSerializer,
     ProduitAdminSerializer,
+    ProduitCarteSerializer,
     ProduitDetailVitrineSerializer,
-    ProduitVitrineSerializer,
+    ProduitGestionListeSerializer,
+    RayonGestionSerializer,
     RayonSerializer,
     TailleSerializer,
     VarianteSerializer,
@@ -43,10 +46,34 @@ from .serializers import (
 
 TRIS = {
     "nouveautes": "-cree_le",
-    "prix-croissant": "prix",
-    "prix-decroissant": "-prix",
+    "prix-croissant": "prix_effectif",
+    "prix-decroissant": "-prix_effectif",
     "nom": "nom",
 }
+
+
+def _liste(parametre: str) -> list[str]:
+    """`a,b,,c` → `["a", "b", "c"]`."""
+    return [x.strip() for x in parametre.split(",") if x.strip()]
+
+
+def _image_principale():
+    """L'adresse de la première photo, en sous-requête : une par liste, pas une par article."""
+    return Subquery(
+        PhotoProduit.objects.filter(produit=OuterRef("pk"))
+        .order_by("position")
+        .values("media__url")[:1]
+    )
+
+
+def _du_stock():
+    return Exists(Variante.objects.filter(produit=OuterRef("pk"), stock__gt=0))
+
+
+def _dans_le_rayon(selection, slug: str):
+    """Les articles d'une catégorie et de ses sous-catégories, sans doublon."""
+    rayons = Rayon.objects.filter(Q(slug=slug) | Q(parents__slug=slug)).values("pk")
+    return selection.filter(rayon__in=rayons)
 
 
 class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
@@ -69,95 +96,148 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         from ventes.remises import campagnes_automatiques
 
         contexte = super().get_serializer_context()
-        contexte["campagnes"] = campagnes_automatiques()
+        if not hasattr(self, "_campagnes"):
+            self._campagnes = campagnes_automatiques()
+        contexte["campagnes"] = self._campagnes
         return contexte
+
     lookup_field = "slug"
 
+    def _publies(self):
+        return Produit.objects.filter(statut=Produit.Statut.PUBLIE).select_related("rayon")
+
     def get_queryset(self):
-        selection = (
-            Produit.objects.filter(statut=Produit.Statut.PUBLIE)
-            .select_related("rayon")
-            .prefetch_related(
+        from ventes.remises import annoter_prix_effectif
+
+        if self.action == "retrieve":
+            return self._publies().prefetch_related(
                 Prefetch("photos", queryset=PhotoProduit.objects.select_related("media").order_by("position")),
                 Prefetch("variantes", queryset=Variante.objects.select_related("taille", "coloris")),
                 "matieres",
+                "rayon__parents",
             )
-        )
 
+        # Une liste ne lit que ce qu'une carte affiche : la photo et la
+        # disponibilité en annotations, les parentes du rayon pour les remises.
+        selection = (
+            self._publies()
+            .prefetch_related("rayon__parents")
+            .annotate(image_url=_image_principale(), a_du_stock=_du_stock())
+        )
+        selection = annoter_prix_effectif(selection, self.get_serializer_context()["campagnes"])
         params = self.request.query_params
 
-        # La boutique montre toutes les catégories ensemble — le Coin Maman en
-        # est une comme Filles ou Garçons. L'univers ne filtre que si on le
-        # demande, et seulement la liste : une fiche reste atteignable par son
-        # adresse quel que soit son rangement.
         # Une poignée de fiches désignées par leur identifiant : ce que la page
         # des favoris demande pour dessiner ses cartes.
-        demandes = params.get("ids", "")
-        voulus = [int(x) for x in demandes.split(",") if x.strip().isdigit()][:100]
+        voulus = [int(x) for x in _liste(params.get("ids", "")) if x.isdigit()][:100]
+        if voulus:
+            return selection.filter(pk__in=voulus)
 
-        if self.action == "list" and not voulus:
-            if univers := params.get("univers"):
-                selection = selection.filter(rayon__univers=univers)
-        elif voulus:
-            selection = selection.filter(pk__in=voulus)
+        return self.filtrer(selection, params).order_by(
+            TRIS.get(params.get("tri", ""), "-cree_le"), "-pk"
+        )
 
-        # Choisir « Coin Maman » doit ramener ses tissus et ses voiles : on
-        # filtre sur le rayon **et** ses sous-catégories. Le `distinct` compte :
-        # une sous-catégorie rangée sous deux parentes ferait remonter ses
-        # produits deux fois.
+    @staticmethod
+    def filtrer(selection, params, sans=()):
+        """
+        Les filtres de la boutique, tous appliqués en base.
+
+        `sans` écarte des filtres : les facettes comptent une catégorie sans se
+        restreindre elles-mêmes.
+        """
+        if univers := params.get("univers"):
+            selection = selection.filter(rayon__univers=univers)
+        # Choisir « Coin Maman » ramène ses tissus et ses voiles : le rayon et
+        # ses sous-catégories.
         if rayon := params.get("rayon"):
+            selection = _dans_le_rayon(selection, rayon)
+        # Plusieurs sous-catégories cochées s'additionnent.
+        if "sous" not in sans and (sous := _liste(params.get("sous", ""))):
+            selection = selection.filter(rayon__slug__in=sous)
+        # Une taille ne compte que si elle est encore en stock.
+        if "taille" not in sans and (tailles := _liste(params.get("taille", ""))):
             selection = selection.filter(
-                Q(rayon__slug=rayon) | Q(rayon__parents__slug=rayon)
-            ).distinct()
-        if taille := params.get("taille"):
-            selection = selection.filter(variantes__taille__valeur=taille).distinct()
-
-        if prix_min := params.get("prix_min"):
-            selection = selection.filter(prix__gte=prix_min)
-        if prix_max := params.get("prix_max"):
-            selection = selection.filter(prix__lte=prix_max)
-
-        # Les articles en promotion : ceux qui portent un prix barré, et ceux
-        # qu'une campagne en cours remise. La seconde moitié ne s'exprime pas en
-        # SQL — la portée d'une campagne se lit article par article —, d'où le
-        # passage par les identifiants.
+                Exists(Variante.objects.filter(
+                    produit=OuterRef("pk"), stock__gt=0, taille__valeur__in=tailles
+                ))
+            )
+        # Le prix filtré est celui du jour, remise comprise.
+        if "prix" not in sans:
+            if (prix_min := params.get("prix_min", "")).isdigit():
+                selection = selection.filter(prix_effectif__gte=int(prix_min))
+            if (prix_max := params.get("prix_max", "")).isdigit():
+                selection = selection.filter(prix_effectif__lte=int(prix_max))
         if params.get("promo") == "1":
-            from ventes.remises import campagnes_automatiques, remise_pour
-
-            barres = Q(prix_barre__isnull=False, prix_barre__gt=F("prix"))
-            campagnes = campagnes_automatiques()
-            if campagnes:
-                remises = [
-                    produit.pk
-                    for produit in selection.select_related("rayon")
-                    if remise_pour(produit, campagnes)
-                ]
-                selection = selection.filter(barres | Q(pk__in=remises))
-            else:
-                selection = selection.filter(barres)
-
+            selection = selection.filter(
+                Q(prix_effectif__lt=F("prix")) | Q(prix_barre__gt=F("prix"))
+            )
         if params.get("disponible") == "1":
-            selection = selection.filter(variantes__stock__gt=0).distinct()
-
+            selection = selection.filter(a_du_stock=True)
         if requete := params.get("q"):
             selection = filtrer(selection, requete)
-
-        return selection.order_by(TRIS.get(params.get("tri", ""), "-cree_le"))
+        return selection
 
     def get_serializer_class(self):
-        return ProduitDetailVitrineSerializer if self.action == "retrieve" else ProduitVitrineSerializer
+        return ProduitDetailVitrineSerializer if self.action == "retrieve" else ProduitCarteSerializer
+
+    @action(detail=False, methods=["get"], url_path="facettes")
+    def facettes(self, request):
+        """
+        De quoi dessiner les filtres d'une catégorie, sans en charger les articles.
+
+        Chaque facette se compte sans son propre filtre — cocher « 4 ans » ne
+        doit pas faire disparaître « 6 ans » —, mais avec tous les autres.
+        """
+        from ventes.remises import annoter_prix_effectif
+
+        params = request.query_params
+        campagnes = self.get_serializer_context()["campagnes"]
+        base = annoter_prix_effectif(
+            self._publies().annotate(a_du_stock=_du_stock()), campagnes
+        )
+
+        selection = self.filtrer(base, params)
+        pour_sous = self.filtrer(base, params, sans=("sous",))
+        pour_tailles = self.filtrer(base, params, sans=("taille",))
+        pour_prix = self.filtrer(base, params, sans=("prix",))
+
+        bornes = pour_prix.aggregate(minimum=Min("prix_effectif"), maximum=Max("prix_effectif"))
+        sous = (
+            pour_sous.values("rayon__slug")
+            .annotate(nombre=Count("pk"))
+            .order_by()
+        )
+        tailles = (
+            Variante.objects.filter(stock__gt=0, produit__in=pour_tailles.values("pk"))
+            .values("taille__valeur", "taille__ordre")
+            .annotate(nombre=Count("produit", distinct=True))
+            .order_by("taille__ordre", "taille__valeur")
+        )
+        return Response({
+            "total": selection.count(),
+            "prix_min": bornes["minimum"] or 0,
+            "prix_max": bornes["maximum"] or 0,
+            "sous_categories": {ligne["rayon__slug"]: ligne["nombre"] for ligne in sous},
+            "tailles": [
+                {"valeur": ligne["taille__valeur"], "nombre": ligne["nombre"]} for ligne in tailles
+            ],
+        })
 
     @action(detail=True, methods=["get"], url_path="similaires")
     def similaires(self, request, slug=None):
         """Du même rayon, hors la fiche courante. Quatre suffisent sous une fiche."""
         produit = self.get_object()
         voisins = (
-            Produit.objects.filter(statut=Produit.Statut.PUBLIE, rayon=produit.rayon)
+            self._publies()
+            .filter(rayon=produit.rayon)
             .exclude(pk=produit.pk)
-            .select_related("rayon")
-            .prefetch_related("photos__media", "variantes__taille", "variantes__coloris")[:4]
+            .prefetch_related("rayon__parents")
+            .annotate(image_url=_image_principale(), a_du_stock=_du_stock())
+            .order_by("-cree_le")[:4]
         )
-        return Response(ProduitVitrineSerializer(voisins, many=True).data)
+        return Response(
+            ProduitCarteSerializer(voisins, many=True, context=self.get_serializer_context()).data
+        )
 
 
 class RayonPublicViewSet(viewsets.ReadOnlyModelViewSet):
@@ -227,35 +307,104 @@ class ProduitGestionViewSet(viewsets.ModelViewSet):
 
     permission_classes = [EstEquipe]
     serializer_class = ProduitAdminSerializer
-    queryset = (
-        Produit.objects.select_related("rayon")
-        .prefetch_related("photos__media", "variantes__taille", "variantes__coloris", "matieres")
-    )
+
+    def get_serializer_class(self):
+        # La liste n'emporte ni variantes ni galerie : la fiche les porte.
+        return ProduitGestionListeSerializer if self.action == "list" else ProduitAdminSerializer
 
     def get_queryset(self):
-        selection = super().get_queryset()
+        if self.action != "list":
+            return Produit.objects.select_related("rayon").prefetch_related(
+                "photos__media", "variantes__taille", "variantes__coloris", "matieres"
+            )
+
+        selection = (
+            Produit.objects.select_related("rayon")
+            .prefetch_related("matieres")
+            .annotate(
+                image_url=_image_principale(),
+                stock_somme=Coalesce(Sum("variantes__stock"), 0),
+            )
+        )
         params = self.request.query_params
+        if slugs := _liste(params.get("slug", "")):
+            selection = selection.filter(slug__in=slugs)
+        if skus := _liste(params.get("sku", "")):
+            selection = selection.filter(sku__in=skus)
+        if ids := [int(x) for x in _liste(params.get("ids", "")) if x.isdigit()]:
+            selection = selection.filter(pk__in=ids)
         if statut := params.get("statut"):
             selection = selection.filter(statut=statut)
-        # Choisir « Coin Maman » doit ramener ses tissus et ses voiles : on
-        # filtre sur le rayon **et** ses sous-catégories. Le `distinct` compte :
-        # une sous-catégorie rangée sous deux parentes ferait remonter ses
-        # produits deux fois.
+        # Un article publié qui n'a plus rien à vendre.
+        if params.get("rupture") == "1":
+            selection = selection.filter(statut=Produit.Statut.PUBLIE, stock_somme__lte=0)
         if rayon := params.get("rayon"):
-            selection = selection.filter(
-                Q(rayon__slug=rayon) | Q(rayon__parents__slug=rayon)
-            ).distinct()
+            selection = _dans_le_rayon(selection, rayon)
         if requete := params.get("q"):
             selection = selection.filter(
-                Q(nom__unaccent__icontains=requete) | Q(sku__icontains=requete)
+                Q(nom__unaccent__icontains=requete)
+                | Q(sku__icontains=requete)
+                | Q(rayon__nom__unaccent__icontains=requete)
             )
         if params.get("stock_bas") == "1":
             from vitrine.models import Reglages
             seuil = Reglages.actuels().seuil_stock_bas
-            selection = selection.annotate(
-                disponibles=Count("variantes", filter=Q(variantes__stock__gt=0))
-            ).filter(disponibles__lte=seuil)
-        return selection.order_by("-modifie_le")
+            selection = selection.filter(statut=Produit.Statut.PUBLIE, stock_somme__lte=seuil)
+            return selection.order_by("stock_somme", "nom")
+        # Par date de création : trier sur la modification ferait remonter la
+        # fiche à chaque stock corrigé, et la liste bougerait pendant un inventaire.
+        return selection.order_by("-cree_le", "-pk")
+
+    @action(detail=False, methods=["get"])
+    def disponibilite(self, request):
+        """
+        La première référence libre pour un nom, et si son adresse est déjà prise.
+
+        L'éditeur de fiche proposait la référence en parcourant tout le
+        catalogue chargé dans le navigateur ; le serveur la trouve seul.
+        `exclure` écarte la fiche en cours de modification.
+        """
+        import re
+
+        from django.utils.text import slugify
+
+        nom = request.query_params.get("nom", "")
+        exclure = request.query_params.get("exclure", "")
+        autres = Produit.objects.all()
+        if exclure.isdigit():
+            autres = autres.exclude(pk=int(exclure))
+
+        lettres = re.sub(r"[^A-Za-z]", "", slugify(nom)).upper()[:3] or "REF"
+        lettres = lettres.ljust(3, "X")
+        prises = set(
+            autres.filter(sku__startswith=f"{lettres}-").values_list("sku", flat=True)
+        )
+        reference = next(
+            (f"{lettres}-{n:04}" for n in range(1, 10_000) if f"{lettres}-{n:04}" not in prises),
+            f"{lettres}-{Produit.objects.count() + 1}",
+        )
+        adresse = slugify(nom)
+        return Response({
+            "reference": reference,
+            "slug": adresse,
+            "slug_pris": bool(adresse) and autres.filter(slug=adresse).exists(),
+        })
+
+    @action(detail=False, methods=["get"])
+    def compteurs(self, request):
+        """Les chiffres des onglets et du tableau de bord, sans lire une seule fiche."""
+        from vitrine.models import Reglages
+
+        stocks = Produit.objects.annotate(stock_somme=Coalesce(Sum("variantes__stock"), 0))
+        publies = stocks.filter(statut=Produit.Statut.PUBLIE)
+        return Response({
+            "tous": Produit.objects.count(),
+            "publie": publies.count(),
+            "brouillon": Produit.objects.filter(statut=Produit.Statut.BROUILLON).count(),
+            "archive": Produit.objects.filter(statut=Produit.Statut.ARCHIVE).count(),
+            "rupture": publies.filter(stock_somme__lte=0).count(),
+            "stock_bas": publies.filter(stock_somme__lte=Reglages.actuels().seuil_stock_bas).count(),
+        })
 
     @action(detail=True, methods=["post"])
     def publier(self, request, pk=None):
@@ -386,8 +535,17 @@ class PhotoProduitViewSet(viewsets.ModelViewSet):
 
 class RayonGestionViewSet(viewsets.ModelViewSet):
     permission_classes = [EstEquipe]
-    serializer_class = RayonSerializer
-    queryset = Rayon.objects.select_related("image").prefetch_related("parents", "enfants")
+    serializer_class = RayonGestionSerializer
+    queryset = (
+        Rayon.objects.select_related("image")
+        .prefetch_related("parents", "enfants")
+        .annotate(
+            fiches=Count("produits", distinct=True),
+            fiches_brouillons=Count(
+                "produits", filter=Q(produits__statut=Produit.Statut.BROUILLON), distinct=True
+            ),
+        )
+    )
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
@@ -432,14 +590,15 @@ class RayonGestionViewSet(viewsets.ModelViewSet):
 class TailleViewSet(viewsets.ModelViewSet):
     permission_classes = [EstEquipe]
     serializer_class = TailleSerializer
-    queryset = Taille.objects.all()
+    # Combien de fiches s'en servent : on ne supprime pas à l'aveugle.
+    queryset = Taille.objects.annotate(nombre_produits=Count("variantes__produit", distinct=True))
     pagination_class = None
 
 
 class ColorisViewSet(viewsets.ModelViewSet):
     permission_classes = [EstEquipe]
     serializer_class = ColorisSerializer
-    queryset = Coloris.objects.all()
+    queryset = Coloris.objects.annotate(nombre_produits=Count("variantes__produit", distinct=True))
     pagination_class = None
 
 

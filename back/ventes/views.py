@@ -8,6 +8,7 @@ suffit à ouvrir la boutique.
 
 from django.db import transaction
 from django.db.models import Prefetch
+from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -570,3 +571,52 @@ class AvisGestionViewSet(viewsets.ReadOnlyModelViewSet):
         avis.modere_le = timezone.now()
         avis.save(update_fields=["etat", "modere_le"])
         return Response(self.get_serializer(avis).data)
+
+
+class NotificationsGestionView(APIView):
+    """
+    La cloche du back-office.
+
+    Une notification par commande reçue, les plus récentes d'abord. Est « non
+    lue » ce qui est arrivé après la dernière ouverture de la cloche par ce
+    membre de l'équipe — chacune a sa propre lecture.
+
+    `POST` marque tout comme lu, à l'instant.
+    """
+
+    permission_classes = [EstEquipe]
+    #: Combien de notifications la cloche garde sous la main.
+    LIMITE = 20
+
+    def _reponse(self, request):
+        lues_le = request.user.notifications_lues_le
+        recentes = Commande.objects.only(
+            "reference", "nom_client", "ville", "total", "statut", "creee_le"
+        )[: self.LIMITE]
+        non_lues = Commande.objects.all()
+        if lues_le:
+            non_lues = non_lues.filter(creee_le__gt=lues_le)
+        return Response({
+            "non_lues": non_lues.count(),
+            "lues_le": lues_le,
+            "notifications": [
+                {
+                    "reference": c.reference,
+                    "nom_client": c.nom_client,
+                    "ville": c.ville,
+                    "total": c.total,
+                    "statut": c.statut,
+                    "creee_le": c.creee_le,
+                    "lue": bool(lues_le and c.creee_le <= lues_le),
+                }
+                for c in recentes
+            ],
+        })
+
+    def get(self, request):
+        return self._reponse(request)
+
+    def post(self, request):
+        request.user.notifications_lues_le = timezone.now()
+        request.user.save(update_fields=["notifications_lues_le"])
+        return self._reponse(request)

@@ -412,3 +412,57 @@ class ReglagesFraisTest(APITestCase):
 
         reponse = self.client.post(reverse("commande-list"), commande_type(variante), format="json")
         self.assertEqual(reponse.data["frais_livraison"], 2000)
+
+
+class NotificationsGestionTest(APITestCase):
+    """La cloche du back-office signale les commandes arrivées depuis sa dernière lecture."""
+
+    def setUp(self):
+        self.variante = fabriquer_variante(prix=10000, stock=10)
+        self.gerante = Utilisateur.objects.create_user(
+            email="gerante@test.sn", nom="Gérante", password="motdepasse123",
+            role=Utilisateur.Role.GERANTE,
+        )
+        self.url = reverse("notifications-gestion")
+
+    def _commander(self):
+        self.client.force_authenticate(None)
+        reponse = self.client.post(reverse("commande-list"), commande_type(self.variante),
+                                   format="json")
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        return reponse.data["reference"]
+
+    def test_la_cloche_est_reservee_a_l_equipe(self):
+        self.assertIn(self.client.get(self.url).status_code,
+                      (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
+        cliente = Utilisateur.objects.create_user(
+            email="cliente@test.sn", nom="Cliente", password="motdepasse123"
+        )
+        self.client.force_authenticate(cliente)
+        self.assertEqual(self.client.get(self.url).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_une_commande_arrivee_est_non_lue_puis_lue(self):
+        reference = self._commander()
+        self.client.force_authenticate(self.gerante)
+
+        avant = self.client.get(self.url).data
+        self.assertEqual(avant["non_lues"], 1)
+        self.assertEqual(avant["notifications"][0]["reference"], reference)
+        self.assertFalse(avant["notifications"][0]["lue"])
+
+        apres = self.client.post(self.url).data
+        self.assertEqual(apres["non_lues"], 0)
+        self.assertTrue(apres["notifications"][0]["lue"])
+
+    def test_seules_les_commandes_posterieures_a_la_lecture_comptent(self):
+        self._commander()
+        self.client.force_authenticate(self.gerante)
+        self.client.post(self.url)
+
+        nouvelle = self._commander()
+        self.client.force_authenticate(self.gerante)
+        donnees = self.client.get(self.url).data
+        self.assertEqual(donnees["non_lues"], 1)
+        self.assertEqual(donnees["notifications"][0]["reference"], nouvelle)
+        self.assertTrue(donnees["notifications"][1]["lue"])
+

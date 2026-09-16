@@ -116,12 +116,14 @@ class DevisSerializer(serializers.Serializer):
 class CampagneSerializer(serializers.ModelSerializer):
     date_fin = serializers.DateField(read_only=True)
     en_cours = serializers.BooleanField(read_only=True)
+    # Pour nommer l'article visé sans charger le catalogue.
+    produit_nom = serializers.CharField(source="produit.nom", read_only=True, default="")
 
     class Meta:
         model = Campagne
         fields = [
             "id", "libelle", "type", "valeur", "date_effet", "duree_jours",
-            "date_fin", "en_cours", "portee", "rayon", "produit",
+            "date_fin", "en_cours", "portee", "rayon", "produit", "produit_nom",
             "condition", "montant_minimum", "active", "note",
         ]
 

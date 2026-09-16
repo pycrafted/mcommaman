@@ -12,6 +12,7 @@ from .views import (
     CommandeViewSet,
     DevisView,
     MesCommandesView,
+    NotificationsGestionView,
 )
 
 public = DefaultRouter()
@@ -27,6 +28,7 @@ gestion.register("avis", AvisGestionViewSet, basename="avis-gestion")
 urlpatterns = [
     path("devis/", DevisView.as_view(), name="devis"),
     path("mes-commandes/", MesCommandesView.as_view(), name="mes-commandes"),
+    path("gestion/notifications/", NotificationsGestionView.as_view(), name="notifications-gestion"),
     path("", include(public.urls)),
     path("gestion/", include(gestion.urls)),
 ]
