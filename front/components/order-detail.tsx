@@ -268,9 +268,10 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
             {/* La réception n'est plus déclarée par la cliente : c'est la
                 boutique qui fait avancer le suivi depuis son back-office, et
                 c'est le passage en « Livrée » qui ouvre le droit à l'avis. */}
-            {commande.status === "livree" && (
+            {/* L'avis se dépose sur la fiche de la pièce reçue. */}
+            {commande.status === "livree" && commande.lines.length > 0 && (
               <Link
-                href="/avis"
+                href={`/p/${commande.lines[0].slug}#avis`}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
               >
                 Donner mon avis

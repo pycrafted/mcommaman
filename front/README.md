@@ -28,16 +28,14 @@ npm run dev
 
 | Route | Fichier | Contenu |
 |---|---|---|
-| `/` | `app/page.tsx` → `components/home.tsx` | Bandeau d'accueil en arche (`components/hero.tsx`), bandeau défilant, réassurance, bento des âges, carrousel à onglets, compte à rebours, sélecteur d'univers en pile, histoire en défilement bloqué, paiements, le mot des mamans, section « Nous contacter » |
-| `/boutique` | `app/boutique/page.tsx` → `components/catalogue.tsx` | Facettes catégorie / âge / genre, recherche `?q=`, 4 tris, aperçu rapide, pas de pagination |
+| `/` | `app/page.tsx` → `components/home.tsx` | Bandeau d'accueil en arche (`components/hero.tsx`), bandeau défilant, réassurance, bento des âges, carrousel à onglets, compte à rebours, sélecteur d'univers en pile, histoire en défilement bloqué, le Coin Maman, le mot des mamans, section « Nous contacter » (`#contact`) avec l'adresse et le plan du magasin |
+| `/boutique` | `app/boutique/page.tsx` → `components/catalogue.tsx` | Toute la boutique, ou une catégorie avec `?cat=<slug>` (Filles, Garçons, Coin Maman…) ; ses sous-catégories en filtres, `&sous=<slug>` pour en cocher une ; fourchette de prix, 4 tris, aperçu rapide, pas de pagination |
 | `/p/[slug]` | `app/p/[slug]/page.tsx` | Galerie, variantes couleur / taille, accordéons, recommandations, avis de l'article, JSON-LD Product |
 | `/panier` | `app/panier/page.tsx` | Tunnel à l'étape 1 |
 | `/commande` | `app/commande/page.tsx` | Tunnel à l'étape 2 : livraison validée → paiement → commande enregistrée |
 | `/commandes` | `app/commandes/page.tsx` → `components/orders-list.tsx` | Historique et avancement de chaque colis |
 | `/commandes/[ref]` | `app/commandes/[ref]/page.tsx` → `components/order-detail.tsx` | Suivi détaillé, frise en quatre temps, recommander, annuler |
 | `/favoris` | `app/favoris/page.tsx` → `components/favorites-page.tsx` | Pièces mises de côté, tout ajouter au panier, vider la liste |
-| `/avis` | `app/avis/page.tsx` → `components/reviews-page.tsx` | Note moyenne, distribution, avis boutique et articles, dépôt réservé aux commandes reçues |
-| `/contact` | `app/contact/page.tsx` | Formulaire + coordonnées + WhatsApp |
 | `/compte` | `app/compte/page.tsx` → `components/account-dashboard.tsx` | Tableau de bord : dernière commande, panier en cours, mes envies, adresse par défaut |
 | `/compte/connexion` | `app/compte/connexion/page.tsx` → `components/account-auth.tsx` | Connexion, redirection `?suite=` |
 | `/compte/inscription` | `app/compte/inscription/page.tsx` → `components/account-auth.tsx` | Création de compte, six règles de validation, jauge de mot de passe |
@@ -80,15 +78,15 @@ composants attendent) et les deux vidéos du bandeau livrées avec le site. Il n
 ni catalogue, ni rayons, ni tailles, ni coloris, ni date de promotion.
 
 Les réglages sont lus **une seule fois**, par `app/layout.tsx`, et posés dans
-`components/reglages-context.tsx` : le tunnel, le pied de page et la page contact les
+`components/reglages-context.tsx` : le tunnel, le pied de page et l'accueil les
 trouvent là sans refaire l'appel chacun de leur côté.
 
-**La recherche est faite par le serveur** (`catalogue/recherche.py`, appelé par `?q=`) : il
-connaît les accents et une table de synonymes, et il n'a pas besoin de charger le catalogue
-pour le filtrer. `lib/search.ts` ne garde que la mise en forme — normalisation et surlignage.
-La palette (`components/search-overlay.tsx`) s'ouvre au clic, à `Ctrl/Cmd + K` et à `/`, se
-pilote aux flèches, attend un quart de seconde avant d'interroger le serveur, et renvoie sur
-`/boutique?q=…` pour la liste complète.
+**Pas de recherche dans la vitrine**, à la demande de la cliente : la barre du haut nomme
+« Boutique » puis chaque catégorie du back-office, en liens simples, sans panneau déroulant.
+Le Coin Maman est une catégorie comme les autres et n'a plus de page à lui. Le serveur garde
+sa recherche (`catalogue/recherche.py`, `?q=`) pour le back-office. Il n'y a plus non plus de
+pages `/avis` ni `/contact` : les avis se déposent sur la fiche de l'article, les coordonnées
+sont en bas de l'accueil (`/#contact`).
 
 **Quand le serveur ne répond pas**, chaque lecture retombe sur une valeur vide ou sur les
 valeurs par défaut du modèle Django : la boutique reste consultable, elle n'affiche jamais un
@@ -306,8 +304,6 @@ réutilisables dans `components/motion.tsx` et `components/reveal.tsx`.
 | Zoom image au survol des cartes | `group-hover:scale-108` sur `components/product-card.tsx` |
 | Impulsion de la pastille panier | `anim-pop` + `key={pulse}` dans `components/header.tsx` |
 | Bascule des secondes, rotation du bandeau d'annonce | `anim-tick` + `key` sur la valeur |
-| Méga-menu « Boutique » au survol et au clavier | `group-hover` / `group-focus-within` dans `components/header.tsx` |
-| Ouverture de la palette de recherche | `.anim-veil` + `.anim-pop-in` |
 | Ouverture du panier / modale | `anim-slide-in`, `anim-fade-up` |
 
 Deux règles tenues partout :

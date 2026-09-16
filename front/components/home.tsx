@@ -19,6 +19,7 @@ import {
   IconArrowUp,
   IconInstagram,
   IconLeaf,
+  IconPin,
   IconQuote,
   IconRuler,
   IconShield,
@@ -31,10 +32,19 @@ import { QuickView } from "./quick-view";
 import { useAvis } from "./reviews-context";
 import { StarRow } from "./review-form";
 import { Countdown } from "./countdown";
-import { INSTAGRAM, INSTAGRAM_URL, TIKTOK, TIKTOK_URL, waLink } from "@/lib/format";
+import {
+  ADRESSE,
+  INSTAGRAM,
+  INSTAGRAM_URL,
+  MAPS_EMBED,
+  MAPS_URL,
+  TIKTOK,
+  TIKTOK_URL,
+  waLink,
+} from "@/lib/format";
 import { HERO_VIGNETTES, type Product } from "@/lib/products";
 import type { BandeauApi, CampagneApi } from "@/lib/api";
-import type { LienRayon } from "@/lib/catalogue";
+import { lienCategorie, type BrancheRayon, type LienRayon } from "@/lib/catalogue";
 import { formatXOF, jusquAu } from "@/lib/format";
 import { useReglages } from "./reglages-context";
 
@@ -57,46 +67,44 @@ const TICKER = [
 /* La grille « Nos univers » : une grande tuile, quatre petites, la légende
    au-dessus du nom et la pastille qui arrive au survol.
 
-   Ce ne sont plus cinq entrées écrites à la main : ce sont les rayons du
-   back-office, avec le visuel qu'on leur a donné. Une catégorie sans visuel
-   retombe sur l'une des photos livrées avec le site, dans l'ordre — la grille
-   garde sa tenue même sur une boutique qui n'a pas encore fait ses photos. */
+   Ce ne sont pas des entrées écrites à la main : ce sont les catégories du
+   back-office — Filles, Garçons, Coin Maman… — puis, pour remplir la grille,
+   leurs sous-catégories. Une case sans visuel retombe sur l'une des photos
+   livrées avec le site, dans l'ordre : la grille garde sa tenue même sur une
+   boutique qui n'a pas encore fait ses photos. */
 const PHOTOS_DE_SECOURS = [
   "/images/univers/short-fille-blanc-lisse.png",
   "/images/univers/Ensembleenfant-192-retouche.png",
   "/images/univers/chass1.png",
   "/images/univers/sac-dos.png",
+  "/images/univers/Ensembleenfant-193-retouche.png",
 ];
 
-const PHOTO_COIN_MAMAN = "/images/univers/Ensembleenfant-193-retouche.png";
+const TUILES = 5;
 
-/** Les cinq cases de la grille : quatre rayons, et le Coin Maman en dernier. */
-function tuilesDe(rayons: LienRayon[]) {
-  const cases = rayons.slice(0, 4).map((rayon, index) => ({
+function tuilesDe(categories: BrancheRayon[]) {
+  const cases: { rayon: LienRayon; href: string }[] = [
+    ...categories.map((c) => ({ rayon: c, href: lienCategorie(c.slug) })),
+    ...categories.flatMap((c) =>
+      c.enfants.map((e) => ({ rayon: e, href: lienCategorie(c.slug, e.slug) })),
+    ),
+  ].slice(0, TUILES);
+
+  return cases.map(({ rayon, href }, index) => ({
     slug: rayon.slug,
     label: rayon.nom,
-    caption:
-      rayon.description ||
-      `${rayon.nombre} pièce${rayon.nombre > 1 ? "s" : ""}`,
+    caption: rayon.description || `${rayon.nombre} pièce${rayon.nombre > 1 ? "s" : ""}`,
     image: rayon.image || PHOTOS_DE_SECOURS[index % PHOTOS_DE_SECOURS.length],
-    href: `/boutique?cat=${encodeURIComponent(rayon.nom)}`,
+    href,
     /* La première tuile tient deux colonnes et deux rangées : c'est elle qui
        porte la grille. */
     className: index === 0 ? "lg:col-span-2 lg:row-span-2" : "",
   }));
-
-  return [
-    ...cases,
-    {
-      slug: "coin-maman",
-      label: "Coin Maman",
-      caption: "Tissus & voiles",
-      image: PHOTO_COIN_MAMAN,
-      href: "/coin-maman",
-      className: "",
-    },
-  ];
 }
+
+/* Le Coin Maman est une catégorie comme les autres ; l'accueil lui garde
+   seulement une section. On la reconnaît à son slug. */
+const SLUG_COIN_MAMAN = "coin-maman";
 
 /* Les visuels du Coin Maman. Trois photos livrées avec le site, mais les
    libellés et les liens viennent des sous-catégories du back-office : ce qu'on
@@ -109,16 +117,16 @@ const PHOTOS_COIN_MAMAN = [
   `${CDN}Ensemble_enfant-26.jpg?width=600`,
 ];
 
-function vignettesMaman(rayons: LienRayon[]) {
+function vignettesMaman(coin: BrancheRayon) {
   return PHOTOS_COIN_MAMAN.map((src, index) => {
-    /* Moins de rayons que de photos : on repasse sur les mêmes plutôt que de
-       laisser une case sans lien. */
-    const rayon = rayons.length > 0 ? rayons[index % rayons.length] : null;
+    /* Moins de sous-catégories que de photos : on repasse sur les mêmes
+       plutôt que de laisser une case sans lien. */
+    const sous = coin.enfants.length > 0 ? coin.enfants[index % coin.enfants.length] : null;
     return {
       src,
-      href: rayon ? `/coin-maman?cat=${encodeURIComponent(rayon.nom)}` : "/coin-maman",
-      libelle: rayon?.nom ?? "Coin Maman",
-      alt: rayon ? `Voir « ${rayon.nom} »` : "Voir le Coin Maman",
+      href: lienCategorie(coin.slug, sous?.slug),
+      libelle: sous?.nom ?? coin.nom,
+      alt: `Voir « ${sous?.nom ?? coin.nom} »`,
     };
   });
 }
@@ -134,7 +142,7 @@ const PROMESSES = [
 
 /* Le mot des mamans : trois avis, la note et la référence de commande qui les
    rendent vérifiables. Ceux-ci ne servent que tant qu'aucune cliente n'a écrit ;
-   dès le premier avis déposé sur /avis, ce sont les vrais qui s'affichent. */
+   dès le premier avis publié, ce sont les vrais qui s'affichent. */
 const REVIEWS = [
   {
     stars: 5,
@@ -195,16 +203,13 @@ const EYEBROW = "text-[11px] font-bold uppercase tracking-[.16em] text-rose";
 
 export function Home({
   products,
-  rayons = [],
-  rayonsMaman = [],
+  categories = [],
   bandeau = [],
   campagnes = [],
 }: {
   products: Product[];
-  /** Les rayons du vestiaire enfant : ce sont eux qui font les tuiles. */
-  rayons?: LienRayon[];
-  /** Ceux du Coin Maman, pour les trois vignettes de la section dédiée. */
-  rayonsMaman?: LienRayon[];
+  /** Les catégories du back-office, chacune avec ses sous-catégories. */
+  categories?: BrancheRayon[];
   /** Le bandeau d'accueil réglé dans le back-office. */
   bandeau?: BandeauApi[];
   /** Les campagnes qui courent aujourd'hui. Vide, la section promo disparaît. */
@@ -214,8 +219,20 @@ export function Home({
   const [quick, setQuick] = useState<Product | null>(null);
   const reglages = useReglages();
 
-  const tuiles = useMemo(() => tuilesDe(rayons), [rayons]);
-  const vignettes = useMemo(() => vignettesMaman(rayonsMaman), [rayonsMaman]);
+  const tuiles = useMemo(() => tuilesDe(categories), [categories]);
+  const coinMaman = categories.find((c) => c.slug === SLUG_COIN_MAMAN) ?? null;
+  const vignettes = useMemo(() => (coinMaman ? vignettesMaman(coinMaman) : []), [coinMaman]);
+
+  /* Une campagne de rayon mène à la catégorie qui porte ce nom — ou à celle
+     qui l'abrite, quand c'est une sous-catégorie. */
+  const lienRayon = (nom: string) => {
+    for (const c of categories) {
+      if (c.nom === nom) return lienCategorie(c.slug);
+      const sous = c.enfants.find((e) => e.nom === nom);
+      if (sous) return lienCategorie(c.slug, sous.slug);
+    }
+    return "/boutique";
+  };
 
   /* La campagne annoncée n'est pas écrite dans la page : elle vient du
      back-office. On garde celle qui touche le plus de monde — la boutique
@@ -554,7 +571,7 @@ export function Home({
                   campagne.portee === "produit" && campagne.produit_slug
                     ? `/p/${campagne.produit_slug}`
                     : campagne.portee === "rayon" && campagne.rayon_nom
-                      ? `/boutique?cat=${encodeURIComponent(campagne.rayon_nom)}`
+                      ? lienRayon(campagne.rayon_nom)
                       : "/boutique"
                 }
                 className="shine group flex items-center gap-2.5 rounded-full bg-rose px-8 py-4 text-[14.5px] font-bold text-white shadow-[0_18px_42px_-16px_rgba(224,65,127,.9)]"
@@ -630,6 +647,7 @@ export function Home({
       {/* La boutique ne vend pas que des vêtements d'enfant : les mamans qui
           viennent habiller les petits repartent souvent avec de quoi se coudre
           quelque chose. Cette section leur ouvre une porte à elles. */}
+      {coinMaman && (
       <section className={`${SHELL} pt-16 md:pt-20`}>
         <Reveal className="overflow-hidden rounded-[28px] border border-line bg-mist">
           <div className="grid gap-8 p-7 md:grid-cols-[1.1fr_1fr] md:items-center md:p-10">
@@ -647,19 +665,21 @@ export function Home({
               <div className="mt-6 flex flex-wrap gap-3">
                 <Magnetic>
                   <Link
-                    href="/coin-maman"
+                    href={lienCategorie(coinMaman.slug)}
                     className="shine group flex items-center gap-2.5 rounded-full bg-ink px-6 py-3.5 text-[13.5px] font-bold text-white"
                   >
                     Découvrir le Coin Maman
                     <IconArrow className="h-4 w-4 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
                   </Link>
                 </Magnetic>
-                <Link
-                  href="/coin-maman?cat=Tissus"
-                  className="flex items-center gap-2.5 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-6 py-3.5 text-[13.5px] font-bold transition-colors duration-300 hover:border-rose hover:text-rose"
-                >
-                  Voir les tissus
-                </Link>
+                {coinMaman.enfants[0] && (
+                  <Link
+                    href={lienCategorie(coinMaman.slug, coinMaman.enfants[0].slug)}
+                    className="flex items-center gap-2.5 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-6 py-3.5 text-[13.5px] font-bold transition-colors duration-300 hover:border-rose hover:text-rose"
+                  >
+                    Voir : {coinMaman.enfants[0].nom}
+                  </Link>
+                )}
               </div>
 
               <p className="mt-4 text-[12.5px] text-muted">
@@ -691,6 +711,7 @@ export function Home({
           </div>
         </Reveal>
       </section>
+      )}
 
       {/* ============================================================= avis */}
       <section className={`${SHELL} pt-16 md:pt-20`}>
@@ -739,17 +760,6 @@ export function Home({
             </article>
           ))}
         </Reveal>
-
-        {/* Le dépôt se fait sur /avis, réservé aux commandes reçues. */}
-        <div className="mt-7 text-center">
-          <Link
-            href="/avis"
-            className="group inline-flex items-center gap-2 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-6 py-3.5 text-sm font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
-          >
-            {avisReels ? "Lire tous les avis" : "Donner mon avis"}
-            <IconArrow className="h-4 w-4 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
-          </Link>
-        </div>
       </section>
 
       {/* ================================================== nous contacter */}
@@ -765,6 +775,7 @@ export function Home({
 
       {/* Posé à même la page : ni panneau, ni aplat sombre. Les trois entrées
           sont les seuls objets dessinés, la lecture va droit au numéro. */}
+      <div id="contact" className="scroll-mt-16">
       <Reveal className={`${SHELL} pt-16 text-center md:pt-20`} variant="scale">
         <span className={EYEBROW}>Une question ?</span>
         <h2 className={`${H2} mx-auto mt-2.5 text-balance`}>Nous contacter</h2>
@@ -794,14 +805,53 @@ export function Home({
           ))}
         </div>
 
-        <p className="mt-6 text-[13px] text-muted">
-          Lundi au samedi, 9 h – 19 h · Dakar, Sénégal
-        </p>
-        <p className="mx-auto mt-1.5 max-w-[46ch] text-[13px] text-muted">
+        {/* Le magasin : l'adresse et les horaires, puis le plan lui-même. Le
+            plan est un <iframe> et non une image — la cliente zoome et fait
+            glisser sans quitter la page. `loading="lazy"` : il est en bas de
+            page, il ne doit pas retarder le reste. */}
+        <div className="mx-auto mt-3.5 grid max-w-[1020px] overflow-hidden rounded-[22px] border border-line bg-cream text-left md:grid-cols-[.8fr_1.2fr]">
+          <div className="flex flex-col p-6 md:p-7">
+            <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[.1em] text-rose">
+              <IconPin className="h-4 w-4" />
+              Le magasin
+            </span>
+            <span className="mt-2.5 text-[17px] font-bold leading-snug">{ADRESSE}</span>
+            <span className="mt-4 text-[12px] font-bold uppercase tracking-[.1em] text-muted">
+              Horaires
+            </span>
+            <span className="mt-1 text-[14.5px] font-semibold">Lundi au samedi, 9 h – 19 h</span>
+            <p className="mt-4 text-[13px] leading-relaxed text-muted">
+              Retrait sur place sur rendez-vous : prévenez sur WhatsApp avant de passer, la pièce
+              est mise de côté.
+            </p>
+            <a
+              href={MAPS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="group mt-5 inline-flex items-center gap-2 self-start text-[13px] font-bold text-rose md:mt-auto md:pt-5"
+            >
+              Ouvrir dans Google Maps
+              <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+            </a>
+          </div>
+          <div className="min-h-[240px] border-t border-line bg-mist md:border-l md:border-t-0">
+            <iframe
+              src={MAPS_EMBED}
+              title={`Plan d'accès — ${ADRESSE}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+              className="block h-full min-h-[240px] w-full border-0"
+            />
+          </div>
+        </div>
+
+        <p className="mx-auto mt-6 max-w-[46ch] text-[13px] text-muted">
           Les pièces sont photographiées dès leur arrivée sur Instagram : beaucoup partent avant
           même d&apos;être en ligne.
         </p>
       </Reveal>
+      </div>
 
       <QuickView product={quick} onClose={() => setQuick(null)} />
     </>

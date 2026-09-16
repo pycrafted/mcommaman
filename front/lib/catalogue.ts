@@ -25,6 +25,7 @@ export function versProduit(brut: ProduitApi): Product {
     compareAt: brut.prix_avant ?? undefined,
     promotion: brut.promotion ?? undefined,
     category: brut.rayon_nom,
+    categorySlug: brut.rayon_slug,
     univers: brut.univers as Univers,
     image: brut.image,
     description: brut.description,
@@ -144,6 +145,20 @@ export type LienRayon = {
 };
 
 /**
+ * L'adresse d'une catégorie dans la boutique.
+ *
+ * Toutes les catégories — Filles, Garçons, Coin Maman… — vivent sur la même
+ * page : `?cat=` nomme la catégorie, `&sous=` une de ses sous-catégories. On
+ * passe par les slugs et non par les noms, qui peuvent se répéter d'une
+ * catégorie à l'autre.
+ */
+export function lienCategorie(cat: string, sous?: string): string {
+  const params = new URLSearchParams({ cat });
+  if (sous) params.set("sous", sous);
+  return `/boutique?${params}`;
+}
+
+/**
  * Les rayons sur lesquels cliquer veut dire quelque chose.
  *
  * Une fiche est rangée dans une seule catégorie, la plus fine : filtrer sur
@@ -235,12 +250,10 @@ export async function lireArborescence(univers?: Univers): Promise<BrancheRayon[
  * `results[0]` pour la fiche. La barre s'affiche sur chaque page : elle ne peut
  * pas tirer cent fiches pour un nombre et une vignette.
  */
-export async function lireEnTeteCatalogue(
-  univers: Univers = "enfant",
-): Promise<{ nombre: number; derniere: Product | null }> {
+export async function lireEnTeteCatalogue(): Promise<{ nombre: number; derniere: Product | null }> {
   try {
     const page = await lire<Page<ProduitApi>>(
-      `/api/catalogue/produits/?univers=${univers}&tri=nouveautes&page_size=1`,
+      "/api/catalogue/produits/?tri=nouveautes&page_size=1",
       { revalider: 300 },
     );
     const brut = page?.results?.[0];

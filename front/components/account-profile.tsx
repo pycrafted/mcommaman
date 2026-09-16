@@ -518,7 +518,7 @@ export function AccountProfile() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Link
-                      href="/contact"
+                      href="/#contact"
                       className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-rose-deep/30 px-5 py-3 text-[13.5px] font-bold text-rose-deep transition-colors duration-300 hover:bg-rose-soft"
                     >
                       <IconTrash className="h-4 w-4" />

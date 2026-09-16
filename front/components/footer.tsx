@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { waLink } from "@/lib/format";
-import { lireRayonsNavigables } from "@/lib/catalogue";
+import { lienCategorie, lireArborescence } from "@/lib/catalogue";
 import { lireReglages } from "@/lib/reglages";
 
 /* Les colonnes d'aide et de mentions légales ne bougent pas ; celle de la
@@ -12,10 +12,9 @@ const COLUMNS = [
       { href: "/infos/livraison", label: "Livraison" },
       { href: "/infos/retours", label: "Retours" },
       { href: "/infos/faq", label: "Questions fréquentes" },
-      { href: "/contact", label: "Nous contacter" },
+      { href: "/#contact", label: "Nous contacter" },
       { href: "/compte", label: "Mon compte" },
       { href: "/commandes", label: "Suivre ma commande" },
-      { href: "/avis", label: "Avis des clientes" },
       { href: "/favoris", label: "Mes favoris" },
     ],
   },
@@ -29,26 +28,22 @@ const COLUMNS = [
   },
 ];
 
-/** Combien de rayons le pied de page nomme avant de renvoyer au catalogue. */
-const RAYONS_CITES = 3;
+/** Combien de catégories le pied de page nomme avant de renvoyer à la boutique. */
+const CATEGORIES_CITEES = 4;
 
 export async function Footer() {
-  /* Trois rayons, pas la liste entière : le pied de page est un raccourci, pas
-     un second menu. Les mêmes catégories que le menu du haut, dans le même
-     ordre — celui donné dans le back-office. */
-  const [rayons, reglages] = await Promise.all([
-    lireRayonsNavigables("enfant").then((liste) => liste.slice(0, RAYONS_CITES)),
+  /* Les mêmes catégories que la barre du haut, dans le même ordre — celui
+     donné dans le back-office. Quelques-unes seulement : le pied de page est un
+     raccourci, pas un second menu. */
+  const [categories, reglages] = await Promise.all([
+    lireArborescence().then((liste) => liste.slice(0, CATEGORIES_CITEES)),
     lireReglages(),
   ]);
   const boutique = {
     title: "Boutique",
     links: [
-      { href: "/boutique", label: "Catalogue" },
-      ...rayons.map((r) => ({
-        href: `/boutique?cat=${encodeURIComponent(r.nom)}`,
-        label: r.nom,
-      })),
-      { href: "/coin-maman", label: "Coin Maman" },
+      { href: "/boutique", label: "Toute la boutique" },
+      ...categories.map((c) => ({ href: lienCategorie(c.slug), label: c.nom })),
     ],
   };
 

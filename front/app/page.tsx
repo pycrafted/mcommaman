@@ -2,16 +2,15 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart-drawer";
 import { Home } from "@/components/home";
-import { lireCatalogue, lireRayonsNavigables } from "@/lib/catalogue";
+import { lireArborescence, lireCatalogue } from "@/lib/catalogue";
 import { lireBandeau, lireCampagnes } from "@/lib/reglages";
 
 /* Tout ce que l'accueil montre vient du serveur : les pièces, les rayons et
    leurs visuels, le bandeau. Rien n'est écrit dans la page. */
 export default async function Page() {
-  const [products, rayons, rayonsMaman, bandeau, campagnes] = await Promise.all([
-    lireCatalogue({ univers: "enfant" }),
-    lireRayonsNavigables("enfant"),
-    lireRayonsNavigables("maman"),
+  const [products, categories, bandeau, campagnes] = await Promise.all([
+    lireCatalogue(),
+    lireArborescence(),
     lireBandeau(),
     lireCampagnes(),
   ]);
@@ -22,8 +21,7 @@ export default async function Page() {
       <main>
         <Home
           products={products}
-          rayons={rayons}
-          rayonsMaman={rayonsMaman}
+          categories={categories}
           bandeau={bandeau}
           campagnes={campagnes}
         />

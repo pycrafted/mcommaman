@@ -210,7 +210,7 @@ function ForgotByEmail({ onFermer }: { onFermer: () => void }) {
         </p>
         <p className="text-[12.5px] leading-relaxed text-muted">
           Rien n&apos;arrive&nbsp;? Regardez dans les indésirables, puis écrivez-nous&nbsp;:{" "}
-          <Link href="/contact" className="font-semibold text-rose underline underline-offset-4">
+          <Link href="/#contact" className="font-semibold text-rose underline underline-offset-4">
             nous contacter
           </Link>
           .
