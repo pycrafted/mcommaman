@@ -166,6 +166,10 @@ export function versCommande(brut: CommandeApi): Order {
     ref: brut.reference,
     customerId: brut.cliente ? String(brut.cliente) : "",
     customerName: brut.nom_client,
+    customerPhone: brut.telephone,
+    subtotal: brut.sous_total,
+    shipping: brut.frais_livraison,
+    discount: brut.remise,
     lines: brut.lignes.map((l) => ({
       productId: String(l.id),
       name: l.nom_produit,

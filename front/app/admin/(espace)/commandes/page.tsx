@@ -37,7 +37,10 @@ export default function Page() {
       const ancre = decodeURIComponent(window.location.hash.replace("#", ""));
       if (!ancre) return;
       const cible = orders.find((o) => o.ref === ancre);
-      if (cible) setOuverte(cible.id);
+      if (!cible) return;
+      setOuverte(cible.id);
+      // L'ancre a servi : elle ne reste pas dans la barre d'adresse.
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
     };
     ouvrirAncre();
     // L'alerte de nouvelle commande pose l'ancre alors que la page est
@@ -130,7 +133,7 @@ export default function Page() {
               </span>
             </span>,
             <span key="c" className="block truncate">
-              {cliente?.name ?? "Cliente supprimée"}
+              {cliente?.name ?? o.customerName ?? "Cliente"}
               <span className="mt-0.5 block truncate text-[11.5px] text-muted">{o.city}</span>
             </span>,
             <span key="p" className="text-[13px]">
@@ -146,8 +149,10 @@ export default function Page() {
 
       <DetailCommande
         commande={commande}
-        nom={commande ? (nomDe(commande.customerId)?.name ?? null) : null}
-        telephone={commande ? (nomDe(commande.customerId)?.phone ?? null) : null}
+        nom={commande ? (nomDe(commande.customerId)?.name ?? commande.customerName ?? null) : null}
+        telephone={
+          commande ? (nomDe(commande.customerId)?.phone || commande.customerPhone || null) : null
+        }
         onClose={() => setOuverte(null)}
         onStatut={(statut) => commande && setOrderStatus(commande.id, statut)}
       />
@@ -202,20 +207,44 @@ function DetailCommande({
             ))}
           </ul>
 
-          <div className="mt-4 flex items-baseline justify-between border-t border-line pt-3.5">
-            <span className="text-[13px] text-muted">
-              {articles} article{articles > 1 ? "s" : ""}
-            </span>
-            <strong className="text-[17px] font-extrabold tabular-nums">
-              {formatXOF(commande.total)}
-            </strong>
-          </div>
+          {/* Le total se détaille : sans la livraison, il ne tombait pas juste
+              avec les articles au-dessus. */}
+          <dl className="mt-4 flex flex-col gap-1.5 border-t border-line pt-3.5 text-[13px]">
+            {commande.subtotal !== undefined && (
+              <div className="flex justify-between text-muted">
+                <dt>
+                  {articles} article{articles > 1 ? "s" : ""}
+                </dt>
+                <dd className="tabular-nums">{formatXOF(commande.subtotal)}</dd>
+              </div>
+            )}
+            {commande.shipping !== undefined && (
+              <div className="flex justify-between text-muted">
+                <dt>Livraison</dt>
+                <dd className="tabular-nums">
+                  {commande.shipping === 0 ? "Offerte" : formatXOF(commande.shipping)}
+                </dd>
+              </div>
+            )}
+            {Boolean(commande.discount) && (
+              <div className="flex justify-between text-[#2e7d52]">
+                <dt>Remise</dt>
+                <dd className="tabular-nums">−{formatXOF(commande.discount ?? 0)}</dd>
+              </div>
+            )}
+            <div className="mt-1 flex items-baseline justify-between">
+              <dt className="font-bold">Total</dt>
+              <dd className="text-[17px] font-extrabold tabular-nums">
+                {formatXOF(commande.total)}
+              </dd>
+            </div>
+          </dl>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="rounded-2xl bg-mist p-4">
             <p className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">Cliente</p>
-            <p className="mt-1.5 text-[13.5px] font-bold">{nom ?? "Cliente supprimée"}</p>
+            <p className="mt-1.5 text-[13.5px] font-bold">{nom ?? "Cliente"}</p>
             <p className="mt-0.5 text-[12.5px] text-muted">{commande.city}</p>
             {telephone && <p className="mt-0.5 text-[12.5px] tabular-nums text-muted">{telephone}</p>}
             <p className="mt-2.5 text-[12.5px]">

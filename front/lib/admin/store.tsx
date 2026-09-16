@@ -6,12 +6,10 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 
-import { jouerCarillon } from "./alertes";
 
 import { envoyer, televerser, type Page, type RayonApi } from "@/lib/api";
 import {
@@ -186,11 +184,6 @@ interface AdminContextValue extends AdminState {
   notification: { type: "success" | "error" | "warning"; message: string } | null;
   dismissNotification: () => void;
   notify: (type: "success" | "error" | "warning", message: string) => void;
-  /* Alertes de commande */
-  /** Les commandes arrivées depuis l'ouverture du back-office, pas encore vues. */
-  nouvellesCommandes: Order[];
-  /** À appeler quand la gérante a pris connaissance des nouvelles commandes. */
-  vuNouvellesCommandes: () => void;
   /** La cloche : les dernières commandes reçues, et combien ne sont pas lues. */
   cloche: Cloche;
   /** Marque toute la cloche comme lue, pour ce membre de l'équipe. */
@@ -291,7 +284,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [notification, setNotification] = useState<AdminContextValue["notification"]>(null);
-  const [nouvellesCommandes, setNouvellesCommandes] = useState<Order[]>([]);
   const [cloche, setCloche] = useState<Cloche>(CLOCHE_VIDE);
   const [compteursProduits, setCompteursProduits] = useState<CompteursProduits>(COMPTEURS_VIDES);
   const [versionProduits, setVersionProduits] = useState(0);
@@ -316,34 +308,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       .then(adopterCloche)
       .catch(() => undefined);
   }, [adopterCloche]);
-  /* Les références déjà connues. Vide jusqu'à la première lecture : ce qui
-     existait à l'ouverture n'est pas « nouveau ». */
-  const connues = useRef<Set<string> | null>(null);
-
-
-  /**
-   * Range les commandes lues et repère celles qu'on ne connaissait pas.
-   *
-   * Une commande nouvelle déclenche le carillon. Seules comptent celles
-   * « en attente » : une
-   * commande qui change de statut n'est pas une arrivée.
-   */
-  const recevoirCommandes = useCallback((lues: Order[]) => {
-    const deja = connues.current;
-    // L'ensemble ne fait que grandir : une relecture partielle ne doit pas
-    // faire passer pour neuve une commande déjà vue.
-    connues.current = new Set([...(deja ?? []), ...lues.map((o) => o.ref)]);
-    if (!deja) return;
-
-    const arrivees = lues.filter((o) => !deja.has(o.ref) && o.status === "en_attente");
-    if (arrivees.length === 0) return;
-
-    setNouvellesCommandes((courantes) => {
-      const vues = new Set(courantes.map((o) => o.ref));
-      return [...arrivees.filter((o) => !vues.has(o.ref)), ...courantes];
-    });
-    jouerCarillon();
-  }, []);
 
   useEffect(() => {
     if (!notification) return;
@@ -385,7 +349,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     const categories = contenu(rayons).map(versCategorie);
     const rayonsParId = new Map(categories.map((r) => [Number(r.id), r.slug]));
     const orders = contenu(commandes).map(versCommande);
-    recevoirCommandes(orders);
     if (compteurs) setCompteursProduits(compteurs);
     setVersionProduits((v) => v + 1);
     setState((courant) => ({
@@ -404,7 +367,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       },
       settings: reglages ? versReglages(reglages) : courant.settings,
     }));
-  }, [recevoirCommandes]);
+  }, []);
 
   /**
    * Relit les seules commandes.
@@ -421,14 +384,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       return; // réseau coupé, session expirée : on réessaiera au tour suivant
     }
     const recentes = lues.map(versCommande);
-    recevoirCommandes(recentes);
     // La page ne porte que les plus récentes : les plus anciennes restent
     // celles de la dernière lecture complète.
     setState((courant) => {
       const refs = new Set(recentes.map((o) => o.ref));
       return { ...courant, orders: [...recentes, ...courant.orders.filter((o) => !refs.has(o.ref))] };
     });
-  }, [recevoirCommandes]);
+  }, []);
 
   useEffect(() => {
     if (!sessionPrete) return;
@@ -450,8 +412,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
      plan. Une session fermée oublie ce qu'elle savait. */
   useEffect(() => {
     if (!sessionPrete || !equipe) {
-      connues.current = null;
-      setNouvellesCommandes([]);
       setCloche(CLOCHE_VIDE);
       return;
     }
@@ -470,7 +430,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     };
   }, [sessionPrete, equipe, surveillerCommandes, relireCloche]);
 
-  const vuNouvellesCommandes = useCallback(() => setNouvellesCommandes([]), []);
 
   /**
    * Exécute une écriture, puis relit.
@@ -1006,8 +965,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       notification,
       dismissNotification: () => setNotification(null),
       notify: (type, message) => setNotification({ type, message }),
-      nouvellesCommandes,
-      vuNouvellesCommandes,
       cloche,
       lireCloche,
       compteursProduits,
@@ -1037,7 +994,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       resetDemoData,
     }),
     [
-      state, hydrated, enCours, erreur, notification, nouvellesCommandes, vuNouvellesCommandes,
+      state, hydrated, enCours, erreur, notification,
       cloche, lireCloche, compteursProduits, versionProduits, saveProduct, createProduct, deleteProduct,
       duplicateProduct, setProductStatus, setOrderStatus, saveTeamMember, setTeamMemberActive, saveCategory,
       deleteCategory, savePromotion, deletePromotion, saveSizes,

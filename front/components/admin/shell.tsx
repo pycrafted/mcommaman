@@ -377,8 +377,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
     hydrated,
     notification,
     dismissNotification,
-    nouvellesCommandes,
-    vuNouvellesCommandes,
     cloche,
     lireCloche,
   } = useAdmin();
@@ -406,22 +404,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
     (o) => o.status === "en_attente" || o.status === "payee"
   ).length;
   const ruptures = compteursProduits.rupture;
-  const nouvelles = nouvellesCommandes.length;
-
-  /* L'onglet porte le nombre de nouvelles commandes : il se lit même quand
-     la gérante est sur un autre onglet. */
-  useEffect(() => {
-    const base = document.title.replace(/^\(\d+\) /, "");
-    const aSignaler = Math.max(nouvelles, cloche.nonLues);
-    document.title = aSignaler > 0 ? `(${aSignaler}) ${base}` : base;
-  }, [nouvelles, cloche.nonLues, chemin]);
-
-  /* Ouvrir la liste des commandes, c'est les avoir vues. */
-  useEffect(() => {
-    if (chemin.startsWith("/admin/commandes") && nouvelles > 0) vuNouvellesCommandes();
-    // Seulement à l'arrivée sur la page : une commande qui tombe pendant
-    // qu'on y est garde son bandeau jusqu'au clic.
-  }, [chemin]);
 
   const deconnecter = () => {
     // `logout` vide le compte dans le contexte avant même que le serveur ait
@@ -450,15 +432,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <n.Icone className="h-[18px] w-[18px] shrink-0" />
           <span className="min-w-0 flex-1 truncate">{n.label}</span>
           {n.href === "/admin/commandes" && aPreparer > 0 && (
-            <span className="relative rounded-full bg-rose px-1.5 text-[10.5px] font-bold tabular-nums text-white">
+            <span className="rounded-full bg-rose px-1.5 text-[10.5px] font-bold tabular-nums text-white">
               {aPreparer}
-              {/* Le point qui pulse dit « il y a du neuf », pas seulement « du travail ». */}
-              {nouvelles > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-gold" />
-                </span>
-              )}
             </span>
           )}
           {n.href === "/admin/produits" && ruptures > 0 && (
@@ -614,44 +589,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   onClick={dismissNotification}
                   aria-label="Fermer la notification"
                   className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-current transition-colors hover:bg-black/5"
-                >
-                  <IconX className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-          {nouvelles > 0 && (
-            <div className="sticky top-0 z-40 px-4 pt-4 sm:px-6 lg:px-8">
-              <div
-                role="status"
-                className="anim-fade-up flex flex-wrap items-center gap-3 rounded-2xl bg-rose px-4 py-3 text-white shadow-[0_14px_36px_-14px_rgba(224,65,127,.8)] sm:px-5"
-              >
-                <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20">
-                  <IconCart className="h-[18px] w-[18px]" />
-                  <span className="absolute inset-0 animate-ping rounded-full bg-white/25" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-extrabold">
-                    {nouvelles > 1 ? `${nouvelles} nouvelles commandes` : "Nouvelle commande"}
-                  </div>
-                  <div className="truncate text-[12.5px] text-white/85">
-                    {nouvellesCommandes[0].ref}
-                    {nouvellesCommandes[0].customerName ? ` · ${nouvellesCommandes[0].customerName}` : ""}
-                    {` · ${nouvellesCommandes[0].city} · ${formatXOF(nouvellesCommandes[0].total)}`}
-                  </div>
-                </div>
-                <Link
-                  href={`/admin/commandes#${nouvellesCommandes[0].ref}`}
-                  onClick={vuNouvellesCommandes}
-                  className="rounded-full bg-white px-4 py-2 text-[12.5px] font-bold text-rose-deep transition-transform hover:-translate-y-0.5"
-                >
-                  {nouvelles > 1 ? "Voir les commandes" : "Voir la commande"}
-                </Link>
-                <button
-                  type="button"
-                  onClick={vuNouvellesCommandes}
-                  aria-label="Masquer l'alerte"
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/85 transition-colors hover:bg-white/15"
                 >
                   <IconX className="h-4 w-4" />
                 </button>

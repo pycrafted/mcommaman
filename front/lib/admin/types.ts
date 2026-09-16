@@ -61,8 +61,13 @@ export interface Order {
   id: string;
   ref: string;
   customerId: string;
-  /** Le nom saisi à la commande — il existe aussi sans compte. */
+  /** Le nom et le téléphone saisis à la commande — ils existent aussi sans compte. */
   customerName?: string;
+  customerPhone?: string;
+  /** Le détail du total. */
+  subtotal?: number;
+  shipping?: number;
+  discount?: number;
   lines: OrderLine[];
   total: number;
   status: OrderStatus;
