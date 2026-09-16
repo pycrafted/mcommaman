@@ -28,7 +28,6 @@ const normaliser = (valeur: string) =>
 export default function Page() {
   const {
     library,
-    products,
     saveSizes,
     saveColor,
     deleteColor,
@@ -64,8 +63,10 @@ export default function Page() {
   if (!hydrated) return <p className="text-[13px] text-muted">Lecture de la configuration…</p>;
 
   /* Combien de fiches se servent d'une valeur : on ne supprime pas à l'aveugle. */
-  const fichesAvecTaille = (v: string) => products.filter((p) => p.sizes.includes(v)).length;
-  const fichesAvecCouleur = (n: string) => products.filter((p) => p.colors.includes(n)).length;
+  const fichesAvecTaille = (v: string) =>
+    library.sizes.find((s) => s.value === v)?.productCount ?? 0;
+  const fichesAvecCouleur = (n: string) =>
+    library.colors.find((c) => c.name === n)?.productCount ?? 0;
 
   const ajouterTaille = () => {
     const v = taille.trim();

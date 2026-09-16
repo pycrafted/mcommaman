@@ -125,7 +125,9 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             )}
           </div>
 
-          <p className="mt-4 text-sm leading-relaxed text-[#6b5a61]">{product.description}</p>
+          <p className="mt-4 text-sm leading-relaxed text-[#6b5a61]">
+            {fiche?.description ?? product.description}
+          </p>
 
           {!fiche ? (
             <p className="mt-6 text-[13px] text-muted">Lecture des tailles disponibles…</p>

@@ -84,7 +84,7 @@ function VisuelCategorie({
 }
 
 export default function Page() {
-  const { categories, products, saveCategory, deleteCategory, hydrated } = useAdmin();
+  const { categories, saveCategory, deleteCategory, hydrated } = useAdmin();
   const [edite, setEdite] = useState<{ rayon: AdminCategory; genre: Genre } | null>(null);
   /* La catégorie dont on choisit les sous-catégories, s'il y en a une d'ouverte. */
   const [rattache, setRattache] = useState<AdminCategory | null>(null);
@@ -108,8 +108,11 @@ export default function Page() {
     window.localStorage.setItem("mcm-categories-affichage", valeur);
   };
 
-  const compte = (slug: string) => products.filter((p) => slugify(p.category) === slug).length;
-  const produitsDe = (c: AdminCategory) => products.filter((p) => slugify(p.category) === c.slug);
+  /* Les nombres viennent du serveur : le back-office ne charge plus le
+     catalogue entier pour les compter. */
+  const parSlug = new Map(categories.map((c) => [c.slug, c]));
+  const compte = (slug: string) => parSlug.get(slug)?.productCount ?? 0;
+  const brouillonsDe = (c: AdminCategory) => c.draftCount ?? 0;
 
   const racines = categories
     .filter((c) => c.parentSlugs.length === 0)
@@ -144,7 +147,7 @@ export default function Page() {
      sous-catégories : les fiches deviendraient orphelines. On le sait avant de
      cliquer, autant le dire au lieu de laisser l'appel échouer. */
   const empeche = (c: AdminCategory) => {
-    const fiches = produitsDe(c).filter((p) => p.status !== "brouillon").length;
+    const fiches = (c.productCount ?? 0) - brouillonsDe(c);
     const enfants = enfantsDe(c.slug).length;
     if (fiches > 0 && enfants > 0) {
       return `Contient ${fiches} produit${fiches > 1 ? "s" : ""} et ${enfants} sous-catégorie${
@@ -167,7 +170,7 @@ export default function Page() {
 
   const boutonSuppression = (c: AdminCategory, label = "Supprimer") => {
     const blocage = empeche(c);
-    const brouillons = produitsDe(c).filter((p) => p.status === "brouillon").length;
+    const brouillons = brouillonsDe(c);
     if (!blocage && brouillons > 0) {
       return (
         <Button size="sm" variant="ghost" onClick={() => demanderSuppression(c)}>

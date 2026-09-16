@@ -3,18 +3,20 @@
 import { use } from "react";
 import Link from "next/link";
 import { useAdmin } from "@/lib/admin/store";
+import { useFicheProduit } from "@/lib/admin/produits";
 import { ProductForm } from "@/components/product-form";
 import { Button, EmptyState } from "@/components/admin/ui";
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { products, hydrated } = useAdmin();
-  const fiche = products.find((p) => p.id === id);
+  const { hydrated } = useAdmin();
+  /* La fiche est lue seule, variantes et galerie comprises : le back-office
+     ne garde plus tout le catalogue en mémoire. */
+  const fiche = useFicheProduit(id);
 
-  /* Avant l'hydratation, la graine est déjà là : une fiche introuvable à ce
-     moment-là l'est vraiment. On attend quand même la relecture du stockage,
-     sinon une fiche créée dans une session précédente s'annoncerait absente. */
-  if (!hydrated) return <p className="text-[13px] text-muted">Ouverture du produit…</p>;
+  if (!hydrated || fiche === undefined) {
+    return <p className="text-[13px] text-muted">Ouverture du produit…</p>;
+  }
 
   if (!fiche) {
     return (

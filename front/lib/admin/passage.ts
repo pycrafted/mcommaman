@@ -127,6 +127,8 @@ export function versCategorie(brut: RayonApi): AdminCategory {
     univers: (brut.univers as "enfant" | "maman") ?? "enfant",
     active: brut.visible,
     order: brut.ordre ?? 0,
+    productCount: brut.fiches ?? 0,
+    draftCount: brut.fiches_brouillons ?? 0,
   };
 }
 
@@ -163,6 +165,7 @@ export function versCommande(brut: CommandeApi): Order {
     id: brut.reference,
     ref: brut.reference,
     customerId: brut.cliente ? String(brut.cliente) : "",
+    customerName: brut.nom_client,
     lines: brut.lignes.map((l) => ({
       productId: String(l.id),
       name: l.nom_produit,
@@ -236,6 +239,7 @@ export type CampagneApi = {
   portee: string;
   rayon: number | null;
   produit: number | null;
+  produit_nom?: string;
   condition: string;
   montant_minimum: number;
   active: boolean;
@@ -263,6 +267,7 @@ export function versPromotion(
     target: PORTEES[brut.portee] ?? "boutique",
     categorySlug: brut.rayon ? (rayonsParId.get(brut.rayon) ?? "") : "",
     productId: brut.produit ? String(brut.produit) : "",
+    productName: brut.produit_nom ?? "",
     orderRule: brut.condition === "montant_minimum" ? "montant-minimum" : "premiere-commande",
     minAmount: brut.montant_minimum,
     active: brut.active,
@@ -308,20 +313,28 @@ export const versMedia = (brut: MediaApi): MediaItem => ({
   addedAt: brut.ajoute_le,
 });
 
-export type TailleApi = { id: number; valeur: string; repere: string; ordre: number };
+export type TailleApi = {
+  id: number;
+  valeur: string;
+  repere: string;
+  ordre: number;
+  nombre_produits?: number;
+};
 
 export const versTaille = (brut: TailleApi): SizeValue => ({
   id: String(brut.id),
   value: brut.valeur,
   age: brut.repere,
+  productCount: brut.nombre_produits ?? 0,
 });
 
-export type ColorisApi = { id: number; nom: string; hexa: string };
+export type ColorisApi = { id: number; nom: string; hexa: string; nombre_produits?: number };
 
 export const versColoris = (brut: ColorisApi): AdminColor => ({
   id: String(brut.id),
   name: brut.nom,
   hex: brut.hexa,
+  productCount: brut.nombre_produits ?? 0,
 });
 
 export type MatiereApi = { id: number; nom: string };

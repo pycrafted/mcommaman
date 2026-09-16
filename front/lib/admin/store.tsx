@@ -6,9 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+
+import { jouerCarillon } from "./alertes";
 
 import { envoyer, televerser, type Page, type RayonApi } from "@/lib/api";
 import {
@@ -22,7 +25,6 @@ import {
   versMedia,
   versMembre,
   versMatiere,
-  versProduit,
   versPromotion,
   versReglages,
   versTaille,
@@ -34,7 +36,6 @@ import {
   type MembreApi,
   type MatiereApi,
   type PhotoProduitApi,
-  type ProduitGestionApi,
   type ReglagesApi,
   type TailleApi,
 } from "./passage";
@@ -100,7 +101,6 @@ export const TAILLE_UNIQUE = "TU";
  */
 
 interface AdminState {
-  products: AdminProduct[];
   orders: Order[];
   customers: Customer[];
   /* L'equipe : les comptes qui ouvrent le back-office, par opposition aux
@@ -116,7 +116,6 @@ interface AdminState {
 }
 
 const VIDE: AdminState = {
-  products: [],
   orders: [],
   customers: [],
   team: [],
@@ -141,8 +140,45 @@ const VIDE: AdminState = {
   activity: [],
 };
 
+/** Une entrée de la cloche du back-office. */
+export type NotificationCommande = {
+  reference: string;
+  nom_client: string;
+  ville: string;
+  total: number;
+  statut: Order["status"];
+  creee_le: string;
+  lue: boolean;
+};
+
+export type Cloche = { nonLues: number; notifications: NotificationCommande[] };
+
+type ClocheApi = { non_lues: number; lues_le: string | null; notifications: NotificationCommande[] };
+
+const CLOCHE_VIDE: Cloche = { nonLues: 0, notifications: [] };
+
+export type CompteursProduits = {
+  tous: number;
+  publie: number;
+  brouillon: number;
+  archive: number;
+  rupture: number;
+  stock_bas: number;
+};
+
+const COMPTEURS_VIDES: CompteursProduits = {
+  tous: 0, publie: 0, brouillon: 0, archive: 0, rupture: 0, stock_bas: 0,
+};
+
 interface AdminContextValue extends AdminState {
   hydrated: boolean;
+  /**
+   * Les chiffres du catalogue. Les fiches elles-mêmes ne sont plus chargées
+   * d'un bloc : chaque page lit celles qu'elle affiche (`lib/admin/produits.ts`).
+   */
+  compteursProduits: CompteursProduits;
+  /** Change à chaque écriture sur une fiche : les listes s'en servent pour se relire. */
+  versionProduits: number;
   /** Vrai le temps d'une écriture : les boutons peuvent se désactiver. */
   enCours: boolean;
   /** Le dernier refus du serveur, en clair. */
@@ -150,13 +186,21 @@ interface AdminContextValue extends AdminState {
   notification: { type: "success" | "error" | "warning"; message: string } | null;
   dismissNotification: () => void;
   notify: (type: "success" | "error" | "warning", message: string) => void;
+  /* Alertes de commande */
+  /** Les commandes arrivées depuis l'ouverture du back-office, pas encore vues. */
+  nouvellesCommandes: Order[];
+  /** À appeler quand la gérante a pris connaissance des nouvelles commandes. */
+  vuNouvellesCommandes: () => void;
+  /** La cloche : les dernières commandes reçues, et combien ne sont pas lues. */
+  cloche: Cloche;
+  /** Marque toute la cloche comme lue, pour ce membre de l'équipe. */
+  lireCloche: () => void;
   /* Produits */
   saveProduct: (product: AdminProduct) => void;
   createProduct: (product: AdminProduct) => void;
   deleteProduct: (id: string) => void;
   duplicateProduct: (id: string) => void;
   setProductStatus: (id: string, status: AdminProduct["status"]) => void;
-  setStock: (id: string, stock: number) => void;
   /* Commandes */
   setOrderStatus: (id: string, status: OrderStatus) => void;
 
@@ -211,6 +255,9 @@ const contenu = <T,>(page: Page<T> | T[] | null): T[] =>
  * Renvoie ce qui a pu être lu si le serveur s'interrompt : mieux vaut une liste
  * partielle qu'un back-office vide, et l'erreur remonte par ailleurs.
  */
+/** Le rythme de relecture des commandes, back-office ouvert. */
+const SURVEILLANCE_MS = 30_000;
+
 async function tout<T>(chemin: string): Promise<T[]> {
   const lignes: T[] = [];
   let suite: string | null = chemin + (chemin.includes("?") ? "&" : "?") + "page_size=200";
@@ -244,6 +291,59 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [notification, setNotification] = useState<AdminContextValue["notification"]>(null);
+  const [nouvellesCommandes, setNouvellesCommandes] = useState<Order[]>([]);
+  const [cloche, setCloche] = useState<Cloche>(CLOCHE_VIDE);
+  const [compteursProduits, setCompteursProduits] = useState<CompteursProduits>(COMPTEURS_VIDES);
+  const [versionProduits, setVersionProduits] = useState(0);
+
+  const adopterCloche = useCallback((brut: ClocheApi) => {
+    setCloche({ nonLues: brut.non_lues, notifications: brut.notifications });
+  }, []);
+
+  /** Relit la cloche. Muette en cas d'échec : elle reprendra au tour suivant. */
+  const relireCloche = useCallback(async () => {
+    try {
+      adopterCloche(await envoyer<ClocheApi>("/api/gestion/notifications/"));
+    } catch {
+      /* rien : la cloche garde son dernier état */
+    }
+  }, [adopterCloche]);
+
+  const lireCloche = useCallback(() => {
+    // La pastille s'éteint tout de suite ; le serveur confirme ensuite.
+    setCloche((c) => ({ ...c, nonLues: 0 }));
+    envoyer<ClocheApi>("/api/gestion/notifications/", "POST")
+      .then(adopterCloche)
+      .catch(() => undefined);
+  }, [adopterCloche]);
+  /* Les références déjà connues. Vide jusqu'à la première lecture : ce qui
+     existait à l'ouverture n'est pas « nouveau ». */
+  const connues = useRef<Set<string> | null>(null);
+
+
+  /**
+   * Range les commandes lues et repère celles qu'on ne connaissait pas.
+   *
+   * Une commande nouvelle déclenche le carillon. Seules comptent celles
+   * « en attente » : une
+   * commande qui change de statut n'est pas une arrivée.
+   */
+  const recevoirCommandes = useCallback((lues: Order[]) => {
+    const deja = connues.current;
+    // L'ensemble ne fait que grandir : une relecture partielle ne doit pas
+    // faire passer pour neuve une commande déjà vue.
+    connues.current = new Set([...(deja ?? []), ...lues.map((o) => o.ref)]);
+    if (!deja) return;
+
+    const arrivees = lues.filter((o) => !deja.has(o.ref) && o.status === "en_attente");
+    if (arrivees.length === 0) return;
+
+    setNouvellesCommandes((courantes) => {
+      const vues = new Set(courantes.map((o) => o.ref));
+      return [...arrivees.filter((o) => !vues.has(o.ref)), ...courantes];
+    });
+    jouerCarillon();
+  }, []);
 
   useEffect(() => {
     if (!notification) return;
@@ -259,9 +359,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    * latérale ont besoin des commandes même sur la page des rayons.
    */
   const relire = useCallback(async () => {
-    const [produits, rayons, commandes, clientes, equipe, campagnes, tailles, coloris, matieres, medias, reglages] =
+    const [compteurs, rayons, commandes, clientes, equipe, campagnes, tailles, coloris, matieres, medias, reglages] =
       await Promise.all([
-        tout<ProduitGestionApi>("/api/gestion/produits/"),
+        // Les chiffres du catalogue, pas le catalogue : chaque page lit les
+        // fiches qu'elle affiche.
+        envoyer<CompteursProduits>("/api/gestion/produits/compteurs/").catch(() => null),
         // La route publique masque les rayons invisibles : lus par là, ceux
         // qu'on vient de décocher disparaissaient aussi du back-office, comme
         // s'ils avaient été supprimés. `/api/gestion/` les rend tous.
@@ -282,11 +384,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     const categories = contenu(rayons).map(versCategorie);
     const rayonsParId = new Map(categories.map((r) => [Number(r.id), r.slug]));
+    const orders = contenu(commandes).map(versCommande);
+    recevoirCommandes(orders);
+    if (compteurs) setCompteursProduits(compteurs);
+    setVersionProduits((v) => v + 1);
     setState((courant) => ({
       ...courant,
-      products: contenu(produits).map(versProduit),
       categories,
-      orders: contenu(commandes).map(versCommande),
+      orders,
       customers: contenu(clientes).map(versCliente),
       team: contenu(equipe).map(versMembre),
       promotions: contenu(campagnes).map((campagne) => versPromotion(campagne, rayonsParId)),
@@ -299,7 +404,31 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       },
       settings: reglages ? versReglages(reglages) : courant.settings,
     }));
-  }, []);
+  }, [recevoirCommandes]);
+
+  /**
+   * Relit les seules commandes.
+   *
+   * C'est ce qui tourne en fond pendant que le back-office est ouvert : tout
+   * relire toutes les trente secondes serait lourd pour rien.
+   */
+  const surveillerCommandes = useCallback(async () => {
+    let lues: CommandeApi[];
+    try {
+      const page = await envoyer<Page<CommandeApi>>("/api/gestion/commandes/?page_size=200");
+      lues = page.results;
+    } catch {
+      return; // réseau coupé, session expirée : on réessaiera au tour suivant
+    }
+    const recentes = lues.map(versCommande);
+    recevoirCommandes(recentes);
+    // La page ne porte que les plus récentes : les plus anciennes restent
+    // celles de la dernière lecture complète.
+    setState((courant) => {
+      const refs = new Set(recentes.map((o) => o.ref));
+      return { ...courant, orders: [...recentes, ...courant.orders.filter((o) => !refs.has(o.ref))] };
+    });
+  }, [recevoirCommandes]);
 
   useEffect(() => {
     if (!sessionPrete) return;
@@ -312,8 +441,36 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       return;
     }
     setHydrated(false);
+    void relireCloche();
     relire().finally(() => setHydrated(true));
-  }, [relire, sessionPrete, equipe]);
+  }, [relire, relireCloche, sessionPrete, equipe]);
+
+  /* Pendant que le back-office est ouvert, les commandes sont relues toutes
+     les trente secondes, et tout de suite quand l'onglet revient au premier
+     plan. Une session fermée oublie ce qu'elle savait. */
+  useEffect(() => {
+    if (!sessionPrete || !equipe) {
+      connues.current = null;
+      setNouvellesCommandes([]);
+      setCloche(CLOCHE_VIDE);
+      return;
+    }
+    const tour = () => {
+      void surveillerCommandes();
+      void relireCloche();
+    };
+    const minuteur = window.setInterval(tour, SURVEILLANCE_MS);
+    const auRetour = () => {
+      if (document.visibilityState === "visible") tour();
+    };
+    document.addEventListener("visibilitychange", auRetour);
+    return () => {
+      window.clearInterval(minuteur);
+      document.removeEventListener("visibilitychange", auRetour);
+    };
+  }, [sessionPrete, equipe, surveillerCommandes, relireCloche]);
+
+  const vuNouvellesCommandes = useCallback(() => setNouvellesCommandes([]), []);
 
   /**
    * Exécute une écriture, puis relit.
@@ -584,28 +741,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [ecrire],
   );
 
-  const setStock = useCallback<AdminContextValue["setStock"]>(
-    (id, stock) => {
-      // Le stock vit sur la variante. Sans variante unique, on ne devine pas
-      // laquelle ajuster : la page des variantes s'en charge.
-      const produit = state.products.find((p) => p.id === id);
-      const ecart = stock - (produit?.stock ?? 0);
-      if (!produit || ecart === 0) return;
-      void ecrire(async () => {
-        const variantes = await envoyer<Page<{ id: number }>>(
-          `/api/gestion/variantes/?produit=${id}`,
-        );
-        const premiere = contenu(variantes)[0];
-        if (!premiere) throw new Error("Cette fiche n'a pas encore de variante.");
-        return envoyer(`/api/gestion/variantes/${premiere.id}/ajuster/`, "POST", {
-          quantite: ecart,
-          motif: "ajustement",
-        });
-      });
-    },
-    [ecrire, state.products],
-  );
-
   /* -------------------------------------------------------- commandes */
 
   const setOrderStatus = useCallback<AdminContextValue["setOrderStatus"]>(
@@ -871,12 +1006,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       notification,
       dismissNotification: () => setNotification(null),
       notify: (type, message) => setNotification({ type, message }),
+      nouvellesCommandes,
+      vuNouvellesCommandes,
+      cloche,
+      lireCloche,
+      compteursProduits,
+      versionProduits,
       saveProduct,
       createProduct,
       deleteProduct,
       duplicateProduct,
       setProductStatus,
-      setStock,
       setOrderStatus,
       saveTeamMember,
       setTeamMemberActive,
@@ -897,8 +1037,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       resetDemoData,
     }),
     [
-      state, hydrated, enCours, erreur, notification, saveProduct, createProduct, deleteProduct,
-      duplicateProduct, setProductStatus, setStock, setOrderStatus, saveTeamMember, setTeamMemberActive, saveCategory,
+      state, hydrated, enCours, erreur, notification, nouvellesCommandes, vuNouvellesCommandes,
+      cloche, lireCloche, compteursProduits, versionProduits, saveProduct, createProduct, deleteProduct,
+      duplicateProduct, setProductStatus, setOrderStatus, saveTeamMember, setTeamMemberActive, saveCategory,
       deleteCategory, savePromotion, deletePromotion, saveSizes,
       saveColor, deleteColor, saveMaterial, deleteMaterial, addMedia, televerserMedia, removeMedia, updateHero,
       updateSettings, resetDemoData,

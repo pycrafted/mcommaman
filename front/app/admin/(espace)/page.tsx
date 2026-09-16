@@ -65,15 +65,14 @@ function CarteRubrique({
 }
 
 export default function Page() {
-  const { products, orders, customers, categories, promotions, settings, library, hydrated } =
+  const { compteursProduits, orders, customers, categories, promotions, settings, library, hydrated } =
     useAdmin();
 
   if (!hydrated) return <p className="text-[13px] text-muted">Lecture du back-office…</p>;
 
   const aPreparer = orders.filter((o) => o.status === "en_attente" || o.status === "payee").length;
-  const stockFaible = products.filter(
-    (p) => p.status === "publie" && p.stock <= settings.lowStockThreshold
-  ).length;
+  /* Compté par le serveur, au seuil réglé : le catalogue n'est pas chargé ici. */
+  const stockFaible = compteursProduits.stock_bas;
   const periode = computePeriod(orders, 30);
 
   /* Le vrai jour : les commandes viennent de la base, une campagne « en
@@ -102,7 +101,7 @@ export default function Page() {
         <CarteRubrique
           href="/admin/produits"
           titre="Produits"
-          chiffre={String(products.length)}
+          chiffre={String(compteursProduits.tous)}
           legende="produits au catalogue"
           description={
             stockFaible > 0

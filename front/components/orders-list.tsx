@@ -26,7 +26,7 @@ export function OrdersList() {
           Mes commandes
         </h2>
         <p className="mt-2.5 max-w-[52ch] text-[14.5px] leading-relaxed text-muted text-pretty">
-          Chaque commande passée depuis ce navigateur, avec l&apos;avancement de son colis.
+          Chacune de vos commandes, avec l&apos;avancement de son colis.
         </p>
       </div>
 

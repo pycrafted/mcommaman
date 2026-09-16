@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatXOF } from "@/lib/format";
+import { envoyer } from "@/lib/api";
 import { TAILLE_UNIQUE, useAdmin } from "@/lib/admin/store";
 import { slugify } from "@/lib/admin/slug";
 import type { AdminColor, AdminMaterial, AdminProduct, SizeValue } from "@/lib/admin/types";
@@ -152,25 +153,18 @@ const AjoutRapide = ({
  * « Rose Poudre ».
  */
 /**
- * Une référence interne libre, dérivée du nom.
+ * Une référence de secours, le temps que le serveur propose la sienne.
  *
- * Trois lettres et un numéro qui ne heurte aucune fiche existante : le serveur
- * exige l'unicité, autant la proposer d'emblée plutôt que de la faire découvrir
- * au moment d'enregistrer. Elle reste modifiable — c'est une suggestion.
+ * La vraie proposition — trois lettres et le premier numéro libre — vient de
+ * `/api/gestion/produits/disponibilite/` : le navigateur ne connaît plus tout
+ * le catalogue pour la calculer. Celle-ci n'est unique que par l'horodatage.
  */
-function referenceProposee(nom: string, prises: Set<string>): string {
-  const lettres =
-    (nom
-      .normalize("NFD")
-      .replace(/[^A-Za-z]/g, "")
-      .toUpperCase()
-      .slice(0, 3) || "REF").padEnd(3, "X");
-
-  for (let n = 1; n < 10_000; n += 1) {
-    const candidat = `${lettres}-${String(n).padStart(4, "0")}`;
-    if (!prises.has(candidat)) return candidat;
-  }
-  // Dix mille fiches partageant les mêmes trois lettres : on ne bloque pas.
+function referenceDeSecours(nom: string): string {
+  const lettres = (nom
+    .normalize("NFD")
+    .replace(/[^A-Za-z]/g, "")
+    .toUpperCase()
+    .slice(0, 3) || "REF").padEnd(3, "X");
   return `${lettres}-${Date.now().toString(36).toUpperCase()}`;
 }
 
@@ -275,7 +269,6 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
     library,
     createProduct,
     saveProduct,
-    products,
     categories,
     saveMaterial,
     saveColor,
@@ -358,15 +351,38 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
   const [colorisAjoutes, setColorisAjoutes] = useState<AdminColor[]>([]);
   const [taillesAjoutees, setTaillesAjoutees] = useState<SizeValue[]>([]);
 
-  const referencesPrises = useMemo(
-    () => new Set(products.filter((p) => p.id !== product?.id).map((p) => p.sku)),
-    [products, product?.id],
-  );
+  /* La référence libre et l'adresse déjà prise, demandées au serveur quand la
+     frappe s'arrête. */
+  const [disponibilite, setDisponibilite] = useState<{ reference: string; slugPris: boolean }>({
+    reference: "",
+    slugPris: false,
+  });
+
+  useEffect(() => {
+    if (!name.trim()) {
+      setDisponibilite({ reference: "", slugPris: false });
+      return;
+    }
+    let vivant = true;
+    const minuteur = window.setTimeout(() => {
+      const params = new URLSearchParams({ nom: name });
+      if (product?.id) params.set("exclure", product.id);
+      envoyer<{ reference: string; slug_pris: boolean }>(
+        `/api/gestion/produits/disponibilite/?${params}`,
+      )
+        .then((r) => vivant && setDisponibilite({ reference: r.reference, slugPris: r.slug_pris }))
+        .catch(() => undefined);
+    }, 300);
+    return () => {
+      vivant = false;
+      window.clearTimeout(minuteur);
+    };
+  }, [name, product?.id]);
 
   useEffect(() => {
     if (skuTouche) return;
-    setSku(name.trim() ? referenceProposee(name, referencesPrises) : "");
-  }, [name, skuTouche, referencesPrises]);
+    setSku(name.trim() ? disponibilite.reference : "");
+  }, [name, skuTouche, disponibilite.reference]);
 
   /* Le premier rayon connu sert de valeur de départ : la liste arrive après le
      premier rendu, quand le back-office a fini de lire la base. */
@@ -420,9 +436,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
   const canPublish = blockers.length === 0;
 
   /* Deux fiches qui partagent une adresse s'écrasent en boutique. */
-  const slugPris = slug
-    ? products.some((p) => p.slug === slug && p.id !== product?.id)
-    : false;
+  const slugPris = Boolean(slug) && disponibilite.slugPris;
 
   const bascule = (liste: string[], set: (v: string[]) => void, valeur: string) =>
     set(liste.includes(valeur) ? liste.filter((v) => v !== valeur) : [...liste, valeur]);
@@ -548,7 +562,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
     const maintenant = new Date().toISOString();
     /* La référence n'est plus réclamée à la gérante : si le champ a été vidé,
        on en reprend une libre. Le serveur, lui, l'exige toujours unique. */
-    const reference = sku.trim() || referenceProposee(name, referencesPrises);
+    const reference = sku.trim() || disponibilite.reference || referenceDeSecours(name);
 
     const fiche: AdminProduct = {
       id: product?.id ?? `prod-${Date.now().toString(36)}`,

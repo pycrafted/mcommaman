@@ -230,13 +230,16 @@ export type VarianteApi = {
   disponible: boolean;
 };
 
-/** Un produit tel que le serveur le décrit. */
-export type ProduitApi = {
+/**
+ * Un produit tel qu'une liste le renvoie : de quoi dessiner une carte.
+ *
+ * Les listes ne portent ni description, ni galerie, ni tailles — la fiche les
+ * porte (`ProduitApi`). C'est ce qui garde les pages de la boutique légères.
+ */
+export type ProduitCarteApi = {
   id: number;
   slug: string;
   nom: string;
-  prix: number;
-  prix_barre: number | null;
   /** Ce qu'on paie aujourd'hui : le prix de la fiche, remise en cours déduite. */
   prix_public: number;
   /** Le prix à barrer — celui d'avant la remise, ou le prix barré saisi. */
@@ -248,10 +251,29 @@ export type ProduitApi = {
     economie: number;
     jusquau: string;
   } | null;
-  description: string;
-  matiere: string;
   rayon_nom: string;
   rayon_slug: string;
+  image: string;
+  en_rupture: boolean;
+};
+
+/** Les filtres d'une catégorie, comptés par le serveur. */
+export type FacettesApi = {
+  total: number;
+  prix_min: number;
+  prix_max: number;
+  /** Nombre d'articles par sous-catégorie, par slug. */
+  sous_categories: Record<string, number>;
+  /** Les tailles encore en stock, dans l'ordre du guide. */
+  tailles: { valeur: string; nombre: number }[];
+};
+
+/** Un produit tel que sa fiche le décrit. */
+export type ProduitApi = ProduitCarteApi & {
+  prix: number;
+  prix_barre: number | null;
+  description: string;
+  matiere: string;
   univers: "enfant" | "maman";
   genre: "fille" | "garcon" | "mixte" | "";
   age: "2-10" | "11-14" | "";
@@ -293,6 +315,9 @@ export type RayonApi = {
   visible: boolean;
   ordre: number;
   nombre_produits: number;
+  /** Back-office seulement : fiches rangées directement ici, et brouillons parmi elles. */
+  fiches?: number;
+  fiches_brouillons?: number;
 };
 
 /* ---------------------------------------------------------------- réglages */

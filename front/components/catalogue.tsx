@@ -1,18 +1,52 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ProductCard } from "./product-card";
 import { QuickView } from "./quick-view";
-import { lienCategorie } from "@/lib/catalogue";
+import { PAR_PAGE, type Facettes, type Tri } from "@/lib/catalogue";
 import { formatXOF } from "@/lib/format";
 import type { Product } from "@/lib/products";
 
-const SORTS = ["Nouveautés", "Prix croissant", "Prix décroissant", "A → Z"] as const;
+const TRIS: { valeur: Tri; libelle: string }[] = [
+  { valeur: "nouveautes", libelle: "Nouveautés" },
+  { valeur: "prix-croissant", libelle: "Prix croissant" },
+  { valeur: "prix-decroissant", libelle: "Prix décroissant" },
+  { valeur: "nom", libelle: "A → Z" },
+];
 
 /** Le pas du curseur de prix, en francs. */
 const PAS_PRIX = 500;
+
+/** Ce que l'adresse décrit : la sélection en cours. */
+export type EtatBoutique = {
+  /** La catégorie ouverte, vide pour toute la boutique. */
+  categorie: string;
+  sous: string[];
+  tailles: string[];
+  prixMin?: number;
+  prixMax?: number;
+  tri: Tri;
+  page: number;
+};
+
+type SousRayon = { nom: string; slug: string };
+type Categorie = SousRayon & { enfants: SousRayon[]; nombre_produits: number };
+
+/** L'adresse d'un état de la boutique. Les valeurs par défaut n'y figurent pas. */
+function adresse(chemin: string, e: EtatBoutique): string {
+  const params = new URLSearchParams();
+  if (e.categorie) params.set("cat", e.categorie);
+  if (e.sous.length) params.set("sous", e.sous.join(","));
+  if (e.tailles.length) params.set("taille", e.tailles.join(","));
+  if (e.prixMin !== undefined) params.set("prix_min", String(e.prixMin));
+  if (e.prixMax !== undefined) params.set("prix_max", String(e.prixMax));
+  if (e.tri !== "nouveautes") params.set("tri", e.tri);
+  if (e.page > 1) params.set("page", String(e.page));
+  const requete = params.toString();
+  return requete ? `${chemin}?${requete}` : chemin;
+}
 
 /**
  * Une fourchette de prix à deux poignées.
@@ -22,21 +56,39 @@ const PAS_PRIX = 500;
  * poignées reçoivent le pointeur (`.curseur-double` dans `globals.css`), sinon
  * le curseur du dessus masquerait celui du dessous. Les poignées ne se
  * croisent pas : chacune s'arrête à la valeur de l'autre.
+ *
+ * Le curseur bouge librement ; la boutique n'est relue qu'au lâcher
+ * (`onValider`) — une requête par cran de glissé ne servirait à rien.
  */
 function CurseurPrix({
   min,
   max,
-  bas,
-  haut,
-  onChange,
+  bas: basInitial,
+  haut: hautInitial,
+  onValider,
 }: {
   min: number;
   max: number;
   bas: number;
   haut: number;
-  onChange: (bas: number, haut: number) => void;
+  onValider: (bas: number, haut: number) => void;
 }) {
-  const position = (v: number) => ((v - min) / (max - min)) * 100;
+  const [bas, setBas] = useState(basInitial);
+  const [haut, setHaut] = useState(hautInitial);
+  const valeurs = useRef({ bas: basInitial, haut: hautInitial });
+
+  useEffect(() => {
+    setBas(basInitial);
+    setHaut(hautInitial);
+    valeurs.current = { bas: basInitial, haut: hautInitial };
+  }, [basInitial, hautInitial]);
+
+  const valider = () => {
+    const { bas: b, haut: h } = valeurs.current;
+    if (b !== basInitial || h !== hautInitial) onValider(b, h);
+  };
+  const lacher = { onPointerUp: valider, onKeyUp: valider };
+  const position = (v: number) => (max > min ? ((v - min) / (max - min)) * 100 : 0);
 
   return (
     <div className="pt-5">
@@ -52,7 +104,12 @@ function CurseurPrix({
           max={max}
           step={PAS_PRIX}
           value={bas}
-          onChange={(e) => onChange(Math.min(Number(e.target.value), haut), haut)}
+          onChange={(e) => {
+            const v = Math.min(Number(e.target.value), haut);
+            setBas(v);
+            valeurs.current.bas = v;
+          }}
+          {...lacher}
           aria-label="Prix minimum"
           aria-valuetext={formatXOF(bas)}
         />
@@ -62,7 +119,12 @@ function CurseurPrix({
           max={max}
           step={PAS_PRIX}
           value={haut}
-          onChange={(e) => onChange(bas, Math.max(Number(e.target.value), bas))}
+          onChange={(e) => {
+            const v = Math.max(Number(e.target.value), bas);
+            setHaut(v);
+            valeurs.current.haut = v;
+          }}
+          {...lacher}
           aria-label="Prix maximum"
           aria-valuetext={formatXOF(haut)}
         />
@@ -75,139 +137,81 @@ function CurseurPrix({
   );
 }
 
-type SousRayon = { nom: string; slug: string };
-type Categorie = SousRayon & { enfants: SousRayon[] };
+/** Numéros affichés : les bords, les voisines de la page courante, et des points. */
+function numeros(page: number, pages: number): (number | "…")[] {
+  if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+  const proches = new Set([1, pages, page - 1, page, page + 1]);
+  const liste: (number | "…")[] = [];
+  for (let i = 1; i <= pages; i++) {
+    if (proches.has(i)) liste.push(i);
+    else if (liste[liste.length - 1] !== "…") liste.push("…");
+  }
+  return liste;
+}
 
 /**
  * La boutique : toutes les pièces, ou celles d'une catégorie.
  *
  * Filles, Garçons, Coin Maman… sont des catégories au même titre : « ?cat= »
- * en choisit une, et ses sous-catégories deviennent les filtres de gauche.
- * Une ancienne adresse qui nomme directement une sous-catégorie ouvre sa
- * catégorie avec ce filtre déjà coché.
+ * en choisit une, et ses sous-catégories deviennent des filtres. Le composant
+ * ne filtre rien lui-même : chaque choix change l'adresse, et la page relit
+ * sur le serveur la seule page d'articles à afficher.
  */
 export function Catalogue({
-  produits = [],
-  rayons = [],
+  produits,
+  total,
+  pages,
+  facettes,
+  rayons,
+  etat,
 }: {
-  produits?: Product[];
+  produits: Product[];
+  total: number;
+  pages: number;
+  facettes: Facettes;
   /** Les catégories du serveur, chacune avec ses sous-catégories. */
-  rayons?: Categorie[];
+  rayons: Categorie[];
+  etat: EtatBoutique;
 }) {
-  const params = useSearchParams();
-
-  /* La catégorie et la sous-catégorie demandées par l'adresse. */
-  const { categorie, sousInitiales } = useMemo(() => {
-    const cat = params.get("cat") ?? "";
-    const sous = params.get("sous");
-    const racine = rayons.find((r) => r.slug === cat);
-    if (racine) {
-      const valide = sous && racine.enfants.some((e) => e.slug === sous);
-      return { categorie: racine, sousInitiales: valide ? [sous as string] : [] };
-    }
-    const parente = rayons.find((r) => r.enfants.some((e) => e.slug === cat));
-    return parente
-      ? { categorie: parente, sousInitiales: [cat] }
-      : { categorie: null, sousInitiales: [] as string[] };
-  }, [params, rayons]);
-
-  const [sous, setSous] = useState<string[]>(sousInitiales);
-  const [tailles, setTailles] = useState<string[]>([]);
-  const [sort, setSort] = useState(0);
+  const router = useRouter();
+  const chemin = usePathname();
+  const [enCours, demarrer] = useTransition();
+  const [quick, setQuick] = useState<Product | null>(null);
   /* Au doigt, les filtres se replient sous un bouton : ouverts d'office, ils
      repoussaient les pièces sous la ligne de flottaison. */
   const [filtresOuverts, setFiltresOuverts] = useState(false);
-  const [quick, setQuick] = useState<Product | null>(null);
+  const haut = useRef<HTMLDivElement>(null);
 
-  /* On peut arriver ici depuis le menu alors qu'on y est déjà : l'URL change
-     sans que le composant soit remonté, il faut resynchroniser à la main. */
-  useEffect(() => {
-    setSous(sousInitiales);
-    setTailles([]);
-  }, [sousInitiales]);
+  const categorie = rayons.find((r) => r.slug === etat.categorie) ?? null;
 
-  /* Les pièces de la catégorie : celles rangées dans la catégorie elle-même
-     ou dans l'une de ses sous-catégories. */
-  const portee = useMemo(() => {
-    if (!categorie) return produits;
-    const slugs = new Set([categorie.slug, ...categorie.enfants.map((e) => e.slug)]);
-    return produits.filter((p) => p.categorySlug && slugs.has(p.categorySlug));
-  }, [categorie, produits]);
+  /** Change la sélection. Tout changement de filtre repart de la page 1. */
+  const aller = (patch: Partial<EtatBoutique>) => {
+    const suivant = { ...etat, page: 1, ...patch };
+    demarrer(() => router.push(adresse(chemin, suivant), { scroll: false }));
+  };
+
+  const bascule = (liste: string[], valeur: string) =>
+    liste.includes(valeur) ? liste.filter((x) => x !== valeur) : [...liste, valeur];
 
   /* Les bornes du curseur, arrondies au pas : un curseur qui s'arrête à
      12 350 F se lit mal. */
-  const prixPortee = portee.map((p) => p.price);
-  const prixMini = prixPortee.length ? Math.floor(Math.min(...prixPortee) / PAS_PRIX) * PAS_PRIX : 0;
-  const prixMaxi = prixPortee.length ? Math.ceil(Math.max(...prixPortee) / PAS_PRIX) * PAS_PRIX : 0;
-  const [prixMin, setPrixMin] = useState(prixMini);
-  const [prixMax, setPrixMax] = useState(prixMaxi);
-  /* Changer de catégorie remet la fourchette sur ses propres prix. */
-  useEffect(() => {
-    setPrixMin(prixMini);
-    setPrixMax(prixMaxi);
-  }, [prixMini, prixMaxi]);
+  const prixMini = Math.floor(facettes.prixMin / PAS_PRIX) * PAS_PRIX;
+  const prixMaxi = Math.ceil(facettes.prixMax / PAS_PRIX) * PAS_PRIX;
+  const prixBas = etat.prixMin ?? prixMini;
+  const prixHaut = etat.prixMax ?? prixMaxi;
+  const prixFiltre = etat.prixMin !== undefined || etat.prixMax !== undefined;
 
-  const toggle = (slug: string) =>
-    setSous((s) => (s.includes(slug) ? s.filter((x) => x !== slug) : [...s, slug]));
-  const toggleTaille = (valeur: string) =>
-    setTailles((t) => (t.includes(valeur) ? t.filter((x) => x !== valeur) : [...t, valeur]));
-
-  /* Une pièce répond à une taille quand elle l'a encore en stock : proposer
-     un 6 ans épuisé ne rendrait service à personne. */
-  const aLaTaille = (p: Product, valeur: string) =>
-    (p.tailles ?? []).some((t) => t.valeur === valeur && t.disponible);
-
-  /* Les tailles proposées : celles des pièces de la catégorie, dans l'ordre
-     du guide des tailles. */
-  const taillesPortee = useMemo(() => {
-    const vues = new Map<string, number>();
-    for (const p of portee) {
-      for (const t of p.tailles ?? []) {
-        if (t.disponible && !vues.has(t.valeur)) vues.set(t.valeur, t.ordre);
-      }
-    }
-    return [...vues.entries()]
-      .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0], "fr", { numeric: true }))
-      .map(([valeur]) => valeur);
-  }, [portee]);
-
-  /* Plusieurs cases cochées dans un même filtre s'additionnent : « Robes » et
-     « Jupes » montre les deux, « 4 » et « 6 » aussi. Les filtres entre eux se
-     combinent. */
-  const list = useMemo(() => {
-    const out = portee.filter(
-      (p) =>
-        (sous.length === 0 || (p.categorySlug !== undefined && sous.includes(p.categorySlug))) &&
-        (tailles.length === 0 || tailles.some((t) => aLaTaille(p, t))) &&
-        p.price >= prixMin &&
-        p.price <= prixMax,
-    );
-    if (sort === 1) return [...out].sort((a, b) => a.price - b.price);
-    if (sort === 2) return [...out].sort((a, b) => b.price - a.price);
-    if (sort === 3) return [...out].sort((a, b) => a.name.localeCompare(b.name, "fr"));
-    return out;
-  }, [portee, prixMax, prixMin, sort, sous, tailles]);
-
+  const nombreFiltres = etat.sous.length + etat.tailles.length + (prixFiltre ? 1 : 0);
+  const filtre = nombreFiltres > 0;
   const nomSous = (slug: string) => categorie?.enfants.find((e) => e.slug === slug)?.nom ?? slug;
-  const compteSous = (slug: string) => portee.filter((p) => p.categorySlug === slug).length;
-  const compteCategorie = (c: Categorie) => {
-    const slugs = new Set([c.slug, ...c.enfants.map((e) => e.slug)]);
-    return produits.filter((p) => p.categorySlug && slugs.has(p.categorySlug)).length;
-  };
-
-  const prixFiltre = prixMin > prixMini || prixMax < prixMaxi;
   const titre = categorie?.nom ?? "Boutique";
-  const filtre = sous.length > 0 || tailles.length > 0 || prixFiltre;
-  const toutEffacer = () => {
-    setSous([]);
-    setTailles([]);
-    setPrixMin(prixMini);
-    setPrixMax(prixMaxi);
-  };
+  const triCourant = TRIS.findIndex((t) => t.valeur === etat.tri);
   const titreFacette = "border-b border-line pb-3 text-[12.5px] font-extrabold uppercase tracking-[.06em]";
+  const debut = (etat.page - 1) * PAR_PAGE;
+  const pastille = "flex items-center gap-2.5 rounded-full bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white";
 
   return (
-    <div className="mx-auto max-w-[1400px] px-5 pt-5 md:px-8 md:pt-8 lg:px-10">
+    <div ref={haut} className="mx-auto max-w-[1400px] scroll-mt-24 px-5 pt-5 md:px-8 md:pt-8 lg:px-10">
       <div className="text-[12.5px] text-muted">
         <Link href="/" className="hover:text-rose">Accueil</Link>
         {" · "}
@@ -228,14 +232,16 @@ export function Catalogue({
             {titre}
           </h1>
           <p className="mt-2 text-[13.5px] text-muted sm:text-[14.5px]">
-            {portee.length === 0
-              ? categorie
-                ? "Cette catégorie se remplit. Les premières pièces arrivent bientôt."
-                : "La boutique se remplit. Les premières pièces arrivent bientôt."
+            {total === 0
+              ? filtre
+                ? "Aucune pièce ne répond à cette sélection."
+                : categorie
+                  ? "Cette catégorie se remplit. Les premières pièces arrivent bientôt."
+                  : "La boutique se remplit. Les premières pièces arrivent bientôt."
               : filtre
-                ? `${list.length} pièce${list.length > 1 ? "s" : ""} correspondent à votre sélection.`
-                : portee.length > 1
-                  ? `${portee.length} pièces, toutes photographiées et décrites.`
+                ? `${total} pièce${total > 1 ? "s" : ""} correspondent à votre sélection.`
+                : total > 1
+                  ? `${total} pièces, toutes photographiées et décrites.`
                   : "1 pièce, photographiée et décrite."}
           </p>
         </div>
@@ -249,16 +255,16 @@ export function Catalogue({
             Filtres
             {filtre && (
               <span className="grid h-5 min-w-5 place-items-center rounded-full bg-rose px-1 text-[11px] font-bold text-white">
-                {sous.length + tailles.length + (prixFiltre ? 1 : 0)}
+                {nombreFiltres}
               </span>
             )}
           </button>
           <button
             type="button"
-            onClick={() => setSort((s) => (s + 1) % SORTS.length)}
+            onClick={() => aller({ tri: TRIS[(triCourant + 1) % TRIS.length].valeur })}
             className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 py-3 text-[13.5px] font-semibold md:flex-none md:px-4.5"
           >
-            Trier : {SORTS[sort]} <span className="text-rose">↓</span>
+            Trier : {TRIS[Math.max(0, triCourant)].libelle} <span className="text-rose">↓</span>
           </button>
         </div>
       </div>
@@ -269,64 +275,67 @@ export function Catalogue({
             filtresOuverts ? "block" : "hidden"
           } rounded-3xl border border-line bg-white p-5 lg:block lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0`}
         >
-          {categorie ? (
-            categorie.enfants.length > 0 && (
-              <div className="mb-6.5 last:mb-0">
-                <div className={titreFacette}>Sous-catégories</div>
-                <div className="flex flex-col pt-2">
-                  {categorie.enfants.map((e) => {
-                    const on = sous.includes(e.slug);
-                    return (
-                      <button
-                        key={e.slug}
-                        onClick={() => toggle(e.slug)}
-                        className={`flex items-center gap-3 py-2 text-left text-sm ${on ? "font-bold" : "font-medium text-[#4a3a41]"}`}
+          {categorie
+            ? categorie.enfants.length > 0 && (
+                <div className="mb-6.5 last:mb-0">
+                  <div className={titreFacette}>Sous-catégories</div>
+                  <div className="flex flex-col pt-2">
+                    {categorie.enfants.map((e) => {
+                      const on = etat.sous.includes(e.slug);
+                      return (
+                        <button
+                          key={e.slug}
+                          type="button"
+                          onClick={() => aller({ sous: bascule(etat.sous, e.slug) })}
+                          aria-pressed={on}
+                          className={`flex items-center gap-3 py-2 text-left text-sm ${on ? "font-bold" : "font-medium text-[#4a3a41]"}`}
+                        >
+                          <span
+                            className={`h-4.5 w-4.5 shrink-0 rounded-md border-[1.5px] transition-colors ${
+                              on ? "border-rose bg-rose" : "border-[#dfd3d8] bg-white"
+                            }`}
+                          />
+                          <span className="flex-1">{e.nom}</span>
+                          <span className="text-xs text-[#9c8d93]">
+                            {facettes.sousCategories[e.slug] ?? 0}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            : rayons.length > 0 && (
+                <div className="mb-6.5 last:mb-0">
+                  <div className={titreFacette}>Catégories</div>
+                  <div className="flex flex-col pt-2">
+                    {rayons.map((c) => (
+                      <Link
+                        key={c.slug}
+                        href={adresse(chemin, { ...etat, categorie: c.slug, sous: [], page: 1 })}
+                        className="flex items-center gap-3 py-2 text-sm font-medium text-[#4a3a41] transition-colors hover:text-rose"
                       >
-                        <span
-                          className={`h-4.5 w-4.5 shrink-0 rounded-md border-[1.5px] transition-colors ${
-                            on ? "border-rose bg-rose" : "border-[#dfd3d8] bg-white"
-                          }`}
-                        />
-                        <span className="flex-1">{e.nom}</span>
-                        <span className="text-xs text-[#9c8d93]">{compteSous(e.slug)}</span>
-                      </button>
-                    );
-                  })}
+                        <span className="flex-1">{c.nom}</span>
+                        <span className="text-xs text-[#9c8d93]">{c.nombre_produits}</span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )
-          ) : (
-            rayons.length > 0 && (
-              <div className="mb-6.5 last:mb-0">
-                <div className={titreFacette}>Catégories</div>
-                <div className="flex flex-col pt-2">
-                  {rayons.map((c) => (
-                    <Link
-                      key={c.slug}
-                      href={lienCategorie(c.slug)}
-                      className="flex items-center gap-3 py-2 text-sm font-medium text-[#4a3a41] transition-colors hover:text-rose"
-                    >
-                      <span className="flex-1">{c.nom}</span>
-                      <span className="text-xs text-[#9c8d93]">{compteCategorie(c)}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )
-          )}
+              )}
 
-          {taillesPortee.length > 0 && (
+          {facettes.tailles.length > 0 && (
             <div className="mb-6.5 last:mb-0">
               <div className={titreFacette}>Taille</div>
               <div className="flex flex-wrap gap-2 pt-4">
-                {taillesPortee.map((valeur) => {
-                  const on = tailles.includes(valeur);
+                {facettes.tailles.map(({ valeur, nombre }) => {
+                  const on = etat.tailles.includes(valeur);
                   return (
                     <button
                       key={valeur}
                       type="button"
-                      onClick={() => toggleTaille(valeur)}
+                      onClick={() => aller({ tailles: bascule(etat.tailles, valeur) })}
                       aria-pressed={on}
+                      title={`${nombre} pièce${nombre > 1 ? "s" : ""}`}
                       className={`min-w-11 rounded-xl border-[1.5px] px-3 py-2 text-[13px] font-semibold transition-colors ${
                         on
                           ? "border-ink bg-ink text-white"
@@ -347,77 +356,131 @@ export function Catalogue({
               <CurseurPrix
                 min={prixMini}
                 max={prixMaxi}
-                bas={prixMin}
-                haut={prixMax}
-                onChange={(bas, haut) => {
-                  setPrixMin(bas);
-                  setPrixMax(haut);
-                }}
+                bas={prixBas}
+                haut={prixHaut}
+                onValider={(bas, hautPrix) =>
+                  aller({
+                    prixMin: bas > prixMini ? bas : undefined,
+                    prixMax: hautPrix < prixMaxi ? hautPrix : undefined,
+                  })
+                }
               />
             </div>
           )}
         </aside>
 
-        <div>
+        <div className={`transition-opacity duration-300 ${enCours ? "opacity-50" : ""}`} aria-busy={enCours}>
           {filtre && (
             <div className="flex flex-wrap items-center gap-2 pb-5">
-              {sous.map((slug) => (
+              {etat.sous.map((slug) => (
                 <button
                   key={slug}
-                  onClick={() => toggle(slug)}
-                  className="flex items-center gap-2.5 rounded-full bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white"
+                  type="button"
+                  onClick={() => aller({ sous: bascule(etat.sous, slug) })}
+                  className={pastille}
                 >
                   {nomSous(slug)} <span className="opacity-55">×</span>
                 </button>
               ))}
-              {tailles.map((valeur) => (
+              {etat.tailles.map((valeur) => (
                 <button
                   key={`taille-${valeur}`}
-                  onClick={() => toggleTaille(valeur)}
-                  className="flex items-center gap-2.5 rounded-full bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white"
+                  type="button"
+                  onClick={() => aller({ tailles: bascule(etat.tailles, valeur) })}
+                  className={pastille}
                 >
                   Taille {valeur} <span className="opacity-55">×</span>
                 </button>
               ))}
               {prixFiltre && (
                 <button
-                  onClick={() => {
-                    setPrixMin(prixMini);
-                    setPrixMax(prixMaxi);
-                  }}
-                  className="flex items-center gap-2.5 rounded-full bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white"
+                  type="button"
+                  onClick={() => aller({ prixMin: undefined, prixMax: undefined })}
+                  className={pastille}
                 >
-                  {formatXOF(prixMin)} – {formatXOF(prixMax)} <span className="opacity-55">×</span>
+                  {formatXOF(prixBas)} – {formatXOF(prixHaut)} <span className="opacity-55">×</span>
                 </button>
               )}
-              <button onClick={toutEffacer} className="pl-1.5 text-[13px] font-semibold text-muted">
+              <button
+                type="button"
+                onClick={() =>
+                  aller({ sous: [], tailles: [], prixMin: undefined, prixMax: undefined })
+                }
+                className="pl-1.5 text-[13px] font-semibold text-muted"
+              >
                 Tout effacer
               </button>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:gap-5.5">
-            {list.map((p, i) => (
+            {produits.map((p, i) => (
               <ProductCard key={p.id} product={p} onQuickView={setQuick} delay={i * 45} />
             ))}
           </div>
 
-          {list.length === 0 && (
+          {produits.length === 0 && (
             <p className="py-12 text-center text-[14px] text-muted sm:py-16 sm:text-[14.5px]">
-              {portee.length === 0
-                ? "Aucune pièce en ligne pour le moment — elles seront disponibles bientôt."
-                : "Aucune pièce ne répond à cette combinaison. Retirez un filtre pour élargir."}
+              {filtre
+                ? "Aucune pièce ne répond à cette combinaison. Retirez un filtre pour élargir."
+                : "Aucune pièce en ligne pour le moment — elles seront disponibles bientôt."}
             </p>
           )}
 
-          {portee.length > 0 && list.length > 0 && (
-            <p className="pt-11 text-center text-[13.5px] text-muted">
-              {filtre
-                ? `Fin des résultats. Retirez un filtre pour revoir les ${portee.length} pièces.`
-                : portee.length > 1
-                  ? `Vous avez vu les ${portee.length} pièces.`
-                  : "Vous avez vu toute la sélection."}
-            </p>
+          {/* La pagination : des liens, pour qu'une page se partage et s'ouvre
+              dans un nouvel onglet. */}
+          {pages > 1 && (
+            <nav
+              aria-label="Pagination"
+              className="flex flex-col items-center gap-3 pt-11 sm:flex-row sm:justify-between"
+            >
+              <p className="text-[13px] text-muted">
+                {debut + 1}–{debut + produits.length} sur{" "}
+                <span className="font-bold text-ink">{total}</span> pièces
+              </p>
+              <div className="flex items-center gap-1.5">
+                {etat.page > 1 && (
+                  <Link
+                    href={adresse(chemin, { ...etat, page: etat.page - 1 })}
+                    onClick={() => haut.current?.scrollIntoView({ behavior: "smooth" })}
+                    className="grid h-10 place-items-center rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 text-[13px] font-semibold hover:border-rose hover:text-rose"
+                  >
+                    ← Précédente
+                  </Link>
+                )}
+                {numeros(etat.page, pages).map((n, i) =>
+                  n === "…" ? (
+                    <span key={`trou-${i}`} className="px-1 text-muted">…</span>
+                  ) : (
+                    <Link
+                      key={n}
+                      href={adresse(chemin, { ...etat, page: n })}
+                      onClick={() => haut.current?.scrollIntoView({ behavior: "smooth" })}
+                      aria-current={n === etat.page ? "page" : undefined}
+                      className={`hidden h-10 min-w-10 place-items-center rounded-full px-2 text-[13px] font-semibold sm:grid ${
+                        n === etat.page
+                          ? "bg-ink text-white"
+                          : "border-[1.5px] border-[#e5d9de] bg-white hover:border-rose hover:text-rose"
+                      }`}
+                    >
+                      {n}
+                    </Link>
+                  ),
+                )}
+                <span className="px-2 text-[13px] font-semibold sm:hidden">
+                  {etat.page} / {pages}
+                </span>
+                {etat.page < pages && (
+                  <Link
+                    href={adresse(chemin, { ...etat, page: etat.page + 1 })}
+                    onClick={() => haut.current?.scrollIntoView({ behavior: "smooth" })}
+                    className="grid h-10 place-items-center rounded-full bg-rose px-4 text-[13px] font-semibold text-white"
+                  >
+                    Suivante →
+                  </Link>
+                )}
+              </div>
+            </nav>
           )}
         </div>
       </div>

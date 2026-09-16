@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatXOF } from "@/lib/format";
 import { maintenant, useAdmin } from "@/lib/admin/store";
+import { lireProduits } from "@/lib/admin/produits";
+import type { AdminProduct } from "@/lib/admin/types";
 import {
   promotionEndDate,
   type AdminPromotion,
@@ -106,10 +108,28 @@ const vide = (): AdminPromotion => ({
 const jour = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR");
 
 export default function Page() {
-  const { promotions, categories, products, savePromotion, deletePromotion, hydrated } = useAdmin();
+  const { promotions, categories, savePromotion, deletePromotion, hydrated } = useAdmin();
   const [brouillon, setBrouillon] = useState<AdminPromotion | null>(null);
   const [filtre, setFiltre] = useState<Filtre>("toutes");
   const [affichage, setAffichage] = useState<Affichage>("grille");
+
+  /* Les articles proposés pour une remise « article » : ceux du rayon choisi,
+     demandés au serveur quand le rayon change. */
+  const rayonChoisi = brouillon?.target === "produit" ? brouillon.categorySlug : "";
+  const [articlesDuRayon, setArticlesDuRayon] = useState<AdminProduct[]>([]);
+  useEffect(() => {
+    if (!rayonChoisi) {
+      setArticlesDuRayon([]);
+      return;
+    }
+    let vivant = true;
+    lireProduits({ rayon: rayonChoisi, taille: 200 })
+      .then((r) => vivant && setArticlesDuRayon(r.produits))
+      .catch(() => vivant && setArticlesDuRayon([]));
+    return () => {
+      vivant = false;
+    };
+  }, [rayonChoisi]);
 
   useEffect(() => {
     const prefere = window.localStorage.getItem("mcm-promotions-affichage");
@@ -170,7 +190,7 @@ export default function Page() {
     if (p.target === "categorie")
       return categories.find((c) => c.slug === p.categorySlug)?.label ?? "Un rayon";
     if (p.target === "produit")
-      return products.find((a) => a.id === p.productId)?.name ?? "Un article";
+      return p.productName || "Un article";
     return p.orderRule === "premiere-commande"
       ? "Première commande"
       : `Commande dès ${formatXOF(p.minAmount)}`;
@@ -538,14 +558,7 @@ export default function Page() {
                         className="w-full cursor-pointer rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors focus:border-rose"
                       >
                         <option value="">Choisir un article…</option>
-                        {products
-                          .filter(
-                            (a) =>
-                              a.category === brouillon.categorySlug ||
-                              categories.find((c) => c.slug === brouillon.categorySlug)?.label ===
-                                a.category
-                          )
-                          .map((a) => (
+                        {articlesDuRayon.map((a) => (
                             <option key={a.id} value={a.id}>
                               {a.name}
                             </option>

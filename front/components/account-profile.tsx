@@ -164,7 +164,7 @@ export function AccountProfile() {
           {/* --------------------------------------------- commandes */}
           <SectionCard
             title="Mes commandes"
-            description="Les commandes passées depuis ce navigateur, de la plus récente à la plus ancienne."
+            description="Vos commandes, de la plus récente à la plus ancienne."
           >
             {orders.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-line px-6 py-8 text-center">

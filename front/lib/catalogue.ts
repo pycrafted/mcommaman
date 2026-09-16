@@ -9,11 +9,23 @@
  * les coloris de référence, qui ne dépendent pas encore du serveur.
  */
 
-import { lire, type Page, type ProduitApi, type RayonApi } from "./api";
+import {
+  lire,
+  type FacettesApi,
+  type Page,
+  type ProduitApi,
+  type ProduitCarteApi,
+  type RayonApi,
+} from "./api";
 import type { Product, Univers } from "./products";
 
-/** Un produit du serveur, mis à la forme que les composants connaissent déjà. */
-export function versProduit(brut: ProduitApi): Product {
+/**
+ * Un produit du serveur, mis à la forme que les composants connaissent déjà.
+ *
+ * Une carte de liste n'a ni description ni tailles : ces champs restent vides
+ * jusqu'à la fiche.
+ */
+export function versProduit(brut: ProduitCarteApi & Partial<ProduitApi>): Product {
   return {
     id: String(brut.id),
     slug: brut.slug,
@@ -21,7 +33,7 @@ export function versProduit(brut: ProduitApi): Product {
     sku: "",
     /* Le prix affiché est celui que la caisse retiendra : c'est le serveur qui
        décide, remises en cours comprises. */
-    price: brut.prix_public ?? brut.prix,
+    price: brut.prix_public ?? brut.prix ?? 0,
     compareAt: brut.prix_avant ?? undefined,
     promotion: brut.promotion ?? undefined,
     category: brut.rayon_nom,
@@ -31,48 +43,119 @@ export function versProduit(brut: ProduitApi): Product {
       ordre: t.ordre,
       disponible: t.disponible,
     })),
-    univers: brut.univers as Univers,
+    univers: (brut.univers ?? "enfant") as Univers,
     image: brut.image,
-    description: brut.description,
+    description: brut.description ?? "",
     outOfStock: brut.en_rupture,
   };
 }
 
+export type Tri = "nouveautes" | "prix-croissant" | "prix-decroissant" | "nom";
+
 export type FiltresCatalogue = {
   univers?: Univers;
+  /** Une catégorie, ses sous-catégories comprises. */
   rayon?: string;
-  taille?: string;
+  /** Des sous-catégories de ce rayon ; plusieurs s'additionnent. */
+  sous?: string[];
+  /** Des tailles encore en stock ; plusieurs s'additionnent. */
+  tailles?: string[];
+  /** Bornes du prix du jour, remise comprise. */
+  prixMin?: number;
+  prixMax?: number;
   promo?: boolean;
   q?: string;
-  tri?: "nouveautes" | "prix-croissant" | "prix-decroissant" | "nom";
+  tri?: Tri;
+  page?: number;
+  parPage?: number;
 };
 
-function requete(filtres: FiltresCatalogue): string {
+/** Les articles par page de la boutique : quatre rangées de trois, ou six de deux. */
+export const PAR_PAGE = 24;
+
+function parametres(filtres: FiltresCatalogue): URLSearchParams {
   const params = new URLSearchParams();
   if (filtres.univers) params.set("univers", filtres.univers);
   if (filtres.rayon) params.set("rayon", filtres.rayon);
-  if (filtres.taille) params.set("taille", filtres.taille);
+  if (filtres.sous?.length) params.set("sous", filtres.sous.join(","));
+  if (filtres.tailles?.length) params.set("taille", filtres.tailles.join(","));
+  if (filtres.prixMin !== undefined) params.set("prix_min", String(filtres.prixMin));
+  if (filtres.prixMax !== undefined) params.set("prix_max", String(filtres.prixMax));
   if (filtres.promo) params.set("promo", "1");
   if (filtres.q) params.set("q", filtres.q);
-  if (filtres.tri) params.set("tri", filtres.tri);
-  // Le catalogue tient sur une page : la boutique n'a pas de pagination.
-  params.set("page_size", "100");
-  return params.toString();
+  return params;
 }
 
-/** Les fiches publiées d'un univers. Vide plutôt qu'une erreur si le serveur dort. */
-export async function lireCatalogue(filtres: FiltresCatalogue = {}): Promise<Product[]> {
+/**
+ * Une page de la boutique, filtrée et triée par le serveur.
+ *
+ * Le navigateur ne reçoit que les articles affichés : le catalogue peut
+ * grossir sans que la page ne s'alourdisse.
+ */
+export async function lirePageCatalogue(
+  filtres: FiltresCatalogue = {},
+): Promise<{ produits: Product[]; total: number; pages: number }> {
+  const params = parametres(filtres);
+  const parPage = filtres.parPage ?? PAR_PAGE;
+  if (filtres.tri) params.set("tri", filtres.tri);
+  params.set("page", String(Math.max(1, filtres.page ?? 1)));
+  params.set("page_size", String(parPage));
   try {
-    const page = await lire<Page<ProduitApi>>(`/api/catalogue/produits/?${requete(filtres)}`, {
+    const page = await lire<Page<ProduitCarteApi>>(`/api/catalogue/produits/?${params}`, {
       // Le stock bouge : une minute de cache suffit à absorber les rafales sans
       // afficher une rupture d'il y a une heure.
       revalider: 60,
     });
-    return (page?.results ?? []).map(versProduit);
+    const total = page?.count ?? 0;
+    return {
+      produits: (page?.results ?? []).map(versProduit),
+      total,
+      pages: Math.max(1, Math.ceil(total / parPage)),
+    };
   } catch {
-    // Le serveur peut être éteint en développement. La boutique doit rester
-    // consultable plutôt que de rendre une page d'erreur.
-    return [];
+    // Une page au-delà de la dernière, ou le serveur éteint en développement :
+    // la boutique reste consultable plutôt que de rendre une page d'erreur.
+    return { produits: [], total: 0, pages: 1 };
+  }
+}
+
+/** Les premiers articles d'une sélection — l'accueil, par exemple. */
+export async function lireCatalogue(filtres: FiltresCatalogue = {}): Promise<Product[]> {
+  return (await lirePageCatalogue({ parPage: 12, ...filtres })).produits;
+}
+
+export type Facettes = {
+  total: number;
+  prixMin: number;
+  prixMax: number;
+  sousCategories: Record<string, number>;
+  tailles: { valeur: string; nombre: number }[];
+};
+
+const FACETTES_VIDES: Facettes = { total: 0, prixMin: 0, prixMax: 0, sousCategories: {}, tailles: [] };
+
+/**
+ * De quoi dessiner les filtres : les décomptes, les tailles, les bornes de prix.
+ *
+ * Chaque facette est comptée par le serveur sans son propre filtre : cocher
+ * une taille n'efface pas les autres de la liste.
+ */
+export async function lireFacettes(filtres: FiltresCatalogue = {}): Promise<Facettes> {
+  try {
+    const brut = await lire<FacettesApi>(
+      `/api/catalogue/produits/facettes/?${parametres(filtres)}`,
+      { revalider: 60 },
+    );
+    if (!brut) return FACETTES_VIDES;
+    return {
+      total: brut.total,
+      prixMin: brut.prix_min,
+      prixMax: brut.prix_max,
+      sousCategories: brut.sous_categories,
+      tailles: brut.tailles,
+    };
+  } catch {
+    return FACETTES_VIDES;
   }
 }
 
@@ -87,7 +170,7 @@ export async function lireProduitsParIds(ids: string[]): Promise<Product[]> {
   const voulus = ids.filter((id) => /^\d+$/.test(id));
   if (voulus.length === 0) return [];
   try {
-    const page = await lire<Page<ProduitApi>>(
+    const page = await lire<Page<ProduitCarteApi>>(
       `/api/catalogue/produits/?ids=${voulus.join(",")}&page_size=100`,
       { revalider: 60 },
     );
@@ -111,7 +194,7 @@ export async function lireFiche(slug: string): Promise<{ produit: Product; brut:
 /** Les quatre voisines de rayon, proposées sous une fiche. */
 export async function lireSimilaires(slug: string): Promise<Product[]> {
   try {
-    const liste = await lire<ProduitApi[]>(`/api/catalogue/produits/${slug}/similaires/`, {
+    const liste = await lire<ProduitCarteApi[]>(`/api/catalogue/produits/${slug}/similaires/`, {
       revalider: 300,
     });
     return (liste ?? []).map(versProduit);
@@ -257,7 +340,7 @@ export async function lireArborescence(univers?: Univers): Promise<BrancheRayon[
  */
 export async function lireEnTeteCatalogue(): Promise<{ nombre: number; derniere: Product | null }> {
   try {
-    const page = await lire<Page<ProduitApi>>(
+    const page = await lire<Page<ProduitCarteApi>>(
       "/api/catalogue/produits/?tri=nouveautes&page_size=1",
       { revalider: 300 },
     );

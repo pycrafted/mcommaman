@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatXOF } from "@/lib/format";
 import { useAdmin } from "@/lib/admin/store";
+import { useProduits } from "@/lib/admin/produits";
 import type { AdminProduct, ProductStatus } from "@/lib/admin/types";
 import {
   Button,
@@ -20,6 +21,9 @@ import { IconEye, IconPencil, IconPlus, IconRefresh } from "@/components/admin/i
 
 type Filtre = ProductStatus | "tous" | "rupture";
 
+/** Lignes par page. Le serveur ne renvoie que celles-là. */
+const PAR_PAGE = 20;
+
 const FILTRES: { value: Filtre; label: string }[] = [
   { value: "tous", label: "Tous" },
   { value: "publie", label: "Publiés" },
@@ -29,43 +33,36 @@ const FILTRES: { value: Filtre; label: string }[] = [
 
 export default function Page() {
   const router = useRouter();
-  const { products, setProductStatus, duplicateProduct, deleteProduct, hydrated } =
+  const { compteursProduits, setProductStatus, duplicateProduct, deleteProduct, hydrated } =
     useAdmin();
   const [filtre, setFiltre] = useState<Filtre>("tous");
   const [recherche, setRecherche] = useState("");
+  const [page, setPage] = useState(1);
   const [changementStatut, setChangementStatut] = useState<{
     produit: AdminProduct;
     statut: "publie" | "brouillon";
   } | null>(null);
 
-  const compte = (f: Filtre) => {
-    if (f === "tous") return products.length;
-    if (f === "rupture") return products.filter((p) => p.status === "publie" && p.stock <= 0).length;
-    return products.filter((p) => p.status === f).length;
-  };
+  /* Un autre filtre ou une autre recherche repart de la première page. */
+  useEffect(() => setPage(1), [filtre, recherche]);
 
-  const liste = useMemo(() => {
-    const q = recherche.trim().toLowerCase();
-    return products
-      .filter((p) => {
-        if (filtre === "tous") return true;
-        if (filtre === "rupture") return p.status === "publie" && p.stock <= 0;
-        return p.status === filtre;
-      })
-      .filter(
-        (p) =>
-          !q ||
-          p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-      )
-      /* Par date de création, de la plus récente à la plus ancienne. Trier sur
-         la date de modification remonterait la fiche en tête à chaque stock
-         corrigé, et la liste bougerait sous le curseur pendant un inventaire. */
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [products, filtre, recherche]);
+  /* Le serveur filtre, trie et découpe : la page ne reçoit que ses vingt lignes. */
+  const { produits: liste, total, pret, erreur } = useProduits({
+    page,
+    taille: PAR_PAGE,
+    q: recherche,
+    statut: filtre === "tous" || filtre === "rupture" ? undefined : filtre,
+    rupture: filtre === "rupture",
+  });
 
-  if (!hydrated) return <p className="text-[13px] text-muted">Lecture du catalogue…</p>;
+  const compte = (f: Filtre) =>
+    f === "tous"
+      ? compteursProduits.tous
+      : f === "rupture"
+        ? compteursProduits.rupture
+        : compteursProduits[f];
+
+  if (!hydrated || !pret) return <p className="text-[13px] text-muted">Lecture du catalogue…</p>;
 
   return (
     <>
@@ -100,10 +97,13 @@ export default function Page() {
         head={["Produit", "Référence", "Prix", "Stock", "Statut", ""]}
         rows={liste}
         keyOf={(p) => p.id}
-        pageSize={15}
+        pageSize={PAR_PAGE}
+        serveur={{ page, total, onPage: setPage }}
         unite="produits"
         empty={
-          recherche || filtre !== "tous"
+          erreur
+            ? erreur
+            : recherche || filtre !== "tous"
             ? "Aucun produit ne correspond à ce filtre."
             : "Le catalogue est vide."
         }

@@ -33,10 +33,17 @@ export default function Page() {
      commande visée sans passer par les paramètres de recherche, qui
      obligeraient à envelopper la page dans un <Suspense>. */
   useEffect(() => {
-    const ancre = decodeURIComponent(window.location.hash.replace("#", ""));
-    if (!ancre) return;
-    const cible = orders.find((o) => o.ref === ancre);
-    if (cible) setOuverte(cible.id);
+    const ouvrirAncre = () => {
+      const ancre = decodeURIComponent(window.location.hash.replace("#", ""));
+      if (!ancre) return;
+      const cible = orders.find((o) => o.ref === ancre);
+      if (cible) setOuverte(cible.id);
+    };
+    ouvrirAncre();
+    // L'alerte de nouvelle commande pose l'ancre alors que la page est
+    // peut-être déjà ouverte : on suit donc aussi ses changements.
+    window.addEventListener("hashchange", ouvrirAncre);
+    return () => window.removeEventListener("hashchange", ouvrirAncre);
     // La liste n'est complète qu'après hydratation : d'où la dépendance.
   }, [orders]);
 

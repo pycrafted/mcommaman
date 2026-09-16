@@ -33,8 +33,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           Informations légales
         </h1>
         <p className="mb-7.5 mt-2.5 max-w-[560px] text-[15px] text-muted">
-          Aucune de ces pages n&apos;existait sur l&apos;ancien site. Trois d&apos;entre elles sont
-          obligatoires pour vendre en ligne.
+          Nos conditions de vente, la livraison, les retours et la protection de vos données.
         </p>
 
         <div className="grid items-start gap-6 lg:grid-cols-[250px_1fr] lg:gap-10">
@@ -51,15 +50,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
                   }`}
                 >
                   {p.title}
-                  {p.required && (
-                    <span
-                      className={`text-[10.5px] font-bold uppercase tracking-[.06em] ${
-                        active ? "text-gold" : "text-rose-deep"
-                      }`}
-                    >
-                      Obligatoire
-                    </span>
-                  )}
                 </Link>
               );
             })}

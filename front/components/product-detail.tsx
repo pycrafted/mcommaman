@@ -155,10 +155,8 @@ export function ProductDetail({
         </div>
 
         <div className="min-w-0 md:pt-1.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-bold uppercase tracking-[.1em] text-rose">{product.category}</span>
-            {variante && <span className="text-xs text-[#9c8d93]">réf. {variante.sku}</span>}
-          </div>
+          {/* La référence reste une affaire de boutique : la cliente ne la voit pas. */}
+          <span className="text-xs font-bold uppercase tracking-[.1em] text-rose">{product.category}</span>
 
           <h1 className="mt-3 text-[28px] font-extrabold leading-[1.08] tracking-[-.03em] sm:text-[34px] lg:mt-3.5 lg:text-[40px]">
             {product.name}
@@ -296,7 +294,11 @@ export function ProductDetail({
             </button>
             <a
               href={waLink(
-                `Bonjour, je suis intéressée par : ${product.name}${variante ? ` (${variante.sku})` : ""}`,
+                `Bonjour, je suis intéressée par : ${product.name}${
+                  variante
+                    ? ` (taille ${variante.taille_valeur}${variante.coloris_nom ? `, ${variante.coloris_nom}` : ""})`
+                    : ""
+                }`,
                 reglages.telephone,
               )}
               target="_blank"

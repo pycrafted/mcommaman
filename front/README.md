@@ -29,7 +29,7 @@ npm run dev
 | Route | Fichier | Contenu |
 |---|---|---|
 | `/` | `app/page.tsx` → `components/home.tsx` | Bandeau d'accueil en arche (`components/hero.tsx`), bandeau défilant, réassurance, bento des âges, carrousel à onglets, compte à rebours, sélecteur d'univers en pile, histoire en défilement bloqué, le Coin Maman, le mot des mamans, section « Nous contacter » (`#contact`) avec l'adresse et le plan du magasin |
-| `/boutique` | `app/boutique/page.tsx` → `components/catalogue.tsx` | Toute la boutique, ou une catégorie avec `?cat=<slug>` (Filles, Garçons, Coin Maman…) ; ses sous-catégories en filtres, `&sous=<slug>` pour en cocher une ; fourchette de prix, 4 tris, aperçu rapide, pas de pagination |
+| `/boutique` | `app/boutique/page.tsx` → `components/catalogue.tsx` | Toute la boutique, ou une catégorie avec `?cat=<slug>` (Filles, Garçons, Coin Maman…) . Tout vit dans l'adresse (`sous`, `taille`, `prix_min`, `prix_max`, `tri`, `page`) et le serveur filtre, trie et pagine : la page ne reçoit que ses 24 articles, et les filtres leurs décomptes (`/api/catalogue/produits/facettes/`) |
 | `/p/[slug]` | `app/p/[slug]/page.tsx` | Galerie, variantes couleur / taille, accordéons, recommandations, avis de l'article, JSON-LD Product |
 | `/panier` | `app/panier/page.tsx` | Tunnel à l'étape 1 |
 | `/commande` | `app/commande/page.tsx` | Tunnel à l'étape 2 : livraison validée → paiement → commande enregistrée |
@@ -45,7 +45,7 @@ npm run dev
 | `/admin` | `app/admin/(espace)/page.tsx` | Tableau de bord : huit tuiles de rubrique, chacune avec son chiffre |
 | `/admin/statistiques` | `app/admin/(espace)/statistiques/page.tsx` | Indicateurs comparés, ventes jour par jour, rayons, paiements, villes, fiches sans vente, journal |
 | `/admin/commandes` | `app/admin/(espace)/commandes/page.tsx` | Liste filtrable, détail en fenêtre, avancement du statut |
-| `/admin/produits` | `app/admin/(espace)/produits/page.tsx` | Catalogue, stock corrigé sur place, publier / dépublier / dupliquer / supprimer |
+| `/admin/produits` | `app/admin/(espace)/produits/page.tsx` | Catalogue paginé par le serveur (20 lignes), recherche et onglets de statut ; publier / dépublier / dupliquer / supprimer. Le back-office ne charge plus tout le catalogue : les chiffres viennent de `compteurs/`, les fiches de `lib/admin/produits.ts` |
 | `/admin/produits/nouveau`, `/admin/produits/[id]` | `components/product-form.tsx` | Éditeur de fiche : identité, photothèque, prix, variantes, aperçu live, cinq conditions de publication |
 | `/admin/categories` | `app/admin/(espace)/categories/page.tsx` | Catégories, visuel, renvois symétriques, visibilité |
 | `/admin/promotions` | `app/admin/(espace)/promotions/page.tsx` | Campagnes en bons de réduction, onglets par statut, avancement, tiroir de saisie |

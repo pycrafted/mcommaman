@@ -5,7 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { formatXOF, initiales } from "@/lib/format";
 import { useAuth } from "@/components/auth-context";
-import { useAdmin } from "@/lib/admin/store";
+import { useAdmin, type Cloche } from "@/lib/admin/store";
+import { lireProduits } from "@/lib/admin/produits";
+import type { AdminProduct } from "@/lib/admin/types";
 import {
   IconBell,
   IconBox,
@@ -49,8 +51,28 @@ export const NAV = [
  */
 function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
-  const { products, orders, customers } = useAdmin();
+  const { orders, customers } = useAdmin();
   const [q, setQ] = useState("");
+  /* Les fiches se cherchent sur le serveur, quand la frappe s'arrête : le
+     back-office ne garde plus le catalogue en mémoire. */
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  useEffect(() => {
+    const terme = q.trim();
+    if (!terme) {
+      setProducts([]);
+      return;
+    }
+    let vivant = true;
+    const minuteur = window.setTimeout(() => {
+      lireProduits({ q: terme, taille: 5 })
+        .then((r) => vivant && setProducts(r.produits))
+        .catch(() => undefined);
+    }, 250);
+    return () => {
+      vivant = false;
+      window.clearTimeout(minuteur);
+    };
+  }, [q]);
 
   const resultats = useMemo(() => {
     const terme = q.trim().toLowerCase();
@@ -63,10 +85,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
     }));
     if (!terme) return pages;
 
-    const fiches = products
-      .filter((p) => p.name.toLowerCase().includes(terme) || p.sku.toLowerCase().includes(terme))
-      .slice(0, 5)
-      .map((p) => ({
+    const fiches = products.map((p) => ({
         key: `p-${p.id}`,
         group: "Produits",
         label: p.name,
@@ -196,13 +215,173 @@ export function AdminGate({ children }: { children: ReactNode }) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Cloche                                                              */
+/* ------------------------------------------------------------------ */
+
+/** « il y a 5 min », « hier à 14 h 05 » — assez pour situer une commande. */
+function depuis(iso: string): string {
+  const date = new Date(iso);
+  const minutes = Math.round((Date.now() - date.getTime()) / 60_000);
+  if (minutes < 1) return "à l'instant";
+  if (minutes < 60) return `il y a ${minutes} min`;
+  const heures = Math.round(minutes / 60);
+  if (heures < 24) return `il y a ${heures} h`;
+  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) +
+    " à " + date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * La cloche du back-office.
+ *
+ * La pastille compte les commandes arrivées depuis la dernière ouverture —
+ * y compris pendant que le back-office était fermé : la date de lecture est
+ * gardée sur le serveur. Ouvrir la cloche vaut lecture ; les entrées restent
+ * surlignées tant que le panneau est ouvert, pour qu'on voie ce qui était neuf.
+ */
+function ClocheCommandes({
+  cloche,
+  onLire,
+  sombre = true,
+  alignement = "droite",
+}: {
+  cloche: Cloche;
+  onLire: () => void;
+  /** Posée sur le cadre sombre du back-office. */
+  sombre?: boolean;
+  alignement?: "droite" | "gauche";
+}) {
+  const [ouverte, setOuverte] = useState(false);
+  const [neuves, setNeuves] = useState<Set<string>>(new Set());
+  const chemin = usePathname();
+
+  useEffect(() => setOuverte(false), [chemin]);
+
+  useEffect(() => {
+    if (!ouverte) return;
+    const surTouche = (e: KeyboardEvent) => e.key === "Escape" && setOuverte(false);
+    window.addEventListener("keydown", surTouche);
+    return () => window.removeEventListener("keydown", surTouche);
+  }, [ouverte]);
+
+  const basculer = () => {
+    if (!ouverte) {
+      setNeuves(new Set(cloche.notifications.filter((n) => !n.lue).map((n) => n.reference)));
+      if (cloche.nonLues > 0) onLire();
+    }
+    setOuverte((o) => !o);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={basculer}
+        aria-expanded={ouverte}
+        aria-label={
+          cloche.nonLues > 0
+            ? `Notifications, ${cloche.nonLues} nouvelle${cloche.nonLues > 1 ? "s" : ""} commande${cloche.nonLues > 1 ? "s" : ""}`
+            : "Notifications"
+        }
+        className={`relative grid h-9 w-9 place-items-center rounded-full transition-colors ${
+          sombre ? "bg-white/10 text-white hover:bg-white/20" : "bg-mist text-ink hover:bg-line"
+        }`}
+      >
+        <IconBell className="h-[18px] w-[18px]" />
+        {cloche.nonLues > 0 && (
+          <span className="anim-pop absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-ink">
+            {cloche.nonLues > 99 ? "99+" : cloche.nonLues}
+          </span>
+        )}
+      </button>
+
+      {ouverte && (
+        <>
+          <div aria-hidden onClick={() => setOuverte(false)} className="fixed inset-0 z-90" />
+          <div
+            className={`anim-fade-up absolute top-11 z-100 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-white text-ink shadow-[0_24px_60px_-20px_rgba(36,26,32,.45)] ${
+              alignement === "droite" ? "right-0" : "left-0"
+            }`}
+          >
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <span className="text-[13.5px] font-extrabold">Notifications</span>
+              <Link
+                href="/admin/commandes"
+                onClick={() => setOuverte(false)}
+                className="text-[12px] font-semibold text-rose hover:underline"
+              >
+                Toutes les commandes
+              </Link>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto">
+              {cloche.notifications.length === 0 ? (
+                <p className="px-4 py-8 text-center text-[13px] text-muted">
+                  Aucune commande pour le moment.
+                </p>
+              ) : (
+                cloche.notifications.map((n) => {
+                  const neuve = neuves.has(n.reference);
+                  return (
+                    <Link
+                      key={n.reference}
+                      href={`/admin/commandes#${n.reference}`}
+                      onClick={() => setOuverte(false)}
+                      className={`flex gap-3 border-b border-line/70 px-4 py-3 transition-colors last:border-0 hover:bg-mist ${
+                        neuve ? "bg-rose-soft/60" : ""
+                      }`}
+                    >
+                      <span
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${neuve ? "bg-rose" : "bg-transparent"}`}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="truncate text-[13px] font-bold">
+                            Nouvelle commande · {n.reference}
+                          </span>
+                          <span className="shrink-0 text-[12.5px] font-bold tabular-nums">
+                            {formatXOF(n.total)}
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block truncate text-[12.5px] text-muted">
+                          {n.nom_client}
+                          {n.ville ? ` · ${n.ville}` : ""}
+                        </span>
+                        <span className="mt-0.5 block text-[11.5px] text-muted">
+                          {depuis(n.creee_le)}
+                          {n.statut === "annulee" ? " · annulée" : ""}
+                        </span>
+                      </span>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Chrome                                                              */
 /* ------------------------------------------------------------------ */
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const chemin = usePathname();
   const router = useRouter();
-  const { settings, orders, products, hydrated, notification, dismissNotification } = useAdmin();
+  const {
+    settings,
+    orders,
+    compteursProduits,
+    hydrated,
+    notification,
+    dismissNotification,
+    nouvellesCommandes,
+    vuNouvellesCommandes,
+    cloche,
+    lireCloche,
+  } = useAdmin();
   const { account, logout } = useAuth();
   const [menu, setMenu] = useState(false);
   const [palette, setPalette] = useState(false);
@@ -226,7 +405,23 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const aPreparer = orders.filter(
     (o) => o.status === "en_attente" || o.status === "payee"
   ).length;
-  const ruptures = products.filter((p) => p.status === "publie" && p.stock <= 0).length;
+  const ruptures = compteursProduits.rupture;
+  const nouvelles = nouvellesCommandes.length;
+
+  /* L'onglet porte le nombre de nouvelles commandes : il se lit même quand
+     la gérante est sur un autre onglet. */
+  useEffect(() => {
+    const base = document.title.replace(/^\(\d+\) /, "");
+    const aSignaler = Math.max(nouvelles, cloche.nonLues);
+    document.title = aSignaler > 0 ? `(${aSignaler}) ${base}` : base;
+  }, [nouvelles, cloche.nonLues, chemin]);
+
+  /* Ouvrir la liste des commandes, c'est les avoir vues. */
+  useEffect(() => {
+    if (chemin.startsWith("/admin/commandes") && nouvelles > 0) vuNouvellesCommandes();
+    // Seulement à l'arrivée sur la page : une commande qui tombe pendant
+    // qu'on y est garde son bandeau jusqu'au clic.
+  }, [chemin]);
 
   const deconnecter = () => {
     // `logout` vide le compte dans le contexte avant même que le serveur ait
@@ -255,8 +450,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <n.Icone className="h-[18px] w-[18px] shrink-0" />
           <span className="min-w-0 flex-1 truncate">{n.label}</span>
           {n.href === "/admin/commandes" && aPreparer > 0 && (
-            <span className="rounded-full bg-rose px-1.5 text-[10.5px] font-bold tabular-nums text-white">
+            <span className="relative rounded-full bg-rose px-1.5 text-[10.5px] font-bold tabular-nums text-white">
               {aPreparer}
+              {/* Le point qui pulse dit « il y a du neuf », pas seulement « du travail ». */}
+              {nouvelles > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-gold" />
+                </span>
+              )}
             </span>
           )}
           {n.href === "/admin/produits" && ruptures > 0 && (
@@ -335,6 +537,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
               {NAV.find((n) => actif(n.href))?.label ?? "Administration"}
             </div>
           </div>
+          <div className="flex items-center gap-2">
+          <ClocheCommandes cloche={cloche} onLire={lireCloche} />
           <button
             type="button"
             onClick={() => setMenu((v) => !v)}
@@ -344,6 +548,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           >
             {menu ? <IconX /> : <IconMenuAdmin />}
           </button>
+          </div>
         </div>
 
         <div
@@ -365,19 +570,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
             {hydrated ? (
               <>
                 {orders.length} commande{orders.length > 1 ? "s" : ""} ·{" "}
-                {products.filter((p) => p.status === "publie").length} produits publiés
+                {compteursProduits.publie} produit{compteursProduits.publie > 1 ? "s" : ""} publié
+                {compteursProduits.publie > 1 ? "s" : ""}
               </>
             ) : (
               "Lecture du back-office…"
             )}
           </p>
           <div className="flex items-center gap-2.5">
-            {aPreparer > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose px-3 py-1.5 text-[12px] font-bold text-white">
-                <IconBell className="h-3.5 w-3.5" />
-                {aPreparer} à préparer
-              </span>
-            )}
+            {hydrated && <ClocheCommandes cloche={cloche} onLire={lireCloche} />}
             {/* Les initiales de qui est entré — elles étaient écrites en dur,
                 et l'admin affichait « MM » quel que soit le compte. */}
             <span
@@ -413,6 +614,44 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   onClick={dismissNotification}
                   aria-label="Fermer la notification"
                   className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-current transition-colors hover:bg-black/5"
+                >
+                  <IconX className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+          {nouvelles > 0 && (
+            <div className="sticky top-0 z-40 px-4 pt-4 sm:px-6 lg:px-8">
+              <div
+                role="status"
+                className="anim-fade-up flex flex-wrap items-center gap-3 rounded-2xl bg-rose px-4 py-3 text-white shadow-[0_14px_36px_-14px_rgba(224,65,127,.8)] sm:px-5"
+              >
+                <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20">
+                  <IconCart className="h-[18px] w-[18px]" />
+                  <span className="absolute inset-0 animate-ping rounded-full bg-white/25" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14px] font-extrabold">
+                    {nouvelles > 1 ? `${nouvelles} nouvelles commandes` : "Nouvelle commande"}
+                  </div>
+                  <div className="truncate text-[12.5px] text-white/85">
+                    {nouvellesCommandes[0].ref}
+                    {nouvellesCommandes[0].customerName ? ` · ${nouvellesCommandes[0].customerName}` : ""}
+                    {` · ${nouvellesCommandes[0].city} · ${formatXOF(nouvellesCommandes[0].total)}`}
+                  </div>
+                </div>
+                <Link
+                  href={`/admin/commandes#${nouvellesCommandes[0].ref}`}
+                  onClick={vuNouvellesCommandes}
+                  className="rounded-full bg-white px-4 py-2 text-[12.5px] font-bold text-rose-deep transition-transform hover:-translate-y-0.5"
+                >
+                  {nouvelles > 1 ? "Voir les commandes" : "Voir la commande"}
+                </Link>
+                <button
+                  type="button"
+                  onClick={vuNouvellesCommandes}
+                  aria-label="Masquer l'alerte"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/85 transition-colors hover:bg-white/15"
                 >
                   <IconX className="h-4 w-4" />
                 </button>

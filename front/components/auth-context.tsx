@@ -112,7 +112,7 @@ const versCompte = (brut: UtilisateurApi): Account => ({
 /** Le message du serveur, ou un repli lisible quand il ne répond pas. */
 function raison(erreur: unknown): string {
   if (erreur instanceof ErreurApi) return erreur.message;
-  return "Le serveur ne répond pas. Vérifiez votre connexion.";
+  return "Impossible de joindre la boutique pour le moment. Vérifiez votre connexion internet.";
 }
 
 /* ------------------------------------------------------------------ contexte */

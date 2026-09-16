@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatXOF } from "@/lib/format";
 import {
@@ -12,7 +12,8 @@ import {
   deltaPercent,
   useAdmin,
 } from "@/lib/admin/store";
-import type { Order } from "@/lib/admin/types";
+import { lireTousLesProduits } from "@/lib/admin/produits";
+import type { AdminProduct, Order } from "@/lib/admin/types";
 import {
   BarChart,
   CARTE,
@@ -77,7 +78,21 @@ function Repartition({
 }
 
 export default function Page() {
-  const { orders, products, customers, activity, settings, hydrated } = useAdmin();
+  const { orders, customers, activity, settings, hydrated, versionProduits } = useAdmin();
+  /* Les analyses croisent chaque fiche avec les ventes : c'est la seule page
+     qui lit tout le catalogue, et elle le fait à l'ouverture seulement. */
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [produitsPrets, setProduitsPrets] = useState(false);
+  useEffect(() => {
+    let vivant = true;
+    lireTousLesProduits()
+      .then((liste) => vivant && setProducts(liste))
+      .catch(() => undefined)
+      .finally(() => vivant && setProduitsPrets(true));
+    return () => {
+      vivant = false;
+    };
+  }, [versionProduits]);
   const [fenetre, setFenetre] = useState<(typeof FENETRES)[number]["value"]>("30");
   const jours = Number(fenetre);
 
@@ -150,7 +165,9 @@ export default function Page() {
     [products, settings.lowStockThreshold]
   );
 
-  if (!hydrated) return <p className="text-[13px] text-muted">Lecture des statistiques…</p>;
+  if (!hydrated || !produitsPrets) {
+    return <p className="text-[13px] text-muted">Lecture des statistiques…</p>;
+  }
 
   const ruptures = products.filter((p) => p.status === "publie" && p.stock <= 0).length;
   const chiffre = ecart(courant.revenue, precedent.revenue);

@@ -217,7 +217,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
 
   const cta = caisseFermee
     ? "Commandes suspendues"
-    : ["Passer à la livraison", "Passer au paiement", `Payer ${formatXOF(total)}`][step - 1];
+    : ["Passer à la livraison", "Passer au paiement", `Commander · ${formatXOF(total)}`][step - 1];
 
   if (envoi) {
     return (
@@ -227,7 +227,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
         </span>
         <p className="mt-5 text-[15px] font-semibold">Enregistrement de votre commande…</p>
         <p className="mt-1.5 text-[13px] text-muted">
-          Le serveur revérifie les prix et le stock avant de la retenir.
+          Nous vérifions une dernière fois les prix et la disponibilité de vos articles.
         </p>
       </div>
     );
@@ -457,7 +457,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                 Paiement
               </h1>
               <p className="mb-6 mt-1.5 text-sm text-muted">
-                La commande n&apos;est validée qu&apos;à réception du webhook signé du prestataire.
+                Choisissez comment vous souhaitez régler votre commande.
               </p>
 
               <div className="flex flex-col gap-3">
@@ -501,16 +501,10 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                 })}
               </div>
 
-              <div className="mt-5 rounded-2xl bg-gold-soft px-5 py-4 text-[13px] leading-relaxed text-[#5c4a2a]">
-                Trois règles côté serveur : jamais de validation sur le retour navigateur, signature
-                du webhook vérifiée, identifiant de transaction en clé unique pour absorber les
-                doublons.
-              </div>
-
-              <p className="mt-4 flex gap-2.5 rounded-2xl bg-mist px-5 py-4 text-[12.5px] leading-relaxed text-muted">
+              <p className="mt-5 flex gap-2.5 rounded-2xl bg-mist px-5 py-4 text-[12.5px] leading-relaxed text-muted">
                 <IconLock className="mt-0.5 h-4 w-4 shrink-0 text-rose" />
-                Aucun paiement n&apos;est encore déclenché : la commande part à la boutique, qui
-                vous rappelle pour la confirmer. Le stock est réservé dès maintenant.
+                Rien n&apos;est prélevé maintenant : la boutique vous appelle pour confirmer la
+                commande et convenir du règlement. Vos articles sont mis de côté dès maintenant.
               </p>
             </>
           )}
@@ -584,7 +578,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
           )}
 
           <p className="mt-3 text-center text-[12.5px] text-muted">
-            Prix figés à la commande — une hausse ultérieure ne réécrit pas la facture.
+            Le prix affiché est celui que vous paierez.
           </p>
         </aside>
       </div>

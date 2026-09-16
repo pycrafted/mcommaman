@@ -61,6 +61,8 @@ export interface Order {
   id: string;
   ref: string;
   customerId: string;
+  /** Le nom saisi à la commande — il existe aussi sans compte. */
+  customerName?: string;
   lines: OrderLine[];
   total: number;
   status: OrderStatus;
@@ -130,6 +132,10 @@ export interface AdminCategory {
   univers: "enfant" | "maman";
   active: boolean;
   order: number;
+  /** Fiches rangées directement dans ce rayon, tous statuts. Compté par le serveur. */
+  productCount?: number;
+  /** Parmi elles, les brouillons. */
+  draftCount?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -159,6 +165,8 @@ export interface AdminPromotion {
   categorySlug: string;
   /** Renseigné pour la portée « produit ». */
   productId: string;
+  /** Le nom de l'article visé, fourni par le serveur. */
+  productName?: string;
   /** Renseignés pour la portée « commande ». */
   orderRule: OrderRule;
   minAmount: number;
@@ -197,6 +205,8 @@ export interface SizeValue {
   value: string;
   /** Repère indicatif, souvent un âge. Vide la plupart du temps. */
   age: string;
+  /** Combien de fiches s'en servent. Compté par le serveur. */
+  productCount?: number;
 }
 
 /** Un coloris du catalogue : son nom commercial et sa pastille. */
@@ -205,6 +215,8 @@ export interface AdminColor {
   name: string;
   /** Couleur CSS de la pastille, au format #rrggbb. */
   hex: string;
+  /** Combien de fiches s'en servent. Compté par le serveur. */
+  productCount?: number;
 }
 
 export interface AdminMaterial {

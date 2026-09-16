@@ -299,6 +299,7 @@ export function Table<T>({
   empty = "Rien à afficher.",
   pageSize = 20,
   unite,
+  serveur,
 }: {
   cols: string;
   head: string[];
@@ -311,8 +312,24 @@ export function Table<T>({
   pageSize?: number;
   /** Ce qu'on compte, pour la ligne « 1–20 sur 243 commandes ». */
   unite?: string;
+  /**
+   * Pagination tenue par le serveur : `rows` est déjà la page affichée, et
+   * `total` le nombre de lignes de toute la liste.
+   */
+  serveur?: { page: number; total: number; onPage: (page: number) => void };
 }) {
-  const { page, pages, setPage, tranche, debut, total } = usePagination(rows, pageSize, keyOf);
+  const locale = usePagination(rows, serveur ? 0 : pageSize, keyOf);
+  const taille = Math.max(1, pageSize);
+  const { page, pages, setPage, tranche, debut, total } = serveur
+    ? {
+        page: serveur.page,
+        pages: Math.max(1, Math.ceil(serveur.total / taille)),
+        setPage: serveur.onPage,
+        tranche: rows,
+        debut: (serveur.page - 1) * taille,
+        total: serveur.total,
+      }
+    : locale;
 
   if (rows.length === 0) {
     return (
