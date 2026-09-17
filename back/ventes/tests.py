@@ -377,7 +377,7 @@ class GestionCommandeTest(APITestCase):
 
     def test_le_statut_avance_pas_a_pas(self):
         self.client.force_authenticate(self.gerante)
-        for attendu in ["payee", "preparation", "expediee", "livree"]:
+        for attendu in ["preparation", "expediee", "livree"]:
             reponse = self.client.post(reverse("commande-gestion-avancer", args=[self.reference]))
             self.assertEqual(reponse.data["statut"], attendu)
         # Arrivée au bout, elle ne bouge plus.
@@ -393,6 +393,34 @@ class GestionCommandeTest(APITestCase):
         self.variante.refresh_from_db()
         self.assertEqual(self.variante.stock, 10)
         self.assertEqual(Commande.objects.get(reference=self.reference).statut, "annulee")
+
+    def test_retablir_reprend_le_stock(self):
+        self.client.force_authenticate(self.gerante)
+        self.client.post(reverse("commande-gestion-annuler", args=[self.reference]))
+        reponse = self.client.post(reverse("commande-gestion-retablir", args=[self.reference]))
+        self.assertEqual(reponse.status_code, status.HTTP_200_OK)
+        self.assertEqual(reponse.data["statut"], "en_attente")
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 8)
+
+    def test_retablir_est_refuse_sans_stock(self):
+        self.client.force_authenticate(self.gerante)
+        self.client.post(reverse("commande-gestion-annuler", args=[self.reference]))
+        # Entre-temps, le stock remis est reparti ailleurs.
+        self.variante.refresh_from_db()
+        self.variante.stock = 1
+        self.variante.save()
+        reponse = self.client.post(reverse("commande-gestion-retablir", args=[self.reference]))
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("1 en stock pour 2", reponse.data["detail"])
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 1)
+        self.assertEqual(Commande.objects.get(reference=self.reference).statut, "annulee")
+
+    def test_seule_une_commande_annulee_se_retablit(self):
+        self.client.force_authenticate(self.gerante)
+        reponse = self.client.post(reverse("commande-gestion-retablir", args=[self.reference]))
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_une_commande_livree_ne_s_annule_pas(self):
         self.client.force_authenticate(self.gerante)

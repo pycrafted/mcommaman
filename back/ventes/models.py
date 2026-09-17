@@ -14,8 +14,7 @@ from django.utils import timezone
 
 class Commande(models.Model):
     class Statut(models.TextChoices):
-        EN_ATTENTE = "en_attente", "En attente de paiement"
-        PAYEE = "payee", "Payée"
+        EN_ATTENTE = "en_attente", "En attente"
         PREPARATION = "preparation", "En préparation"
         EXPEDIEE = "expediee", "En route"
         LIVREE = "livree", "Livrée"
@@ -26,12 +25,11 @@ class Commande(models.Model):
             """
             Ce que la cliente lit dans son suivi.
 
-            Elle n'a pas besoin de distinguer « en attente » de « payée » : dans
-            les deux cas sa commande est reçue. La gérante, elle, en a besoin.
+            Les libellés de la cliente ne sont pas ceux de la boutique : « en
+            attente » se lit « commande reçue ».
             """
             return {
                 cls.EN_ATTENTE: "Commande reçue",
-                cls.PAYEE: "Commande reçue",
                 cls.PREPARATION: "En préparation",
                 cls.EXPEDIEE: "En route",
                 cls.LIVREE: "Livrée",
@@ -112,7 +110,6 @@ class Commande(models.Model):
     def encaissee(self) -> bool:
         """Les statuts qui comptent dans le chiffre d'affaires."""
         return self.statut in {
-            self.Statut.PAYEE,
             self.Statut.PREPARATION,
             self.Statut.EXPEDIEE,
             self.Statut.LIVREE,

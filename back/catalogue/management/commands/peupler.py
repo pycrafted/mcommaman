@@ -359,7 +359,7 @@ class Command(BaseCommand):
                     statut = alea.choice([Commande.Statut.LIVREE, Commande.Statut.EXPEDIEE,
                                           Commande.Statut.EXPEDIEE, Commande.Statut.ANNULEE])
                 else:
-                    etapes = [Commande.Statut.EN_ATTENTE, Commande.Statut.PAYEE,
+                    etapes = [Commande.Statut.EN_ATTENTE,
                               Commande.Statut.PREPARATION, Commande.Statut.EXPEDIEE,
                               Commande.Statut.LIVREE]
                     statut = etapes[min(len(etapes) - 1, alea.randint(0, jour + 1))]

@@ -406,7 +406,7 @@ class CommandeGestionViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelView
         """
         commande = self.get_object()
         etapes = [
-            Commande.Statut.EN_ATTENTE, Commande.Statut.PAYEE,
+            Commande.Statut.EN_ATTENTE,
             Commande.Statut.PREPARATION, Commande.Statut.EXPEDIEE, Commande.Statut.LIVREE,
         ]
         if commande.statut not in etapes:
@@ -448,6 +448,70 @@ class CommandeGestionViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelView
         EntreeJournal.objects.create(
             auteur=request.user, nom_auteur=request.user.nom,
             action="a annulé", cible=commande.reference,
+        )
+        return Response(self.get_serializer(commande).data)
+
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def retablir(self, request, reference=None):
+        """
+        Remet dans le circuit une commande annulée par erreur.
+
+        Les articles repartent du stock, sous verrou, comme à la commande. S'il
+        en manque un seul, rien ne bouge : rétablir une commande qu'on ne peut
+        plus servir la ferait passer pour vendable. Elle repart « en attente »,
+        à ses prix d'origine.
+        """
+        commande = self.get_object()
+        if commande.statut != Commande.Statut.ANNULEE:
+            return Response({"detail": "Seule une commande annulée peut être rétablie."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        lignes = list(commande.lignes.all())
+        verrouillees = {
+            v.pk: v
+            for v in Variante.objects.select_for_update().filter(
+                pk__in=[l.variante_id for l in lignes if l.variante_id]
+            )
+        }
+        manques = []
+        for ligne in lignes:
+            variante = verrouillees.get(ligne.variante_id)
+            libelle = f"« {ligne.nom_produit} »" + (
+                f" ({ligne.libelle_option})" if ligne.libelle_option else ""
+            )
+            if variante is None:
+                manques.append(f"{libelle} n'existe plus au catalogue")
+            elif variante.stock < ligne.quantite:
+                manques.append(
+                    f"{libelle} : {variante.stock} en stock pour {ligne.quantite} demandé"
+                    + ("s" if ligne.quantite > 1 else "")
+                )
+        if manques:
+            return Response(
+                {
+                    "detail": "Impossible de rétablir cette commande, le stock ne suit plus : "
+                    + " ; ".join(manques) + ".",
+                    "manques": manques,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for ligne in lignes:
+            variante = verrouillees[ligne.variante_id]
+            variante.stock -= ligne.quantite
+            variante.save(update_fields=["stock"])
+            MouvementStock.objects.create(
+                variante=variante, quantite=-ligne.quantite,
+                motif=MouvementStock.Motif.VENTE,
+                reference=commande.reference, reste=variante.stock, auteur=request.user,
+            )
+
+        commande.statut = Commande.Statut.EN_ATTENTE
+        commande.save(update_fields=["statut", "modifiee_le"])
+        EntreeJournal.objects.create(
+            auteur=request.user, nom_auteur=request.user.nom,
+            action="a rétabli", cible=commande.reference,
         )
         return Response(self.get_serializer(commande).data)
 
