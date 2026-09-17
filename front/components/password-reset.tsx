@@ -90,7 +90,7 @@ export function ChangePasswordForm() {
     <AuthShell
       eyebrow="Espace client"
       title="Changer mon mot de passe"
-      description="Avec votre mot de passe actuel, c'est immédiat."
+      
       image="/images/portes/filles.webp"
       quote="Ça arrive à tout le monde."
       footer={

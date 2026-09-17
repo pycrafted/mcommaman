@@ -13,6 +13,7 @@ import {
   francoDeZone,
   zoneIndex,
   type MethodKey,
+  zoneLabel,
 } from "@/lib/livraison";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
@@ -26,7 +27,7 @@ type Champ = "nom" | "tel" | "email" | "ville" | "repere";
 export function Checkout({ startAt = 1 }: { startAt?: number }) {
   const router = useRouter();
   const { lignes, subtotal, complet, bump, remove, clear } = useCart();
-  const { account, defaultAddress } = useAuth();
+  const { account, defaultAddress, addAddress } = useAuth();
   const { placeOrder } = useOrders();
   const reglages = useReglages();
 
@@ -40,6 +41,12 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   const [ville, setVille] = useState("");
   const [repere, setRepere] = useState("");
   const [instructions, setInstructions] = useState("");
+
+  /* L'adresse de livraison : une du carnet, ou une saisie à la main
+     (« autre »), que la cliente peut garder pour la prochaine fois. */
+  const [adresseChoisie, setAdresseChoisie] = useState<string>("autre");
+  const [garderAdresse, setGarderAdresse] = useState(false);
+  const [nomAdresse, setNomAdresse] = useState("");
 
   const [touches, setTouches] = useState<Set<Champ>>(new Set());
   const [tente, setTente] = useState(false);
@@ -62,14 +69,28 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
     setEmail((v) => v || account.email);
 
     if (defaultAddress) {
-      setZone(zoneIndex(defaultAddress.zone));
-      setVille((v) => v || defaultAddress.city);
-      setRepere((v) => v || defaultAddress.address);
-      setInstructions((v) => v || defaultAddress.notes);
+      setAdresseChoisie((v) => (v === "autre" ? defaultAddress.id : v));
     } else {
       setVille((v) => v || account.city);
     }
   }, [account, defaultAddress]);
+
+  /* Choisir une adresse du carnet remplit la livraison avec elle. */
+  const adresseDuCarnet = account?.addresses.find((a) => a.id === adresseChoisie) ?? null;
+  useEffect(() => {
+    if (!adresseDuCarnet) return;
+    setZone(zoneIndex(adresseDuCarnet.zone));
+    setVille(adresseDuCarnet.city);
+    setRepere(adresseDuCarnet.address);
+    setInstructions(adresseDuCarnet.notes);
+  }, [adresseDuCarnet]);
+
+  const choisirAutreAdresse = () => {
+    setAdresseChoisie("autre");
+    setVille("");
+    setRepere("");
+    setInstructions("");
+  };
 
   const z = ZONES[zone];
 
@@ -143,7 +164,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       liste.email = "Cette adresse ne semble pas valide.";
     if (ville.trim().length < 2) liste.ville = z.key === "dakar" ? "Quartier ou commune." : "Ville de livraison.";
-    if (repere.trim().length < 5) liste.repere = "Un repère aide beaucoup le livreur.";
+    if (repere.trim().length < 3) liste.repere = "Un repère aide beaucoup le livreur.";
     return liste;
   }, [nom, tel, email, ville, repere, z.key]);
 
@@ -207,6 +228,18 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
       return;
     }
 
+    /* La nouvelle adresse rejoint le carnet si la cliente l'a demandé. Un échec
+       ici ne remet pas la commande en cause : elle est déjà enregistrée. */
+    if (account && !adresseDuCarnet && garderAdresse) {
+      await addAddress({
+        label: nomAdresse.trim() || "Adresse",
+        zone: z.key,
+        city: ville.trim(),
+        address: repere.trim(),
+        notes: instructions.trim(),
+      });
+    }
+
     await clear();
     router.push(`/commandes/${resultat.order.ref}?nouvelle=1`);
   };
@@ -268,12 +301,10 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
               <h1 className="text-[clamp(1.9rem,4.4vw,2.15rem)] font-extrabold tracking-[-.03em]">
                 Votre panier
               </h1>
-              <p className="mb-6 mt-1.5 text-sm text-muted">Commande possible sans créer de compte.</p>
 
               {lignes.length === 0 ? (
                 <div className="rounded-[20px] border border-dashed border-[#e5d9de] p-14 text-center">
                   <div className="text-base font-bold">Votre panier est vide</div>
-                  <p className="mt-2 text-sm text-muted">Tout est en français, y compris les états vides.</p>
                   <Link
                     href="/boutique"
                     className="mt-5 inline-block rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-white"
@@ -333,9 +364,6 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
               <h1 className="text-[clamp(1.9rem,4.4vw,2.15rem)] font-extrabold tracking-[-.03em]">
                 Livraison
               </h1>
-              <p className="mb-6 mt-1.5 text-sm text-muted">
-                L&apos;adressage se fait au quartier et au point de repère, pas au numéro de rue.
-              </p>
 
               {!account && (
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-mist px-5 py-4">
@@ -351,14 +379,6 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                 </div>
               )}
 
-              {account && defaultAddress && (
-                <div className="mb-6 rounded-2xl bg-rose-soft px-5 py-4 text-[13px] leading-relaxed text-[#8a2f5d]">
-                  Rempli depuis «&nbsp;{defaultAddress.label}&nbsp;», votre adresse par défaut.{" "}
-                  <Link href="/compte/profil" className="font-bold underline underline-offset-2">
-                    Changer d&apos;adresse
-                  </Link>
-                </div>
-              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField
@@ -395,40 +415,113 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => toucher("email")}
                   error={erreurDe("email")}
-                  hint="Pour recevoir le récapitulatif."
-                  className="sm:col-span-2"
-                />
-                <TextField
-                  label={z.key === "dakar" ? "Quartier ou commune" : "Ville"}
-                  icon={IconPin}
-                  placeholder={z.key === "dakar" ? "Sacré-Cœur 3" : "Thiès"}
-                  autoComplete="address-level2"
-                  value={ville}
-                  onChange={(e) => setVille(e.target.value)}
-                  onBlur={() => toucher("ville")}
-                  error={erreurDe("ville")}
-                  valid={valideDe("ville")}
-                />
-                <TextField
-                  label="Point de repère"
-                  placeholder="En face de la pharmacie Mermoz"
-                  value={repere}
-                  onChange={(e) => setRepere(e.target.value)}
-                  onBlur={() => toucher("repere")}
-                  error={erreurDe("repere")}
-                  valid={valideDe("repere")}
-                />
-                <TextField
-                  label="Instructions pour le livreur"
-                  optional
-                  placeholder="Appeler en arrivant, portail bleu"
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
+                  
                   className="sm:col-span-2"
                 />
               </div>
 
-              <div className="mt-6.5">
+              {/* ------------------------------------------ adresse de livraison */}
+              <div className="mt-7">
+                <div className="mb-2.5 text-[12.5px] font-bold">Adresse de livraison</div>
+
+                {account && account.addresses.length > 0 && (
+                  <div className="mb-4 grid gap-2.5 sm:grid-cols-2">
+                    {account.addresses.map((a) => {
+                      const on = adresseChoisie === a.id;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setAdresseChoisie(a.id)}
+                          aria-pressed={on}
+                          className={`flex gap-3 rounded-2xl border-[1.5px] px-4 py-3.5 text-left transition-colors ${
+                            on ? "border-rose bg-rose-soft" : "border-[#ece3e7] bg-white hover:border-rose/40"
+                          }`}
+                        >
+                          <span
+                            className={`mt-0.5 h-4.5 w-4.5 shrink-0 rounded-full border-2 ${
+                              on ? "border-rose bg-rose shadow-[inset_0_0_0_3px_#fff]" : "border-[#d8cbd1]"
+                            }`}
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-[14px] font-bold">
+                              {a.label}
+                              {a.isDefault && (
+                                <span className="ml-2 text-[11px] font-semibold text-muted">par défaut</span>
+                              )}
+                            </span>
+                            <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">
+                              {a.address} — {a.city}
+                              <br />
+                              {zoneLabel(a.zone)}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={choisirAutreAdresse}
+                      aria-pressed={adresseChoisie === "autre"}
+                      className={`flex items-center gap-3 rounded-2xl border-[1.5px] border-dashed px-4 py-3.5 text-left transition-colors ${
+                        adresseChoisie === "autre"
+                          ? "border-rose bg-rose-soft"
+                          : "border-[#e0d3d9] bg-white hover:border-rose/40"
+                      }`}
+                    >
+                      <span
+                        className={`h-4.5 w-4.5 shrink-0 rounded-full border-2 ${
+                          adresseChoisie === "autre"
+                            ? "border-rose bg-rose shadow-[inset_0_0_0_3px_#fff]"
+                            : "border-[#d8cbd1]"
+                        }`}
+                      />
+                      <span className="text-[14px] font-bold">Une autre adresse</span>
+                    </button>
+                  </div>
+                )}
+
+                {adresseDuCarnet && tente && (erreurs.ville || erreurs.repere) && (
+                  <p className="mb-4 rounded-2xl bg-rose-soft px-4 py-3 text-[13px] font-semibold text-rose-deep">
+                    Cette adresse est incomplète : choisissez « Une autre adresse » pour la préciser.
+                  </p>
+                )}
+
+                {/* Une adresse du carnet se choisit telle quelle ; les champs ne
+                    servent qu'à en saisir une autre. */}
+                {!adresseDuCarnet && (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField
+                      label={z.key === "dakar" ? "Quartier ou commune" : "Ville"}
+                      icon={IconPin}
+                      placeholder={z.key === "dakar" ? "Sacré-Cœur 3" : "Thiès"}
+                      autoComplete="address-level2"
+                      value={ville}
+                      onChange={(e) => setVille(e.target.value)}
+                      onBlur={() => toucher("ville")}
+                      error={erreurDe("ville")}
+                      valid={valideDe("ville")}
+                    />
+                    <TextField
+                      label="Point de repère"
+                      placeholder="En face de la pharmacie Mermoz"
+                      value={repere}
+                      onChange={(e) => setRepere(e.target.value)}
+                      onBlur={() => toucher("repere")}
+                      error={erreurDe("repere")}
+                      valid={valideDe("repere")}
+                    />
+                    <TextField
+                      label="Instructions pour le livreur"
+                      optional
+                      placeholder="Appeler en arrivant, portail bleu"
+                      value={instructions}
+                      onChange={(e) => setInstructions(e.target.value)}
+                      className="sm:col-span-2"
+                    />
+                    </div>
+              <div className="mt-5">
                 <div className="mb-2.5 text-[12.5px] font-bold">Zone de livraison</div>
                 <div className="flex flex-wrap gap-2.5">
                   {ZONES.map((zz, i) => (
@@ -446,6 +539,33 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+                    {account && (
+                      <div className="mt-5 rounded-2xl bg-mist p-4">
+                        <label className="flex cursor-pointer items-center gap-3 text-[13.5px] font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={garderAdresse}
+                            onChange={(e) => setGarderAdresse(e.target.checked)}
+                            className="h-4.5 w-4.5 accent-rose"
+                          />
+                          Enregistrer cette adresse dans mon compte
+                        </label>
+                        {garderAdresse && (
+                          <TextField
+                            label="Nom de l'adresse"
+                            optional
+                            placeholder="Maison, bureau, chez maman…"
+                            value={nomAdresse}
+                            onChange={(e) => setNomAdresse(e.target.value)}
+                            className="mt-3"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </>
           )}
@@ -564,8 +684,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
             </p>
           ) : !complet ? (
             <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
-              Un article de votre panier n&apos;est plus servable. Ajustez la quantité ou
-              retirez-le pour continuer.
+              Un article de votre panier n&apos;est plus disponible dans cette quantité. Ajustez-la ou retirez-le pour continuer.
             </p>
           ) : (
             tente &&

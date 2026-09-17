@@ -88,10 +88,10 @@ export function CartDrawer() {
             <span>Total</span>
             <span className="tabular-nums">{formatXOF(subtotal)}</span>
           </div>
-          <p className="mt-1.5 text-[12.5px] text-muted">Livraison offerte à Dakar dès 25 000 F.</p>
+          <p className="mt-1.5 text-[12.5px] text-muted">Livraison offerte à Dakar dès {formatXOF(reglages.franco_dakar)}.</p>
           {!complet && (
             <p className="mt-2 text-[12.5px] font-semibold text-rose-deep">
-              Un article n&apos;est plus servable : ajustez avant de commander.
+              Un article n&apos;est plus disponible dans cette quantité : ajustez avant de commander.
             </p>
           )}
           <Link

@@ -454,8 +454,7 @@ export function Home({
               Les pièces arrivent bientôt
             </h3>
             <p className="mx-auto mt-2.5 max-w-[46ch] text-[13.5px] leading-relaxed text-muted">
-              La sélection se prépare en atelier. Repassez d’ici peu, ou écrivez-nous
-              sur WhatsApp pour être prévenue dès la mise en ligne.
+              Écrivez-nous sur WhatsApp pour être prévenue dès la mise en ligne.
             </p>
             <a
               href={waLink("Bonjour ! Je souhaite être prévenue dès l’arrivée des nouvelles pièces.", reglages.telephone)}

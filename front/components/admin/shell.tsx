@@ -401,7 +401,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   useEffect(() => setMenu(false), [chemin]);
 
   const aPreparer = orders.filter(
-    (o) => o.status === "en_attente" || o.status === "payee"
+    (o) => o.status === "en_attente"
   ).length;
   const ruptures = compteursProduits.rupture;
 

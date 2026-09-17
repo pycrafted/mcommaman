@@ -7,6 +7,7 @@ import { lire, type ProduitApi } from "@/lib/api";
 import type { Product } from "@/lib/products";
 import { useCart } from "./cart-context";
 import { FavoriteButton } from "./favorite-button";
+import { PhotoEntiere } from "./photo-entiere";
 
 /**
  * L'aperçu rapide.
@@ -94,9 +95,10 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
         onClick={(e) => e.stopPropagation()}
         className="anim-fade-up grid max-h-[90vh] w-full max-w-[900px] overflow-auto rounded-t-[26px] bg-cream sm:grid-cols-2 sm:rounded-[26px]"
       >
-        <div
-          className="aspect-4/3 bg-stone bg-cover bg-center sm:aspect-auto sm:min-h-[420px]"
-          style={{ backgroundImage: `url(${product.image})` }}
+        <PhotoEntiere
+          src={product.image}
+          alt={product.name}
+          className="h-[46vh] sm:h-auto sm:min-h-[420px]"
         />
 
         <div className="p-5 sm:p-9">

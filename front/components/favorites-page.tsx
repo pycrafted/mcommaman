@@ -10,7 +10,8 @@ import { useFavorites } from "./favorites-context";
 import { AccountHeader } from "./account-header";
 import { ProductCard } from "./product-card";
 import { QuickView } from "./quick-view";
-import { IconArrow, IconBag, IconCheck, IconClose, IconHeart, IconTrash } from "./icons";
+import { FenetreConfirmation } from "./fenetre-confirmation";
+import { IconArrow, IconBag, IconCheck, IconHeart, IconTrash } from "./icons";
 
 const SHELL = "mx-auto w-full max-w-[1400px] px-5 md:px-8 lg:px-10";
 
@@ -63,8 +64,7 @@ export function FavoritesPage() {
           Mes favoris
         </h2>
         <p className="mt-2.5 max-w-[54ch] text-[14.5px] leading-relaxed text-muted text-pretty">
-          Les pièces mises de côté en attendant la bonne taille ou le bon moment. Une fois
-          connectée, elles vous suivent d&apos;un appareil à l&apos;autre.
+          Les pièces que vous avez mises de côté.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export function FavoritesPage() {
             Aucun favori pour l&apos;instant
           </h2>
           <p className="mx-auto mt-2.5 max-w-[42ch] text-[13.5px] leading-relaxed text-muted">
-            Touchez le cœur sur un article pour le retrouver ici, sans refaire toute la boutique.
+            Touchez le cœur sur un article pour le retrouver ici.
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
@@ -105,7 +105,7 @@ export function FavoritesPage() {
               href="/boutique"
               className="inline-flex items-center justify-center rounded-full border-[1.5px] border-[#e5d9de] bg-white px-7 py-3.5 text-[14px] font-bold transition-colors duration-300 hover:border-rose hover:text-rose"
             >
-              Voir le rayon bébé
+              Voir la boutique
             </Link>
           </div>
         </div>
@@ -137,38 +137,29 @@ export function FavoritesPage() {
               )}
 
               {/* Vider est irréversible : on demande une fois. */}
-              {confirmeVidage ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clear();
-                      setConfirmeVidage(false);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-rose-deep px-4 py-2.5 text-[13.5px] font-semibold text-rose-deep transition-colors duration-300 hover:bg-rose-soft"
-                  >
-                    <IconCheck className="h-4 w-4" />
-                    Confirmer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmeVidage(false)}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-2.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:text-ink"
-                  >
-                    <IconClose className="h-4 w-4" />
-                    Annuler
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmeVidage(true)}
-                  className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 py-2.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-rose/40 hover:text-ink"
-                >
-                  <IconTrash className="h-4 w-4" />
-                  Vider la liste
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setConfirmeVidage(true)}
+                className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 py-2.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-rose/40 hover:text-ink"
+              >
+                <IconTrash className="h-4 w-4" />
+                Vider la liste
+              </button>
+              <FenetreConfirmation
+                ouverte={confirmeVidage}
+                titre="Vider vos favoris ?"
+                confirmer="Oui, tout retirer"
+                renoncer="Garder mes favoris"
+                onFermer={() => setConfirmeVidage(false)}
+                onConfirmer={() => {
+                  clear();
+                  setConfirmeVidage(false);
+                }}
+              >
+                Les {favoris.length} pièce{favoris.length > 1 ? "s" : ""} mise
+                {favoris.length > 1 ? "s" : ""} de côté seront retirée{favoris.length > 1 ? "s" : ""} de
+                la liste.
+              </FenetreConfirmation>
             </div>
           </div>
 

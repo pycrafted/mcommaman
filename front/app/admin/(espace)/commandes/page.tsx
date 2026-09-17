@@ -20,12 +20,12 @@ import {
   Table,
   dateLongue,
 } from "@/components/admin/ui";
-import { IconCheck, IconPlus, IconX } from "@/components/admin/icons";
+import { IconCheck, IconPlus, IconRefresh, IconX } from "@/components/admin/icons";
 
 type Filtre = OrderStatus | "toutes";
 
 export default function Page() {
-  const { orders, customers, setOrderStatus, hydrated } = useAdmin();
+  const { orders, customers, setOrderStatus, restoreOrder, hydrated } = useAdmin();
   const [filtre, setFiltre] = useState<Filtre>("toutes");
   const [recherche, setRecherche] = useState("");
   const [ouverte, setOuverte] = useState<string | null>(null);
@@ -166,6 +166,7 @@ export default function Page() {
         }
         onClose={() => setOuverte(null)}
         onStatut={(statut) => commande && setOrderStatus(commande.id, statut)}
+        onRetablir={() => commande && restoreOrder(commande.ref)}
       />
     </>
   );
@@ -177,13 +178,20 @@ function DetailCommande({
   telephone,
   onClose,
   onStatut,
+  onRetablir,
 }: {
   commande: Order | null;
   nom: string | null;
   telephone: string | null;
   onClose: () => void;
   onStatut: (statut: OrderStatus) => void;
+  onRetablir: () => void;
 }) {
+  /* Une annulation remet le stock et sort la commande du circuit, sans retour
+     possible : elle se confirme. */
+  const [confirmeAnnulation, setConfirmeAnnulation] = useState(false);
+  const [confirmeRetablissement, setConfirmeRetablissement] = useState(false);
+
   if (!commande) return null;
 
   const etape = ORDER_PIPELINE.indexOf(commande.status);
@@ -191,7 +199,13 @@ function DetailCommande({
   const articles = commande.lines.reduce((n, l) => n + l.quantity, 0);
 
   return (
-    <Modal open onClose={onClose} title={commande.ref} wide>
+    /* Tant que la confirmation est ouverte, Échap ne ferme qu'elle. */
+    <Modal
+      open
+      onClose={confirmeAnnulation || confirmeRetablissement ? () => undefined : onClose}
+      title={commande.ref}
+      wide
+    >
       <div className="grid gap-5 sm:grid-cols-[1.4fr_1fr] sm:items-start">
         <div>
           <div className="mb-4 flex flex-wrap items-center gap-2.5">
@@ -207,8 +221,9 @@ function DetailCommande({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13.5px] font-bold">{l.name}</span>
+                  {/* L'option est déjà rédigée : « Bleu nuit · 6 ». */}
                   <span className="mt-0.5 block text-[12px] text-muted">
-                    Taille {l.size} · ×{l.quantity}
+                    {l.size ? `${l.size} · ` : ""}×{l.quantity}
                   </span>
                 </span>
                 <span className="shrink-0 text-[13.5px] font-extrabold tabular-nums">
@@ -294,17 +309,78 @@ function DetailCommande({
               </Button>
             )}
             {commande.status !== "annulee" && commande.status !== "livree" && (
-              <Button variant="danger" onClick={() => onStatut("annulee")}>
+              <Button variant="danger" onClick={() => setConfirmeAnnulation(true)}>
                 <IconX />
                 Annuler la commande
               </Button>
             )}
             {commande.status === "annulee" && (
-              <p className="rounded-2xl bg-rose-soft px-4 py-3 text-[12.5px] leading-relaxed text-rose-deep">
-                Commande annulée.
-              </p>
+              <>
+                <p className="rounded-2xl bg-rose-soft px-4 py-3 text-[12.5px] leading-relaxed text-rose-deep">
+                  Commande annulée.
+                </p>
+                {/* Une annulation faite par erreur se rattrape, tant que le
+                    stock le permet : c'est le serveur qui vérifie. */}
+                <Button variant="ghost" onClick={() => setConfirmeRetablissement(true)}>
+                  <IconRefresh />
+                  Rétablir la commande
+                </Button>
+              </>
             )}
           </div>
+
+          <Modal
+            open={confirmeRetablissement}
+            onClose={() => setConfirmeRetablissement(false)}
+            title={`Rétablir la commande ${commande.ref} ?`}
+          >
+            <p className="text-[13.5px] leading-relaxed text-muted">
+              Elle repart « En attente », à ses prix d&apos;origine, et ses articles sont de nouveau
+              retirés du stock. Si l&apos;un d&apos;eux n&apos;est plus disponible en quantité
+              suffisante, la commande reste annulée.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmeRetablissement(false)}>
+                Laisser annulée
+              </Button>
+              <Button
+                variant="rose"
+                onClick={() => {
+                  setConfirmeRetablissement(false);
+                  onRetablir();
+                }}
+              >
+                <IconRefresh />
+                Oui, rétablir
+              </Button>
+            </div>
+          </Modal>
+
+          <Modal
+            open={confirmeAnnulation}
+            onClose={() => setConfirmeAnnulation(false)}
+            title={`Annuler la commande ${commande.ref} ?`}
+          >
+            <p className="text-[13.5px] leading-relaxed text-muted">
+              Les articles reviennent en stock et la commande ne pourra plus avancer. Cette
+              action est définitive.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmeAnnulation(false)}>
+                Garder la commande
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  setConfirmeAnnulation(false);
+                  onStatut("annulee");
+                }}
+              >
+                <IconX />
+                Oui, annuler
+              </Button>
+            </div>
+          </Modal>
         </div>
       </div>
     </Modal>

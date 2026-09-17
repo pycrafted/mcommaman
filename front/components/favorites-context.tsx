@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
+import Link from "next/link";
 import { envoyer } from "@/lib/api";
 import { useAuth } from "./auth-context";
 
@@ -100,11 +101,20 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   const isFavorite = useCallback((id: string) => ids.includes(id), [ids]);
 
+  /* Le message qui confirme le geste, quelques secondes en bas de l'écran. */
+  const [annonce, setAnnonce] = useState<{ ajout: boolean; cle: number } | null>(null);
+  useEffect(() => {
+    if (!annonce) return;
+    const minuteur = window.setTimeout(() => setAnnonce(null), 2600);
+    return () => window.clearTimeout(minuteur);
+  }, [annonce]);
+
   const toggle = useCallback<Ctx["toggle"]>(
     (id) => {
       const present = ids.includes(id);
       const suivant = present ? ids.filter((x) => x !== id) : [id, ...ids];
       setIds(suivant);
+      setAnnonce({ ajout: !present, cle: Date.now() });
 
       if (!connectee) {
         ecrireLocal(suivant);
@@ -144,7 +154,41 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     [ids, isFavorite, toggle, remove, clear, hydrated],
   );
 
-  return <FavCtx.Provider value={valeur}>{children}</FavCtx.Provider>;
+  return (
+    <FavCtx.Provider value={valeur}>
+      {children}
+      {annonce && (
+        <div
+          key={annonce.cle}
+          role="status"
+          className="anim-fade-up fixed inset-x-4 bottom-5 z-100 mx-auto flex max-w-sm items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-white shadow-[0_18px_40px_-16px_rgba(36,26,32,.6)]"
+        >
+          <span
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+              annonce.ajout ? "bg-rose" : "bg-white/15"
+            }`}
+            aria-hidden
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill={annonce.ajout ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+              <path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" />
+            </svg>
+          </span>
+          <span className="flex-1 text-[13.5px] font-semibold">
+            {annonce.ajout ? "Ajouté à vos favoris" : "Retiré de vos favoris"}
+          </span>
+          {annonce.ajout && (
+            <Link
+              href="/favoris"
+              onClick={() => setAnnonce(null)}
+              className="shrink-0 text-[13px] font-bold text-rose-soft underline underline-offset-4"
+            >
+              Voir
+            </Link>
+          )}
+        </div>
+      )}
+    </FavCtx.Provider>
+  );
 }
 
 export function useFavorites(): Ctx {

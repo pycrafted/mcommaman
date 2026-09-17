@@ -11,6 +11,7 @@ import { useCart } from "./cart-context";
 import { useOrders } from "./orders-context";
 import { OrderStatusBadge } from "./order-status-badge";
 import { OrderJourney } from "./order-journey";
+import { FenetreConfirmation } from "./fenetre-confirmation";
 import { IconCheck, IconChevron, IconPackage, IconPhone, IconPin, IconRefresh } from "./icons";
 import { useReglages } from "./reglages-context";
 
@@ -32,6 +33,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
   const { addBySlug } = useCart();
   const reglages = useReglages();
   const [confirmeAnnulation, setConfirmeAnnulation] = useState(false);
+  const [annulationEnCours, setAnnulationEnCours] = useState(false);
   const [recommandee, setRecommandee] = useState(false);
   const [refus, setRefus] = useState<string | null>(null);
   /* Le suivi d'une commande passée ailleurs : la référence est dans l'adresse,
@@ -63,8 +65,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
           <p className="mx-auto mt-3 max-w-[46ch] text-[14px] leading-relaxed text-muted text-pretty">
             La commande{" "}
             <span className="font-bold text-ink tabular-nums">{orderRef}</span> n&apos;est pas
-            rattachée à cet appareil. Indiquez le téléphone donné lors de la commande : une
-            référence circule sur un ticket, elle ne prouve rien à elle seule.
+            rattachée à cet appareil. Indiquez le téléphone donné lors de la commande.
           </p>
 
           <form
@@ -301,38 +302,34 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
             </button>
 
             {/* On n'annule que tant que rien n'est parti en préparation. */}
-            {commande.status === "recue" &&
-              (confirmeAnnulation ? (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setRefus(null);
-                      const resultat = await cancelOrder(commande.ref);
-                      setConfirmeAnnulation(false);
-                      if (!resultat.ok) setRefus(resultat.error ?? "L'annulation n'a pas abouti.");
-                    }}
-                    className="flex-1 rounded-full border-[1.5px] border-rose-deep/30 px-4 py-3 text-[13.5px] font-bold text-rose-deep transition-colors duration-300 hover:bg-rose-soft"
-                  >
-                    Confirmer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmeAnnulation(false)}
-                    className="flex-1 rounded-full px-4 py-3 text-[13.5px] font-semibold text-muted transition-colors hover:text-ink"
-                  >
-                    Revenir
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmeAnnulation(true)}
-                  className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-rose-deep hover:text-rose-deep"
-                >
-                  Annuler la commande
-                </button>
-              ))}
+            {commande.status === "recue" && (
+              <button
+                type="button"
+                onClick={() => setConfirmeAnnulation(true)}
+                className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-rose-deep hover:text-rose-deep"
+              >
+                Annuler la commande
+              </button>
+            )}
+
+            <FenetreConfirmation
+              ouverte={confirmeAnnulation}
+              titre={`Annuler la commande ${commande.ref} ?`}
+              confirmer="Oui, annuler"
+              renoncer="Garder ma commande"
+              enCours={annulationEnCours}
+              onFermer={() => setConfirmeAnnulation(false)}
+              onConfirmer={async () => {
+                setRefus(null);
+                setAnnulationEnCours(true);
+                const resultat = await cancelOrder(commande.ref);
+                setAnnulationEnCours(false);
+                setConfirmeAnnulation(false);
+                if (!resultat.ok) setRefus(resultat.error ?? "L'annulation n'a pas abouti.");
+              }}
+            >
+              Les articles seront remis en vente et la commande ne pourra plus être reprise.
+            </FenetreConfirmation>
 
             <a
               href={waLink(

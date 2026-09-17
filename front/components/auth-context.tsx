@@ -133,7 +133,8 @@ type Ctx = {
   logout: () => void;
   updateProfile: (patch: Partial<Pick<Account, "name" | "phone" | "city">>) => void;
   updatePreferences: (patch: Partial<AccountPreferences>) => void;
-  addAddress: (address: Omit<SavedAddress, "id" | "isDefault">) => void;
+  /** Enregistre une adresse. Le résultat dit si le serveur l'a acceptée. */
+  addAddress: (address: Omit<SavedAddress, "id" | "isDefault">) => Promise<AuthResult>;
   removeAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
   changePassword: (current: string, next: string) => Promise<AuthResult>;
@@ -271,16 +272,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const addAddress = useCallback<Ctx["addAddress"]>(
-    (adresse) => {
-      envoyer("/api/compte/adresses/", "POST", {
-        libelle: adresse.label,
-        zone: adresse.zone,
-        ville: adresse.city,
-        adresse: adresse.address,
-        notes: adresse.notes,
-      })
-        .then(relire)
-        .catch(() => undefined);
+    async (adresse) => {
+      try {
+        await envoyer("/api/compte/adresses/", "POST", {
+          libelle: adresse.label,
+          zone: adresse.zone,
+          ville: adresse.city,
+          adresse: adresse.address,
+          notes: adresse.notes,
+        });
+        await relire();
+        return { ok: true };
+      } catch (erreur) {
+        return { ok: false, error: raison(erreur) };
+      }
     },
     [relire],
   );

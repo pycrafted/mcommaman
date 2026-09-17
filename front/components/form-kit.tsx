@@ -330,7 +330,7 @@ export function AuthShell({
 }: {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
   image: string;
   quote: string;
   footer: React.ReactNode;
@@ -343,9 +343,13 @@ export function AuthShell({
         <h1 className="mt-3 text-[clamp(2rem,4.6vw,2.9rem)] font-extrabold leading-[1.05] tracking-[-.035em]">
           {title}
         </h1>
-        <p className="mb-8 mt-2.5 max-w-[46ch] text-[14.5px] leading-relaxed text-muted text-pretty">
-          {description}
-        </p>
+        {description ? (
+          <p className="mb-8 mt-2.5 max-w-[46ch] text-[14.5px] leading-relaxed text-muted text-pretty">
+            {description}
+          </p>
+        ) : (
+          <div className="mb-8" />
+        )}
 
         <div className="rounded-3xl border border-line bg-white p-6 sm:p-8">{children}</div>
 

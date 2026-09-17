@@ -9,7 +9,6 @@ import { lienCategorie } from "@/lib/catalogue";
 import { ScrollProgress } from "./motion";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
-import { useFavorites } from "./favorites-context";
 import { IconBag, IconClose, IconHeart, IconMenu, IconPackage, IconUser } from "./icons";
 
 /* La barre est reprise de la maquette boty : le logo au tiers gauche, la
@@ -117,7 +116,6 @@ export function HeaderBarre({
   const entrees = entreesDe(categories);
   const { count, pulse, openDrawer } = useCart();
   const { account } = useAuth();
-  const { count: favoris } = useFavorites();
 
   /* Avant l'hydratation, `account` vaut `null` des deux côtés : le premier rendu
      montre l'icône neutre, les initiales prennent sa place ensuite. */
@@ -199,20 +197,14 @@ export function HeaderBarre({
               <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 lg:justify-self-end">
                 {/* Favoris, commandes, compte : les trois raccourcis de boty.
                     Au doigt la place manque : le menu déplié les reprend. */}
+                {/* Pas de compteur sur le cœur : il restait affiché en permanence. */}
                 <Link
                   href="/favoris"
-                  aria-label={
-                    favoris > 0 ? `Mes favoris, ${favoris} article${favoris > 1 ? "s" : ""}` : "Mes favoris"
-                  }
+                  aria-label="Mes favoris"
                   title="Mes favoris"
-                  className="relative hidden h-11 w-11 place-items-center text-ink/75 transition-colors hover:text-rose sm:grid"
+                  className="hidden h-11 w-11 place-items-center text-ink/75 transition-colors hover:text-rose sm:grid"
                 >
                   <IconHeart />
-                  {favoris > 0 && (
-                    <span className="anim-pop absolute right-1 top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose px-1 text-[10.5px] font-bold tabular-nums text-white">
-                      {favoris}
-                    </span>
-                  )}
                 </Link>
 
                 <Link
@@ -299,9 +291,6 @@ export function HeaderBarre({
                     >
                       <Icone className="h-4 w-4" />
                       {label}
-                      {href === "/favoris" && favoris > 0 && (
-                        <span className="text-[13px] text-muted">({favoris})</span>
-                      )}
                     </Link>
                   ))}
                 </div>

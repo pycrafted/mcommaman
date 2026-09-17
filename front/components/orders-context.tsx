@@ -119,7 +119,6 @@ const OrdersContext = createContext<Ctx | null>(null);
    c'est elle qui place le curseur sur les étapes du parcours. */
 const STATUTS: Record<CommandeApi["statut"], OrderStatus> = {
   en_attente: "recue",
-  payee: "recue",
   preparation: "preparation",
   expediee: "expediee",
   livree: "livree",

@@ -9,6 +9,7 @@ import { useAuth, type ZoneKey } from "./auth-context";
 import { useOrders } from "./orders-context";
 import { OrderStatusBadge } from "./order-status-badge";
 import { AccountHeader } from "./account-header";
+import { FenetreConfirmation } from "./fenetre-confirmation";
 import { PasswordField, SectionCard, TextField } from "./form-kit";
 import { IconArrow, IconCheck, IconClose, IconLock, IconMail, IconPackage, IconPhone, IconPin, IconPlus, IconStar, IconTrash, IconUser } from "./icons";
 
@@ -17,20 +18,6 @@ const SHELL = "mx-auto w-full max-w-[1180px] px-5 md:px-8 lg:px-10";
 const dateCourte = (iso: string) =>
   new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 
-/* De la naissance à l'adolescence, comme le catalogue. Les tailles suivies ne
-   servent qu'à repérer les nouveautés : la liste peut rester large. */
-const TAILLES = [
-  "0-3 m",
-  "3-6 m",
-  "6-12 m",
-  "2 ans",
-  "4 ans",
-  "6 ans",
-  "8 ans",
-  "10 ans",
-  "12 ans",
-  "14 ans",
-];
 
 const SELECT =
   "w-full rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3.5 text-sm outline-none transition-colors focus:border-rose";
@@ -41,7 +28,6 @@ export function AccountProfile() {
     account,
     hydrated,
     updateProfile,
-    updatePreferences,
     addAddress,
     removeAddress,
     setDefaultAddress,
@@ -60,6 +46,8 @@ export function AccountProfile() {
   const [ville, setVille] = useState("");
   const [ligne, setLigne] = useState("");
   const [notes, setNotes] = useState("");
+  const [erreurAdresse, setErreurAdresse] = useState("");
+  const [envoiAdresse, setEnvoiAdresse] = useState(false);
 
   const [motDePasseActuel, setMotDePasseActuel] = useState("");
   const [motDePasseSuivant, setMotDePasseSuivant] = useState("");
@@ -72,6 +60,20 @@ export function AccountProfile() {
   useEffect(() => {
     if (hydrated && !account && !sortie) router.replace("/compte/connexion?suite=/compte/profil");
   }, [hydrated, account, sortie, router]);
+
+  /* « Ajouter une adresse » depuis le tableau de bord arrive ici avec
+     `?adresse=nouvelle#adresses` : le formulaire s'ouvre, et la page descend
+     jusqu'au carnet — sinon le clic semblait ne rien faire. */
+  useEffect(() => {
+    if (!hydrated || !account) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("adresse") === "nouvelle") setFormulaireAdresse(true);
+    if (window.location.hash === "#adresses") {
+      window.requestAnimationFrame(() =>
+        document.getElementById("adresses")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    }
+  }, [hydrated, account]);
 
   /* Les champs partent de la valeur enregistrée, et s'y remettent quand celle-ci
      bouge — enregistrement, ou connexion dans un autre onglet. On dépend des
@@ -101,30 +103,36 @@ export function AccountProfile() {
     window.setTimeout(() => setEnregistre(false), 2200);
   };
 
-  const envoyerAdresse = (e: React.FormEvent) => {
+  const envoyerAdresse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (ville.trim().length < 2 || ligne.trim().length < 5) return;
-    addAddress({
+    /* Un bouton qui ne fait rien sans dire pourquoi passe pour cassé. */
+    if (ville.trim().length < 2) {
+      setErreurAdresse("Indiquez le quartier ou la ville.");
+      return;
+    }
+    if (ligne.trim().length < 3) {
+      setErreurAdresse("Indiquez un point de repère pour le livreur.");
+      return;
+    }
+    setErreurAdresse("");
+    setEnvoiAdresse(true);
+    const resultat = await addAddress({
       label: label.trim() || "Adresse",
       zone,
       city: ville.trim(),
       address: ligne.trim(),
       notes: notes.trim(),
     });
+    setEnvoiAdresse(false);
+    if (!resultat.ok) {
+      setErreurAdresse(resultat.error ?? "L'adresse n'a pas pu être enregistrée.");
+      return;
+    }
     setLabel("");
     setVille("");
     setLigne("");
     setNotes("");
     setFormulaireAdresse(false);
-  };
-
-  const basculerTaille = (taille: string) => {
-    const actuelles = account.preferences.sizes;
-    updatePreferences({
-      sizes: actuelles.includes(taille)
-        ? actuelles.filter((t) => t !== taille)
-        : [...actuelles, taille],
-    });
   };
 
   const envoyerMotDePasse = async (e: React.FormEvent) => {
@@ -154,7 +162,7 @@ export function AccountProfile() {
           Mon profil
         </h2>
         <p className="mt-2.5 max-w-[52ch] text-[14.5px] leading-relaxed text-muted text-pretty">
-          Vos informations, vos adresses de livraison et les tailles que vous suivez.
+          Vos informations et vos adresses de livraison.
         </p>
       </div>
 
@@ -164,7 +172,6 @@ export function AccountProfile() {
           {/* --------------------------------------------- commandes */}
           <SectionCard
             title="Mes commandes"
-            description="Vos commandes, de la plus récente à la plus ancienne."
           >
             {orders.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-line px-6 py-8 text-center">
@@ -241,7 +248,6 @@ export function AccountProfile() {
                 value={account.email}
                 readOnly
                 className="opacity-70"
-                hint="L'adresse sert d'identifiant, elle ne se change pas ici."
               />
               <TextField
                 label="Téléphone"
@@ -293,9 +299,9 @@ export function AccountProfile() {
           </SectionCard>
 
           {/* -------------------------------------- carnet d'adresses */}
+          <div id="adresses" className="scroll-mt-28">
           <SectionCard
             title="Carnet d'adresses"
-            description="L'adresse par défaut est proposée automatiquement au moment de commander."
           >
             {account.addresses.length === 0 && !formulaireAdresse && (
               <p className="mb-4 rounded-2xl bg-mist px-4 py-3.5 text-[13px] text-muted">
@@ -419,12 +425,18 @@ export function AccountProfile() {
                   className="mt-4"
                 />
 
+                {erreurAdresse && (
+                  <p className="mt-4 rounded-xl bg-rose-soft px-4 py-2.5 text-[12.5px] font-semibold text-rose-deep">
+                    {erreurAdresse}
+                  </p>
+                )}
                 <button
                   type="submit"
-                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-rose px-6 py-3.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
+                  disabled={envoiAdresse}
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-rose px-6 py-3.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:opacity-60"
                 >
                   <IconCheck className="h-4 w-4" />
-                  Enregistrer l&apos;adresse
+                  {envoiAdresse ? "Enregistrement…" : "Enregistrer l'adresse"}
                 </button>
               </form>
             ) : (
@@ -438,37 +450,10 @@ export function AccountProfile() {
               </button>
             )}
           </SectionCard>
+          </div>
         </div>
 
         <div className="flex flex-col gap-5 lg:sticky lg:top-[104px]">
-          {/* ------------------------------------------- préférences */}
-          <SectionCard
-            title="Préférences"
-            description="Les tailles suivies servent à vous signaler les bonnes nouveautés."
-          >
-            <span className="mb-3 block text-[12.5px] font-bold">Tailles de mes enfants</span>
-            <div className="flex flex-wrap gap-2">
-              {TAILLES.map((taille) => {
-                const actif = account.preferences.sizes.includes(taille);
-                return (
-                  <button
-                    key={taille}
-                    type="button"
-                    onClick={() => basculerTaille(taille)}
-                    aria-pressed={actif}
-                    className={`rounded-full px-4 py-2 text-[13px] font-semibold transition-colors duration-300 ${
-                      actif
-                        ? "bg-ink text-white"
-                        : "border-[1.5px] border-[#e5d9de] bg-white hover:border-rose hover:text-rose"
-                    }`}
-                  >
-                    {taille}
-                  </button>
-                );
-              })}
-            </div>
-          </SectionCard>
-
           {/* ---------------------------------------------- sécurité */}
           <SectionCard title="Sécurité">
             <form onSubmit={envoyerMotDePasse} className="flex flex-col gap-4">
@@ -485,7 +470,6 @@ export function AccountProfile() {
                 value={motDePasseSuivant}
                 onChange={setMotDePasseSuivant}
                 autoComplete="new-password"
-                hint="Au moins 8 caractères."
               />
 
               {messageMotDePasse && (
@@ -507,52 +491,44 @@ export function AccountProfile() {
             </form>
 
             <div className="mt-6 border-t border-line pt-5">
-              {confirmeSuppression ? (
-                <div className="flex flex-col gap-3">
-                  {/* Dire ce qui se passe vraiment : le compte porte l'historique
-                      des commandes, il ne s'efface pas d'un clic. */}
-                  <p className="rounded-2xl bg-rose-soft px-4 py-3 text-[12.5px] leading-relaxed text-rose-deep">
-                    Votre compte porte l&apos;historique de vos commandes&nbsp;: il ne s&apos;efface
-                    pas depuis cette page. Écrivez-nous et nous le supprimons, avec vos adresses,
-                    sous quelques jours. En attendant, ce bouton ferme simplement votre session.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href="/#contact"
-                      className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-rose-deep/30 px-5 py-3 text-[13.5px] font-bold text-rose-deep transition-colors duration-300 hover:bg-rose-soft"
-                    >
-                      <IconTrash className="h-4 w-4" />
-                      Demander la suppression
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSortie(true);
-                        deleteAccount();
-                        router.replace("/");
-                      }}
-                      className="rounded-full px-5 py-3 text-[13.5px] font-semibold text-muted transition-colors hover:text-ink"
-                    >
-                      Fermer ma session
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmeSuppression(false)}
-                      className="rounded-full px-5 py-3 text-[13.5px] font-semibold text-muted transition-colors hover:text-ink"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmeSuppression(true)}
+                className="text-[13px] text-muted underline underline-offset-4 transition-colors hover:text-rose-deep"
+              >
+                Supprimer mon compte
+              </button>
+              {/* Dire ce qui se passe vraiment : le compte porte l'historique des
+                  commandes, il ne s'efface pas d'un clic. */}
+              <FenetreConfirmation
+                ouverte={confirmeSuppression}
+                titre="Supprimer votre compte ?"
+                confirmer="Demander la suppression"
+                renoncer="Annuler"
+                onFermer={() => setConfirmeSuppression(false)}
+                onConfirmer={() => {
+                  setConfirmeSuppression(false);
+                  router.push("/#contact");
+                }}
+              >
+                <p>
+                  Votre compte porte l&apos;historique de vos commandes&nbsp;: il ne s&apos;efface pas
+                  depuis cette page. Écrivez-nous et nous le supprimons, avec vos adresses, sous
+                  quelques jours.
+                </p>
                 <button
                   type="button"
-                  onClick={() => setConfirmeSuppression(true)}
-                  className="text-[13px] text-muted underline underline-offset-4 transition-colors hover:text-rose-deep"
+                  onClick={() => {
+                    setConfirmeSuppression(false);
+                    setSortie(true);
+                    deleteAccount();
+                    router.replace("/");
+                  }}
+                  className="mt-3 text-[13px] font-semibold text-ink underline underline-offset-4"
                 >
-                  Supprimer mon compte
+                  Simplement fermer ma session
                 </button>
-              )}
+              </FenetreConfirmation>
             </div>
           </SectionCard>
         </div>

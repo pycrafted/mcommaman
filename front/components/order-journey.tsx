@@ -92,8 +92,7 @@ export function OrderJourney({
               Cette commande a été annulée.
             </h2>
             <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed text-muted text-pretty">
-              Si c&apos;est une erreur, écrivez-nous sur WhatsApp : on la remet en route en deux
-              minutes.
+              Si c&apos;est une erreur, écrivez-nous sur WhatsApp.
             </p>
           </div>
         </div>

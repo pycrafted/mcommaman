@@ -12,6 +12,7 @@ import { useAvis } from "./reviews-context";
 import { FavoriteButton } from "./favorite-button";
 import { ReviewForm, ReviewList, StarRow } from "./review-form";
 import { useReglages } from "./reglages-context";
+import { PhotoEntiere } from "./photo-entiere";
 import { useAuth } from "./auth-context";
 import { messageCommande, useOrigine } from "@/lib/whatsapp";
 
@@ -134,9 +135,10 @@ export function ProductDetail({
         <div>
           {/* Les autres photos se posent en miniatures sur la grande, en bas à
               gauche : elles ne repoussent plus le reste de la page. */}
-          <div
-            className="relative aspect-4/5 rounded-3xl bg-stone bg-cover bg-center"
-            style={{ backgroundImage: `url(${gallery[principale] ?? product.image})` }}
+          <PhotoEntiere
+            src={gallery[principale] ?? product.image}
+            alt={product.name}
+            className="aspect-4/5 rounded-3xl"
           >
             {gallery.length > 1 && (
               <div className="absolute bottom-3 left-3 flex max-w-[calc(100%-1.5rem)] gap-2 sm:bottom-4 sm:left-4 sm:max-w-[calc(100%-2rem)] overflow-x-auto rounded-2xl bg-white/80 p-1.5 shadow-[0_10px_30px_-12px_rgba(36,26,32,.35)] backdrop-blur">
@@ -155,7 +157,7 @@ export function ProductDetail({
                 ))}
               </div>
             )}
-          </div>
+          </PhotoEntiere>
         </div>
 
         <div className="min-w-0 md:pt-1.5">
@@ -282,8 +284,9 @@ export function ProductDetail({
             {enStock
               ? variante && variante.stock <= 3
                 ? `Plus que ${variante.stock} en stock`
-                : "En stock — expédié aujourd'hui"
-              : "Réassort attendu sous 10 jours"}
+                : "En stock"
+              : /* Aucune date de retour n'est connue : on n'en promet pas. */
+                "Épuisé dans cette taille"}
           </div>
 
           {/* Au doigt, le bouton d'achat prend toute la ligne ; WhatsApp et le
@@ -294,7 +297,7 @@ export function ProductDetail({
               disabled={!enStock || envoi}
               className="w-full rounded-full sm:w-auto sm:flex-1 bg-rose py-4.5 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-all hover:-translate-y-[3px] active:scale-97 disabled:opacity-50"
             >
-              {enStock ? (envoi ? "Ajout…" : "Ajouter au panier") : "Me prévenir du réassort"}
+              {enStock ? (envoi ? "Ajout…" : "Ajouter au panier") : "Épuisé"}
             </button>
             <a
               href={waLink(

@@ -197,6 +197,8 @@ interface AdminContextValue extends AdminState {
   duplicateProduct: (id: string) => void;
   setProductStatus: (id: string, status: AdminProduct["status"]) => void;
   /* Commandes */
+  /** Remet dans le circuit une commande annulée, si le stock le permet. */
+  restoreOrder: (ref: string) => void;
   setOrderStatus: (id: string, status: OrderStatus) => void;
 
   /* Renvoie `true` si le serveur a accepte. La fenetre appelante en a besoin :
@@ -704,6 +706,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   /* -------------------------------------------------------- commandes */
 
+  /* Le serveur refuse si le stock ne suit plus, et dit quelle pièce manque :
+     son message remonte tel quel dans la notification. */
+  const restoreOrder = useCallback<AdminContextValue["restoreOrder"]>(
+    (ref) => void ecrire(() => envoyer(`/api/gestion/commandes/${ref}/retablir/`, "POST")),
+    [ecrire],
+  );
+
   const setOrderStatus = useCallback<AdminContextValue["setOrderStatus"]>(
     (ref, statut) =>
       void ecrire(() =>
@@ -980,6 +989,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       duplicateProduct,
       setProductStatus,
       setOrderStatus,
+      restoreOrder,
       saveTeamMember,
       setTeamMemberActive,
       saveCategory,
@@ -1002,7 +1012,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       state, hydrated, enCours, erreur, notification,
       cloche, lireCloche, relire, relireCloche, compteursProduits, versionProduits, saveProduct,
       createProduct, deleteProduct,
-      duplicateProduct, setProductStatus, setOrderStatus, saveTeamMember, setTeamMemberActive, saveCategory,
+      duplicateProduct, setProductStatus, setOrderStatus, restoreOrder, saveTeamMember, setTeamMemberActive, saveCategory,
       deleteCategory, savePromotion, deletePromotion, saveSizes,
       saveColor, deleteColor, saveMaterial, deleteMaterial, addMedia, televerserMedia, removeMedia, updateHero,
       updateSettings, resetDemoData,
@@ -1022,7 +1032,7 @@ export function useAdmin(): AdminContextValue {
 /* Statistiques dérivées                                               */
 /* ------------------------------------------------------------------ */
 
-export const STATUTS_ENCAISSES: OrderStatus[] = ["payee", "preparation", "expediee", "livree"];
+export const STATUTS_ENCAISSES: OrderStatus[] = ["preparation", "expediee", "livree"];
 
 function encaisse(order: Order) {
   return STATUTS_ENCAISSES.includes(order.status);
@@ -1052,14 +1062,14 @@ export function computePeriod(
     return at > debut && at <= fin;
   });
 
-  const payees = fenetre.filter(encaisse);
-  const revenue = payees.reduce((somme, o) => somme + o.total, 0);
+  const encaissees = fenetre.filter(encaisse);
+  const revenue = encaissees.reduce((somme, o) => somme + o.total, 0);
   const annulees = fenetre.filter((o) => o.status === "annulee").length;
 
   return {
     revenue,
     orders: fenetre.length,
-    averageBasket: payees.length ? Math.round(revenue / payees.length) : 0,
+    averageBasket: encaissees.length ? Math.round(revenue / encaissees.length) : 0,
     customers: new Set(fenetre.map((o) => o.customerId)).size,
     cancelRate: fenetre.length ? annulees / fenetre.length : 0,
   };
@@ -1169,7 +1179,6 @@ export function computeCustomerStats(
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
   en_attente: "En attente",
-  payee: "Payée",
   preparation: "À préparer",
   expediee: "Expédiée",
   livree: "Livrée",
@@ -1179,7 +1188,6 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 /** Teintes des pastilles de statut, alignées sur la maquette. */
 export const STATUS_TONES: Record<OrderStatus, { bg: string; fg: string }> = {
   en_attente: { bg: "#fdf3dc", fg: "#8a6a12" },
-  payee: { bg: "#eaf6ef", fg: "#2e7d52" },
   preparation: { bg: "#fdf3dc", fg: "#8a6a12" },
   expediee: { bg: "#eef3fd", fg: "#33538f" },
   livree: { bg: "#f4f1f2", fg: "#5d5157" },
@@ -1188,7 +1196,6 @@ export const STATUS_TONES: Record<OrderStatus, { bg: string; fg: string }> = {
 
 export const ORDER_PIPELINE: OrderStatus[] = [
   "en_attente",
-  "payee",
   "preparation",
   "expediee",
   "livree",

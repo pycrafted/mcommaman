@@ -64,7 +64,7 @@ export function LoginForm() {
     <AuthShell
       eyebrow="Espace client"
       title="Bon retour parmi nous"
-      description="Connectez-vous pour retrouver vos adresses de livraison et les tailles de vos enfants."
+      description="Connectez-vous pour retrouver vos commandes et vos adresses de livraison."
       image="/images/portes/filles.webp"
       quote="Ils grandissent vite. La boutique s'en souvient."
       footer={
@@ -194,7 +194,7 @@ export function SignupForm() {
     <AuthShell
       eyebrow="Nouvelle cliente"
       title="Créer mon compte"
-      description="Deux minutes, et la boutique retient votre adresse et les tailles de vos enfants."
+      description="Vos commandes et vos adresses, retrouvées à chaque visite."
       image="/images/portes/bebes.webp"
       quote="Le vestiaire des petits, gardé au chaud pour vous."
       footer={
@@ -262,7 +262,6 @@ export function SignupForm() {
             autoComplete="address-level2"
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            hint="Pré-remplira vos futures commandes."
           />
         </div>
 

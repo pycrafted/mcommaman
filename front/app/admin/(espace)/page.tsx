@@ -70,7 +70,7 @@ export default function Page() {
 
   if (!hydrated) return <p className="text-[13px] text-muted">Lecture du back-office…</p>;
 
-  const aPreparer = orders.filter((o) => o.status === "en_attente" || o.status === "payee").length;
+  const aPreparer = orders.filter((o) => o.status === "en_attente").length;
   /* Compté par le serveur, au seuil réglé : le catalogue n'est pas chargé ici. */
   const stockFaible = compteursProduits.stock_bas;
   const periode = computePeriod(orders, 30);

@@ -41,7 +41,6 @@ export interface AdminProduct extends Product {
 
 export type OrderStatus =
   | "en_attente"
-  | "payee"
   | "preparation"
   | "expediee"
   | "livree"

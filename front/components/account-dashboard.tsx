@@ -30,7 +30,7 @@ const dateLongue = (iso: string) =>
 export function AccountDashboard() {
   const router = useRouter();
   const { account, hydrated } = useAuth();
-  const { lignes, count, subtotal } = useCart();
+  const { lignes, count, subtotal, openDrawer } = useCart();
   const { orders } = useOrders();
   const { ids: favorisIds, count: favoris } = useFavorites();
   const reglages = useReglages();
@@ -73,7 +73,6 @@ export function AccountDashboard() {
   }
 
   const parDefaut = account.addresses.find((a) => a.isDefault) ?? account.addresses[0] ?? null;
-  const tailles = account.preferences.sizes;
 
   const derniere = orders[0] ?? null;
 
@@ -158,13 +157,14 @@ export function AccountDashboard() {
                 <h2 className="mt-1 text-base font-extrabold tracking-tight">Mon panier</h2>
               </div>
               {lignes.length > 0 && (
-                <Link
-                  href="/panier"
+                <button
+                  type="button"
+                  onClick={openDrawer}
                   className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
                 >
                   Voir le panier
                   <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
-                </Link>
+                </button>
               )}
             </header>
 
@@ -299,7 +299,7 @@ export function AccountDashboard() {
                 <h2 className="mt-1 text-base font-extrabold tracking-tight">Adresse par défaut</h2>
               </div>
               <Link
-                href="/compte/profil"
+                href="/compte/profil#adresses"
                 className="text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
               >
                 Gérer mes adresses
@@ -319,19 +319,15 @@ export function AccountDashboard() {
                   {parDefaut.notes && (
                     <p className="mt-1 text-[12px] italic text-muted">«&nbsp;{parDefaut.notes}&nbsp;»</p>
                   )}
-                  <p className="mt-2.5 text-[12px] text-[#3f8a5f]">
-                    Proposée automatiquement au moment de commander.
-                  </p>
                 </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-line px-6 py-9 text-center">
                 <p className="text-[13.5px] text-muted">
-                  Aucune adresse enregistrée. La saisir une fois évite de la retaper à chaque
-                  commande.
+                  Aucune adresse enregistrée.
                 </p>
                 <Link
-                  href="/compte/profil"
+                  href="/compte/profil?adresse=nouvelle#adresses"
                   className="mt-4 inline-block rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3 text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
                 >
                   Ajouter une adresse
@@ -367,20 +363,6 @@ export function AccountDashboard() {
               <div>
                 <dt className="text-[12px] text-muted">Ville ou quartier</dt>
                 <dd className="mt-0.5 font-bold">{account.city || "À compléter"}</dd>
-              </div>
-              <div>
-                <dt className="text-[12px] text-muted">Tailles suivies</dt>
-                <dd className="mt-1 flex flex-wrap gap-1.5">
-                  {tailles.length ? (
-                    tailles.map((t) => (
-                      <span key={t} className="rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold">
-                        {t}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="font-bold">À compléter</span>
-                  )}
-                </dd>
               </div>
             </dl>
 

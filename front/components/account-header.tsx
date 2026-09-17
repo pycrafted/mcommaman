@@ -33,7 +33,7 @@ export function AccountHeader({
 }) {
   const router = useRouter();
   const { account, logout } = useAuth();
-  const { count } = useCart();
+  const { count, openDrawer } = useCart();
   const { orders } = useOrders();
   const { count: favoris } = useFavorites();
 
@@ -61,7 +61,9 @@ export function AccountHeader({
     {
       valeur: String(count),
       label: count > 1 ? "Articles au panier" : "Article au panier",
-      href: "/panier",
+      /* Le panier s'ouvre dans son panneau : quitter l'espace client pour la
+         page du tunnel faisait disparaître tout le décor d'un coup. */
+      href: null,
       Icone: IconBag,
     },
     {
@@ -73,7 +75,7 @@ export function AccountHeader({
     {
       valeur: String(account.addresses.length),
       label: account.addresses.length > 1 ? "Adresses enregistrées" : "Adresse enregistrée",
-      href: "/compte/profil",
+      href: "/compte/profil#adresses",
       Icone: IconPin,
     },
   ];
@@ -112,23 +114,32 @@ export function AccountHeader({
           </div>
 
           <div className="mt-7 grid gap-px overflow-hidden rounded-2xl bg-white/15 sm:grid-cols-2 lg:grid-cols-4">
-            {chiffres.map((c) => (
-              <Link
-                key={c.label}
-                href={c.href}
-                className="flex items-center gap-4 bg-ink/70 px-5 py-4 transition-colors duration-300 hover:bg-white/10"
-              >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
-                  <c.Icone className="h-4 w-4" />
-                </span>
-                <span className="min-w-0">
-                  <strong className="block text-xl font-extrabold tabular-nums tracking-tight">
-                    {c.valeur}
-                  </strong>
-                  <small className="text-[12px] text-white/55">{c.label}</small>
-                </span>
-              </Link>
-            ))}
+            {chiffres.map((c) => {
+              const contenu = (
+                <>
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
+                    <c.Icone className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <strong className="block text-xl font-extrabold tabular-nums tracking-tight">
+                      {c.valeur}
+                    </strong>
+                    <small className="text-[12px] text-white/55">{c.label}</small>
+                  </span>
+                </>
+              );
+              const classe =
+                "flex items-center gap-4 bg-ink/70 px-5 py-4 text-left transition-colors duration-300 hover:bg-white/10";
+              return c.href ? (
+                <Link key={c.label} href={c.href} className={classe}>
+                  {contenu}
+                </Link>
+              ) : (
+                <button key={c.label} type="button" onClick={openDrawer} className={classe}>
+                  {contenu}
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>

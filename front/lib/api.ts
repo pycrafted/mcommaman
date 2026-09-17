@@ -386,7 +386,7 @@ export type LigneCommandeApi = {
 export type CommandeApi = {
   reference: string;
   creee_le: string;
-  statut: "en_attente" | "payee" | "preparation" | "expediee" | "livree" | "annulee";
+  statut: "en_attente" | "preparation" | "expediee" | "livree" | "annulee";
   statut_cliente: string;
   nom_client: string;
   telephone: string;
