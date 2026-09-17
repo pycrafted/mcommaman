@@ -466,3 +466,106 @@ class NotificationsGestionTest(APITestCase):
         self.assertEqual(donnees["notifications"][0]["reference"], nouvelle)
         self.assertTrue(donnees["notifications"][1]["lue"])
 
+
+class SaisieParLEquipeTest(APITestCase):
+    """Une vente conclue sur WhatsApp ou à la boutique, saisie dans le back-office."""
+
+    def setUp(self):
+        from catalogue.models import MouvementStock
+
+        self.MouvementStock = MouvementStock
+        self.variante = fabriquer_variante(prix=10000, stock=5)
+        self.gerante = Utilisateur.objects.create_user(
+            email="saisie@test.sn", nom="Gérante", password="motdepasse123",
+            role=Utilisateur.Role.GERANTE,
+        )
+        self.url = reverse("commande-gestion-list")
+
+    def _vente(self, **surcharges):
+        donnees = {
+            "lignes": [{"variante": self.variante.pk, "quantite": 2}],
+            "nom_client": "Awa Ndiaye",
+            "telephone": "77 555 44 33",
+            "zone": "dakar",
+            "ville": "Mermoz",
+            "adresse": "Face pharmacie",
+            "moyen_paiement": "wave",
+        }
+        donnees.update(surcharges)
+        return donnees
+
+    def test_la_saisie_est_reservee_a_l_equipe(self):
+        reponse = self.client.post(self.url, self._vente(), format="json")
+        self.assertIn(reponse.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
+
+    def test_la_vente_retire_le_stock_et_laisse_une_trace(self):
+        self.client.force_authenticate(self.gerante)
+        reponse = self.client.post(self.url, self._vente(), format="json")
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(reponse.data["reference"].startswith("MCM-"))
+        self.assertEqual(reponse.data["total"], 20000 + 2000)
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 3)
+        mouvement = self.MouvementStock.objects.get(reference=reponse.data["reference"])
+        self.assertEqual((mouvement.quantite, mouvement.motif, mouvement.auteur), (-2, "vente", self.gerante))
+
+    def test_on_ne_vend_pas_plus_que_le_stock(self):
+        self.client.force_authenticate(self.gerante)
+        reponse = self.client.post(
+            self.url, self._vente(lignes=[{"variante": self.variante.pk, "quantite": 6}]), format="json"
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 5)
+
+    def test_l_annulation_remet_le_stock(self):
+        self.client.force_authenticate(self.gerante)
+        reference = self.client.post(self.url, self._vente(), format="json").data["reference"]
+        self.client.post(reverse("commande-gestion-annuler", args=[reference]))
+        self.variante.refresh_from_db()
+        self.assertEqual(self.variante.stock, 5)
+
+    def test_le_retrait_en_boutique_se_paie_en_especes_sans_frais_ni_adresse(self):
+        self.client.force_authenticate(self.gerante)
+        reponse = self.client.post(
+            self.url,
+            self._vente(zone="retrait", ville="", adresse="", moyen_paiement="esp"),
+            format="json",
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(reponse.data["frais_livraison"], 0)
+        self.assertEqual(reponse.data["total"], 20000)
+
+    def test_les_especes_ne_se_choisissent_pas_en_ligne(self):
+        reponse = self.client.post(
+            reverse("commande-list"),
+            commande_type(self.variante, moyen_paiement="esp"),
+            format="json",
+        )
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_la_remise_accordee_et_le_rattachement_au_compte(self):
+        cliente = Utilisateur.objects.create_user(
+            email="awa@test.sn", nom="Awa Ndiaye", password="motdepasse123",
+            telephone="+221 77 555 44 33",
+        )
+        self.client.force_authenticate(self.gerante)
+        devis = self.client.post(
+            reverse("commande-gestion-devis"),
+            {"lignes": [{"variante": self.variante.pk, "quantite": 2}], "zone": "dakar",
+             "telephone": "775554433", "remise": 1500},
+            format="json",
+        ).data
+        self.assertEqual((devis["remise"], devis["total"]), (1500, 20500))
+        self.assertEqual(devis["cliente_nom"], "Awa Ndiaye")
+
+        reponse = self.client.post(self.url, self._vente(remise=1500), format="json")
+        self.assertEqual(reponse.data["cliente"], cliente.pk)
+        self.assertEqual(reponse.data["total"], 20500)
+
+    def test_une_livraison_demande_une_adresse(self):
+        self.client.force_authenticate(self.gerante)
+        reponse = self.client.post(self.url, self._vente(ville="", adresse=""), format="json")
+        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("adresse", reponse.data)
+

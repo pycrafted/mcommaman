@@ -72,6 +72,8 @@ class Reglages(models.Model):
 
     def frais_pour(self, zone: str, sous_total: int) -> int:
         """Les frais de livraison d'un panier, seule source qui fasse foi."""
+        if zone == "retrait":
+            return 0
         if zone == "dakar":
             return 0 if sous_total >= self.franco_dakar else self.frais_dakar
         if zone == "thies":

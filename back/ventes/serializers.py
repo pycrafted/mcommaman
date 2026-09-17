@@ -77,7 +77,10 @@ class CreationCommandeSerializer(serializers.Serializer):
     adresse = serializers.CharField(max_length=255)
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 
-    moyen_paiement = serializers.ChoiceField(choices=Commande.Paiement.choices)
+    # Les espèces en boutique ne se choisissent pas en ligne : l'équipe les saisit.
+    moyen_paiement = serializers.ChoiceField(
+        choices=[c for c in Commande.Paiement.choices if c[0] != Commande.Paiement.ESPECES]
+    )
 
     def validate(self, donnees):
         # Le paiement à la livraison n'existe que sur Dakar. La base porte la
@@ -95,6 +98,54 @@ class CreationCommandeSerializer(serializers.Serializer):
         # vérifié ligne par ligne, et deux fois cinq articles passeraient là où
         # il n'en reste que six.
         vues = [ligne["variante"].pk for ligne in donnees["lignes"]]
+        if len(vues) != len(set(vues)):
+            raise serializers.ValidationError({
+                "lignes": ["Un même article apparaît deux fois : regroupez les quantités."]
+            })
+        return donnees
+
+
+class SaisieCommandeSerializer(serializers.Serializer):
+    """
+    Une vente conclue hors du site — sur WhatsApp, au téléphone, à la boutique —
+    et saisie par l'équipe.
+
+    Comme au tunnel, aucun prix n'est accepté : seule une remise peut être
+    accordée, en francs. Le retrait en boutique se passe d'adresse.
+    """
+
+    lignes = LigneDemandeeSerializer(many=True, allow_empty=False)
+    nom_client = serializers.CharField(max_length=120)
+    telephone = serializers.CharField(max_length=32)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    zone = serializers.ChoiceField(choices=["dakar", "thies", "regions", "retrait"])
+    ville = serializers.CharField(max_length=80, required=False, allow_blank=True, default="")
+    adresse = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    moyen_paiement = serializers.ChoiceField(choices=Commande.Paiement.choices)
+    remise = serializers.IntegerField(min_value=0, required=False, default=0)
+
+    def validate(self, donnees):
+        zone = donnees.get("zone")
+        moyen = donnees.get("moyen_paiement")
+        if moyen == Commande.Paiement.LIVRAISON and zone != "dakar":
+            raise serializers.ValidationError({
+                "moyen_paiement": ["Le paiement à la livraison n'est proposé que sur Dakar."]
+            })
+        if moyen == Commande.Paiement.ESPECES and zone != "retrait":
+            raise serializers.ValidationError({
+                "moyen_paiement": ["Les espèces en boutique vont avec un retrait en boutique."]
+            })
+        # Le devis se demande en cours de saisie : l'adresse peut encore manquer.
+        if zone and zone != "retrait" and not self.context.get("devis"):
+            manques = {}
+            if not donnees.get("ville", "").strip():
+                manques["ville"] = ["Le quartier ou la ville de livraison."]
+            if not donnees.get("adresse", "").strip():
+                manques["adresse"] = ["Un point de repère pour le livreur."]
+            if manques:
+                raise serializers.ValidationError(manques)
+        vues = [ligne["variante"].pk for ligne in donnees.get("lignes", [])]
         if len(vues) != len(set(vues)):
             raise serializers.ValidationError({
                 "lignes": ["Un même article apparaît deux fois : regroupez les quantités."]

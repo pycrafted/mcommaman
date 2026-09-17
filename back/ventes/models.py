@@ -43,6 +43,8 @@ class Commande(models.Model):
         ORANGE_MONEY = "om", "Orange Money"
         CARTE = "cb", "Carte bancaire"
         LIVRAISON = "cod", "À la livraison"
+        # Réglé en main propre, à la boutique : seule l'équipe le saisit.
+        ESPECES = "esp", "Espèces en boutique"
 
     reference = models.CharField("référence", max_length=20, unique=True, db_index=True)
 
@@ -65,9 +67,11 @@ class Commande(models.Model):
         ("dakar", "Dakar et banlieue"),
         ("thies", "Thiès, Mbour"),
         ("regions", "Autres régions"),
+        # Vente conclue à la boutique ou récupérée sur place : pas de livraison.
+        ("retrait", "Retrait en boutique"),
     ])
-    ville = models.CharField(max_length=80)
-    adresse = models.CharField(max_length=255)
+    ville = models.CharField(max_length=80, blank=True)
+    adresse = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
 
     sous_total = models.PositiveIntegerField(validators=[MinValueValidator(0)])

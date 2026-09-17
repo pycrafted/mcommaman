@@ -43,13 +43,13 @@ class Devis:
     campagne: Campagne | None = None
 
 
-def chiffrer(lignes_demandees, zone: str, cliente=None) -> Devis:
+def chiffrer(lignes_demandees, zone: str, cliente=None, remise_manuelle: int = 0) -> Devis:
     """
     Chiffre un panier.
 
     `lignes_demandees` est une suite de couples (variante, quantité). Le prix
     vient du produit en base ; celui qu'aurait envoyé le navigateur n'est même
-    pas lu.
+    pas lu. `remise_manuelle` n'est ouverte qu'à l'équipe (saisie d'une vente).
     """
     if not lignes_demandees:
         raise ErreurTarification("Le panier est vide.")
@@ -87,6 +87,11 @@ def chiffrer(lignes_demandees, zone: str, cliente=None) -> Devis:
     devis.campagne = _campagne_de_commande(devis.sous_total, cliente)
     if devis.campagne:
         devis.remise = _remise(devis.campagne, devis.sous_total)
+
+    # Le geste commercial accordé par la gérante, en plus d'une éventuelle
+    # campagne. Il ne peut pas rendre la commande négative.
+    if remise_manuelle:
+        devis.remise = min(devis.remise + remise_manuelle, devis.sous_total + devis.frais_livraison)
 
     devis.total = max(0, devis.sous_total + devis.frais_livraison - devis.remise)
     return devis

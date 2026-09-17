@@ -26,9 +26,91 @@ from .serializers import (
     CommandeGestionSerializer,
     CommandeSerializer,
     CreationCommandeSerializer,
+    SaisieCommandeSerializer,
     DevisSerializer,
 )
 from .tarification import ErreurTarification, chiffrer, prochaine_reference
+
+
+def _enregistrer(devis, donnees, cliente=None, auteur=None):
+    """
+    Écrit une commande chiffrée et retire son stock.
+
+    Partagé par le tunnel du site et par la saisie de l'équipe : deux portes,
+    une seule règle — le prix vient du devis, chaque article sorti laisse un
+    mouvement « vente » à la référence de la commande.
+    """
+    commande = Commande.objects.create(
+        reference=prochaine_reference(),
+        cliente=cliente,
+        nom_client=donnees["nom_client"],
+        telephone=donnees["telephone"],
+        email=donnees.get("email", ""),
+        zone=donnees["zone"],
+        ville=donnees.get("ville", ""),
+        adresse=donnees.get("adresse", ""),
+        notes=donnees.get("notes", ""),
+        sous_total=devis.sous_total,
+        frais_livraison=devis.frais_livraison,
+        remise=devis.remise,
+        total=devis.total,
+        moyen_paiement=donnees["moyen_paiement"],
+        statut=Commande.Statut.EN_ATTENTE,
+    )
+
+    for ligne in devis.lignes:
+        variante = ligne.variante
+        photo = variante.produit.photo_principale
+        LigneCommande.objects.create(
+            commande=commande,
+            variante=variante,
+            nom_produit=variante.produit.nom,
+            slug_produit=variante.produit.slug,
+            url_image=photo.media.url if photo else "",
+            libelle_option=variante.libelle_option,
+            prix_unitaire=ligne.prix_unitaire,
+            quantite=ligne.quantite,
+        )
+        variante.stock -= ligne.quantite
+        variante.save(update_fields=["stock"])
+        MouvementStock.objects.create(
+            variante=variante,
+            quantite=-ligne.quantite,
+            motif=MouvementStock.Motif.VENTE,
+            reference=commande.reference,
+            reste=variante.stock,
+            auteur=auteur,
+        )
+    return commande
+
+
+def _cliente_par_telephone(telephone: str):
+    """
+    Le compte cliente qui porte ce numéro, s'il y en a un seul.
+
+    Les numéros se comparent chiffres seuls, indicatif retiré : « 77 123 45 67 »
+    et « +221771234567 » sont le même. Deux comptes sur le même numéro : on ne
+    choisit pas au hasard, la commande reste sans compte.
+    """
+    import re
+
+    from clientele.models import Utilisateur
+
+    chiffres = re.sub(r"\D", "", telephone)
+    if chiffres.startswith("221") and len(chiffres) > 9:
+        chiffres = chiffres[3:]
+    if len(chiffres) < 9:
+        return None
+    from django.db.models import F, Func, Value
+
+    # Les chiffres seuls, calculés par la base : pas de liste de clientes à parcourir.
+    candidates = list(
+        Utilisateur.objects.filter(role=Utilisateur.Role.CLIENTE)
+        .annotate(chiffres=Func(F("telephone"), Value(r"\D"), Value(""), Value("g"),
+                                function="regexp_replace"))
+        .filter(chiffres__endswith=chiffres)[:2]
+    )
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def _rendre_le_stock(commande, auteur=None):
@@ -223,46 +305,11 @@ class CommandeViewSet(
         except ErreurTarification as erreur:
             return Response({"detail": str(erreur)}, status=status.HTTP_400_BAD_REQUEST)
 
-        commande = Commande.objects.create(
-            reference=prochaine_reference(),
+        commande = _enregistrer(
+            devis,
+            donnees,
             cliente=request.user if request.user.is_authenticated else None,
-            nom_client=donnees["nom_client"],
-            telephone=donnees["telephone"],
-            email=donnees.get("email", ""),
-            zone=donnees["zone"],
-            ville=donnees["ville"],
-            adresse=donnees["adresse"],
-            notes=donnees.get("notes", ""),
-            sous_total=devis.sous_total,
-            frais_livraison=devis.frais_livraison,
-            remise=devis.remise,
-            total=devis.total,
-            moyen_paiement=donnees["moyen_paiement"],
-            statut=Commande.Statut.EN_ATTENTE,
         )
-
-        for ligne in devis.lignes:
-            variante = ligne.variante
-            photo = variante.produit.photo_principale
-            LigneCommande.objects.create(
-                commande=commande,
-                variante=variante,
-                nom_produit=variante.produit.nom,
-                slug_produit=variante.produit.slug,
-                url_image=photo.media.url if photo else "",
-                libelle_option=variante.libelle_option,
-                prix_unitaire=ligne.prix_unitaire,
-                quantite=ligne.quantite,
-            )
-            variante.stock -= ligne.quantite
-            variante.save(update_fields=["stock"])
-            MouvementStock.objects.create(
-                variante=variante,
-                quantite=-ligne.quantite,
-                motif=MouvementStock.Motif.VENTE,
-                reference=commande.reference,
-                reste=variante.stock,
-            )
 
         # Le panier serveur a fait son office.
         if request.user.is_authenticated and hasattr(request.user, "panier"):
@@ -273,8 +320,8 @@ class CommandeViewSet(
         )
 
 
-class CommandeGestionViewSet(viewsets.ReadOnlyModelViewSet):
-    """Les commandes vues de la boutique, et leur avancement."""
+class CommandeGestionViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
+    """Les commandes vues de la boutique, leur avancement, et la saisie des ventes hors site."""
 
     permission_classes = [EstEquipe]
     serializer_class = CommandeGestionSerializer
@@ -296,6 +343,58 @@ class CommandeGestionViewSet(viewsets.ReadOnlyModelViewSet):
                 | Q(telephone__icontains=requete)
             )
         return selection
+
+    def _chiffrer_saisie(self, request, verrouiller: bool):
+        serializer = SaisieCommandeSerializer(data=request.data, context={"devis": not verrouiller})
+        if not verrouiller:
+            # Le devis se demande pendant la saisie : l'identité peut manquer.
+            for champ in ("nom_client", "telephone", "moyen_paiement"):
+                serializer.fields[champ].required = False
+        serializer.is_valid(raise_exception=True)
+        donnees = serializer.validated_data
+        cliente = _cliente_par_telephone(donnees.get("telephone", ""))
+        lignes = (
+            _variantes_verrouillees(donnees["lignes"])
+            if verrouiller
+            else [(l["variante"], l["quantite"]) for l in donnees["lignes"]]
+        )
+        devis = chiffrer(
+            lignes, zone=donnees["zone"], cliente=cliente,
+            remise_manuelle=donnees.get("remise", 0),
+        )
+        return donnees, cliente, devis
+
+    @action(detail=False, methods=["post"])
+    def devis(self, request):
+        """Le chiffrage d'une vente en cours de saisie. Rien n'est enregistré."""
+        try:
+            _, cliente, devis = self._chiffrer_saisie(request, verrouiller=False)
+        except ErreurTarification as erreur:
+            return Response({"detail": str(erreur)}, status=status.HTTP_400_BAD_REQUEST)
+        donnees = DevisSerializer(devis).data
+        donnees["cliente_nom"] = cliente.nom if cliente else ""
+        return Response(donnees)
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """
+        Enregistre une vente conclue hors du site.
+
+        Même transaction qu'au tunnel : le prix est refait, le stock retiré
+        sous verrou, la commande écrite — ou rien du tout. La commande se
+        rattache au compte de la cliente quand son numéro en désigne un.
+        """
+        try:
+            donnees, cliente, devis = self._chiffrer_saisie(request, verrouiller=True)
+        except ErreurTarification as erreur:
+            return Response({"detail": str(erreur)}, status=status.HTTP_400_BAD_REQUEST)
+
+        commande = _enregistrer(devis, donnees, cliente=cliente, auteur=request.user)
+        EntreeJournal.objects.create(
+            auteur=request.user, nom_auteur=request.user.nom,
+            action="a saisi la commande", cible=commande.reference,
+        )
+        return Response(CommandeGestionSerializer(commande).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def avancer(self, request, reference=None):
