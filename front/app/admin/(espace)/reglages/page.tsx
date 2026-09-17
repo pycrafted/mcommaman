@@ -1,9 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { formatXOF } from "@/lib/format";
 import { useAdmin } from "@/lib/admin/store";
-import type { HeroSlideConfig } from "@/lib/admin/types";
 import {
   Button,
   Field,
@@ -13,48 +11,11 @@ import {
   Textarea,
   Toggle,
 } from "@/components/admin/ui";
-import { IconImage, IconPlus, IconTrash } from "@/components/admin/icons";
-
-const slideVide = (): HeroSlideConfig => ({
-  src: "",
-  alt: "",
-  pos: "50% 30%",
-  tag: "",
-  piece: "",
-});
+import { AccueilEditeur } from "@/components/admin/accueil-editeur";
+import { Videotheque } from "@/components/admin/videotheque";
 
 export default function Page() {
-  const { settings, hero, updateSettings, updateHero, televerserMedia, hydrated } = useAdmin();
-
-  /* Un seul champ de fichier pour toutes les photos de l'arche : celle qu'on
-     remplace est retenue le temps de l'aller-retour. */
-  const fichierRef = useRef<HTMLInputElement>(null);
-  const cible = useRef(0);
-  const [envoi, setEnvoi] = useState<number | null>(null);
-
-  if (!hydrated) return <p className="text-[13px] text-muted">Lecture des réglages…</p>;
-
-  const majSlide = (i: number, patch: Partial<HeroSlideConfig>) =>
-    updateHero({
-      ...hero,
-      slides: hero.slides.map((s, j) => (j === i ? { ...s, ...patch } : s)),
-    });
-
-  const importerSlide = async (fichiers: FileList | null) => {
-    const fichier = fichiers?.[0];
-    if (!fichier) return;
-    const i = cible.current;
-    setEnvoi(i);
-    const media = await televerserMedia(fichier, `accueil-${i + 1}`);
-    setEnvoi(null);
-    if (fichierRef.current) fichierRef.current.value = "";
-    if (media) majSlide(i, { src: media.src });
-  };
-
-  const choisirPhoto = (i: number) => {
-    cible.current = i;
-    fichierRef.current?.click();
-  };
+  const { settings, updateSettings, hydrated } = useAdmin();
 
   const nombre = (v: string) => Number(v.replace(/\D/g, "")) || 0;
 
@@ -168,92 +129,12 @@ export default function Page() {
 
       </div>
 
-      {/* -------------------------------------------------- bandeau d'accueil */}
+      {/* ------------------------------------------------------- accueil */}
       <div className="mt-4">
-        <Section
-          title="Photos d'accueil"
-          sub="Les images de l'arche en haut de la page d'accueil. Le cadrage impose un sujet centré : le point de mise au point rattrape le reste."
-          action={
-            <Button
-              size="sm"
-              variant="contour"
-              onClick={() => updateHero({ ...hero, slides: [...hero.slides, slideVide()] })}
-            >
-              <IconPlus />
-              Ajouter une photo
-            </Button>
-          }
-        >
-          <Toggle
-            checked={hero.custom}
-            onChange={(v) => updateHero({ ...hero, custom: v })}
-            label="Utiliser ces photos"
-            hint="Décoché, les trois photos livrées avec le site restent en place."
-          />
-
-          {/* Le champ natif reste caché : les boutons en tiennent lieu. */}
-          <input
-            ref={fichierRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => void importerSlide(e.target.files)}
-          />
-
-          {hero.slides.length === 0 ? (
-            <p className="mt-4 text-[13px] text-muted">Aucune photo enregistrée.</p>
-          ) : (
-            <div className={`mt-5 grid gap-4 lg:grid-cols-3 ${hero.custom ? "" : "opacity-60"}`}>
-              {hero.slides.map((s, i) => (
-                <div key={i} className="rounded-2xl border border-line p-4">
-                  <div
-                    className="mb-3.5 aspect-4/5 rounded-xl bg-stone bg-cover"
-                    style={
-                      s.src
-                        ? { backgroundImage: `url(${s.src})`, backgroundPosition: s.pos }
-                        : undefined
-                    }
-                  />
-                  <div className="flex flex-col gap-3">
-                    <Button
-                      size="sm"
-                      variant="contour"
-                      disabled={envoi !== null}
-                      onClick={() => choisirPhoto(i)}
-                    >
-                      <IconImage />
-                      {envoi === i ? "Envoi…" : s.src ? "Changer la photo" : "Importer une photo"}
-                    </Button>
-                    <Field label="Texte de remplacement" hint="Ce que lit une liseuse d'écran.">
-                      <Input value={s.alt} onChange={(v) => majSlide(i, { alt: v })} />
-                    </Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Cadrage" hint="ex. 50% 30%">
-                        <Input value={s.pos} onChange={(v) => majSlide(i, { pos: v })} />
-                      </Field>
-                      <Field label="Étiquette">
-                        <Input value={s.tag} onChange={(v) => majSlide(i, { tag: v })} />
-                      </Field>
-                    </div>
-                    <Field label="Pièce proposée" hint="L'article montré sous la photo.">
-                      <Input value={s.piece} onChange={(v) => majSlide(i, { piece: v })} />
-                    </Field>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        updateHero({ ...hero, slides: hero.slides.filter((_, j) => j !== i) })
-                      }
-                    >
-                      <IconTrash />
-                      Retirer cette photo
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
+        <AccueilEditeur />
+      </div>
+      <div className="mt-4">
+        <Videotheque />
       </div>
     </>
   );

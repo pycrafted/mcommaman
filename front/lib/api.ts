@@ -344,6 +344,26 @@ export type ReglagesApi = {
   accepte_commandes: boolean;
   affiche_bandeau_promo: boolean;
   texte_bandeau_promo: string;
+  /** Le bandeau d'accueil, réglé dans le back-office. */
+  hero_pastille: string;
+  /** Un « \n » coupe le titre. */
+  hero_titre: string;
+  hero_accent: string;
+  hero_chapo: string;
+  /** Vide, le macaron disparaît. */
+  hero_sceau: string;
+  hero_sceau_centre: string;
+  hero_sceau_legende: string;
+  /** Les pièces qui défilent sur la photo. Vide : les dernières nouveautés. */
+  hero_produits: number[];
+};
+
+/** Une vidéo de la section « Nos pièces, filmées », avec sa pièce en ligne. */
+export type VideoAccueilApi = {
+  id: number;
+  url: string;
+  titre: string;
+  produit: { slug: string; nom: string; prix: number; image: string } | null;
 };
 
 /** Une photo du bandeau d'accueil, avec l'article qu'elle met en avant. */

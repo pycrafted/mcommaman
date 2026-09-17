@@ -10,7 +10,13 @@
  * elle n'annonce pas des frais inventés.
  */
 
-import { lire, type BandeauApi, type CampagneApi, type ReglagesApi } from "./api";
+import {
+  lire,
+  type BandeauApi,
+  type CampagneApi,
+  type ReglagesApi,
+  type VideoAccueilApi,
+} from "./api";
 
 export type Reglages = ReglagesApi;
 
@@ -28,6 +34,15 @@ export const REGLAGES_DEFAUT: Reglages = {
   affiche_bandeau_promo: true,
   texte_bandeau_promo:
     "Livraison offerte à Dakar dès 25 000 F — Retours gratuits sous 14 jours",
+  hero_pastille: "Nouvelle collection · 2026",
+  hero_titre: "Des looks\nqui suivent",
+  hero_accent: "leurs aventures.",
+  hero_chapo:
+    "Des pièces joyeuses, faciles à vivre et choisies avec le regard exigeant d’une maman.",
+  hero_sceau: "LIVRAISON 24 H · DAKAR ·",
+  hero_sceau_centre: "24 h",
+  hero_sceau_legende: "chez vous",
+  hero_produits: [],
 };
 
 /**
@@ -73,6 +88,19 @@ export async function lireBandeau(): Promise<BandeauApi[]> {
 export async function lireCampagnes(): Promise<CampagneApi[]> {
   try {
     return (await lire<CampagneApi[]>("/api/campagnes/", { revalider: 300 })) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Les vidéos choisies pour l'accueil, dans l'ordre de la vidéothèque.
+ *
+ * Vide, la section garde les vidéos livrées avec le site.
+ */
+export async function lireVideosAccueil(): Promise<VideoAccueilApi[]> {
+  try {
+    return (await lire<VideoAccueilApi[]>("/api/vitrine/videos/", { revalider: 300 })) ?? [];
   } catch {
     return [];
   }

@@ -6,24 +6,16 @@ import Link from "next/link";
 import { CountUp, Magnetic, SplitText, useSpotlight } from "./motion";
 import { IconArrow, IconWhatsApp } from "./icons";
 import { formatXOF, waLink } from "@/lib/format";
+import { useReglages } from "./reglages-context";
 import type { BandeauApi } from "@/lib/api";
 import { HERO_VIDEOS, HERO_VIGNETTES, type Product } from "@/lib/products";
 
 /* ------------------------------------------------------------------ la parole
-   Tout le texte du bandeau tient ici : la pastille, trois lignes de titre dont
-   la dernière porte l'accent, et le chapô. Changer l'accroche, c'est changer
-   ces quatre constantes.
-
-   Les séquences, elles, viennent du back-office : `/api/vitrine/bandeau/`.
-   Tant qu'aucune photo n'y est active, la vitrine fait défiler les deux vidéos
-   livrées avec le site (`HERO_VIDEOS`) — la page d'accueil n'est jamais nue.
-   C'est exactement la règle que le modèle Django annonce de son côté. */
-
-const EYEBROW = "Nouvelle collection · 2026";
-const TITRE_HAUT = "Des looks \n qui suivent";
-const TITRE_ACCENT = "leurs aventures.";
-const CHAPO =
-  "Des pièces joyeuses, faciles à vivre et choisies avec le regard exigeant d’une maman.";
+   Les textes du bandeau — pastille, titre, fin du titre en couleur, chapô,
+   macaron — se règlent dans le back-office (`Reglages.hero_*`). Les photos
+   aussi : `/api/vitrine/bandeau/`. Tant qu'aucune photo n'y est active, la
+   vitrine fait défiler les deux vidéos livrées avec le site (`HERO_VIDEOS`) —
+   la page d'accueil n'est jamais nue. */
 
 /* Le titre ne bouge pas d'une séquence à l'autre : c'est la promesse de la
    boutique, pas une légende. Seuls la vidéo, son étiquette et la pièce
@@ -76,6 +68,10 @@ export function Hero({
   /** Le numéro de la boutique, celui des réglages. */
   telephone?: string;
 }) {
+  const reglages = useReglages();
+  /* `SplitText` coupe sur « \n » entouré d'espaces. */
+  const titre = reglages.hero_titre.split("\n").map((l) => l.trim()).filter(Boolean).join(" \n ");
+
   const sequences: Sequence[] =
     bandeau.length > 0
       ? bandeau.map((b) => ({
@@ -166,16 +162,18 @@ export function Hero({
             l'arche, et le bandeau gagne la profondeur qu'une grille sagement
             découpée n'a jamais. */}
         <div className="relative z-20 lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:py-16">
+          {reglages.hero_pastille && (
           <span className="anim-hero inline-flex items-center gap-2.5 rounded-full border border-line bg-white/75 px-4 py-2 text-[11.5px] font-bold backdrop-blur-sm sm:text-xs">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose opacity-70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose" />
             </span>
-            {EYEBROW}
+            {reglages.hero_pastille}
           </span>
+          )}
 
           <h1 className="mt-6 max-w-[16ch] text-[clamp(2.4rem,5.6vw,4.6rem)] font-extrabold leading-[.94] tracking-[-.045em] sm:mt-7">
-            <SplitText text={TITRE_HAUT} delay={120} />
+            <SplitText key={titre} text={titre} delay={120} />
             <br />
             {/* Le trait est posé hors du masque : `word-mask` coupe ce qui
                 dépasse, il l'aurait avalé. */}
@@ -185,7 +183,7 @@ export function Hero({
                   className="bg-linear-to-r from-rose via-[#ff7fae] to-gold bg-clip-text text-transparent"
                   style={{ animationDelay: "540ms" }}
                 >
-                  {TITRE_ACCENT}
+                  {reglages.hero_accent}
                 </span>
               </span>
               <svg
@@ -215,7 +213,7 @@ export function Hero({
           {/* `mt-11` et non `mt-8` : le trait dessiné descend sous la dernière
               ligne du titre, il lui faut cet air-là. */}
           <p className="anim-hero mt-11 max-w-[46ch] text-[15px] leading-[1.7] text-muted text-pretty sm:text-base [animation-delay:760ms]">
-            {CHAPO}
+            {reglages.hero_chapo}
           </p>
 
           <div className="anim-hero mt-8 flex flex-col gap-3 sm:flex-row sm:items-center [animation-delay:820ms]">
@@ -352,6 +350,7 @@ export function Hero({
             {/* Le sceau de la boutique, calé dans le bas de l'arche et débordant
                 sur la droite. Il reste dans la hauteur de la photo : posé plus
                 bas, il venait toucher les barres. */}
+            {reglages.hero_sceau.trim() && (
             <div
               aria-hidden
               className="pointer-events-none absolute bottom-5 -right-5 z-20 hidden h-[112px] w-[112px] place-items-center rounded-full bg-ink text-cream shadow-[0_22px_46px_-20px_rgba(36,26,32,.75)] sm:grid lg:-right-7"
@@ -368,17 +367,19 @@ export function Hero({
                   style={{ fontSize: 8.6, fontWeight: 700, letterSpacing: ".1em" }}
                 >
                   <textPath href="#sceau-hero">
-                    LIVRAISON 24 H · DAKAR · STOCK RÉEL ·
+                    {reglages.hero_sceau.trim().replace(/\s*·?\s*$/, " · ")}
                   </textPath>
                 </text>
               </svg>
               <span className="text-center text-[10px] font-extrabold uppercase leading-[1.15] tracking-[.08em]">
-                24 h
+                {reglages.hero_sceau_centre}
                 <span className="mt-0.5 block text-[8.5px] font-bold text-cream/60">
-                  chez vous
+                  {reglages.hero_sceau_legende}
                 </span>
               </span>
             </div>
+
+            )}
 
             {/* Le catalogue qui passe, une pièce à la fois. */}
             {vedette && (

@@ -67,6 +67,8 @@ export type FiltresProduits = {
   rupture?: boolean;
   stockBas?: boolean;
   rayon?: string;
+  /** Des fiches précises, par identifiant. */
+  ids?: number[];
 };
 
 function requete(f: FiltresProduits): string {
@@ -78,6 +80,7 @@ function requete(f: FiltresProduits): string {
   if (f.rupture) params.set("rupture", "1");
   if (f.stockBas) params.set("stock_bas", "1");
   if (f.rayon) params.set("rayon", f.rayon);
+  if (f.ids?.length) params.set("ids", f.ids.join(","));
   return params.toString();
 }
 

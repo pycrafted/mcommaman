@@ -293,16 +293,3 @@ export interface ActivityEntry {
  * quand le corps n'est pas au milieu. `piece` est l'article proposé sous la
  * photo — la pièce portée n'est jamais exactement celle-là.
  */
-export interface HeroSlideConfig {
-  src: string;
-  alt: string;
-  pos: string;
-  tag: string;
-  piece: string;
-}
-
-export interface HeroConfig {
-  /** false : les trois photos livrées avec le site restent en place. */
-  custom: boolean;
-  slides: HeroSlideConfig[];
-}

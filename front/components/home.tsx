@@ -43,7 +43,7 @@ import {
   waLink,
 } from "@/lib/format";
 import { HERO_VIGNETTES, type Product } from "@/lib/products";
-import type { BandeauApi, CampagneApi } from "@/lib/api";
+import type { BandeauApi, CampagneApi, VideoAccueilApi } from "@/lib/api";
 import { lienCategorie, type BrancheRayon, type LienRayon } from "@/lib/catalogue";
 import { formatXOF, jusquAu } from "@/lib/format";
 import { useReglages } from "./reglages-context";
@@ -60,7 +60,6 @@ const TICKER = [
   "Paiement à la livraison",
   "Wave & Orange Money",
   "Échange sous 7 jours",
-  "Stock réel, photos réelles",
   "Conseils de taille sur WhatsApp",
 ];
 
@@ -203,11 +202,17 @@ const EYEBROW = "text-[11px] font-bold uppercase tracking-[.16em] text-rose";
 
 export function Home({
   products,
+  vedettes,
+  videos = [],
   categories = [],
   bandeau = [],
   campagnes = [],
 }: {
   products: Product[];
+  /** Les pièces qui défilent dans le bandeau. Absentes : les nouveautés. */
+  vedettes?: Product[];
+  /** Les vidéos choisies dans la vidéothèque. Vide : celles du site. */
+  videos?: VideoAccueilApi[];
   /** Les catégories du back-office, chacune avec ses sous-catégories. */
   categories?: BrancheRayon[];
   /** Le bandeau d'accueil réglé dans le back-office. */
@@ -317,7 +322,7 @@ export function Home({
   return (
     <>
       <Hero
-        pieces={products}
+        pieces={vedettes ?? products}
         bandeau={bandeau}
         avis={noteBoutique}
         telephone={reglages.telephone}
@@ -506,7 +511,7 @@ export function Home({
         </Reveal>
 
         <Reveal variant="scale">
-          <EnMouvement pieces={products} />
+          <EnMouvement pieces={products} films={videos} />
         </Reveal>
       </section>
 

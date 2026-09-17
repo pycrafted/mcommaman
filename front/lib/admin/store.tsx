@@ -46,7 +46,6 @@ import type {
   AdminPromotion,
   Customer,
   CustomerSegment,
-  HeroConfig,
   MediaItem,
   Order,
   OrderStatus,
@@ -109,7 +108,6 @@ interface AdminState {
   promotions: AdminPromotion[];
   library: ProductLibrary;
   settings: StoreSettings;
-  hero: HeroConfig;
   activity: ActivityEntry[];
 }
 
@@ -134,7 +132,6 @@ const VIDE: AdminState = {
     showPromoBanner: true,
     promoBannerText: "",
   },
-  hero: { custom: false, slides: [] },
   activity: [],
 };
 
@@ -229,7 +226,6 @@ interface AdminContextValue extends AdminState {
   televerserMedia: (fichier: File, nom?: string) => Promise<MediaItem | null>;
   removeMedia: (id: string) => void;
   /* Vitrine */
-  updateHero: (hero: HeroConfig) => void;
   updateSettings: (patch: Partial<StoreSettings>) => void;
   /* Divers */
   resetDemoData: () => void;
@@ -949,10 +945,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   /* ---------------------------------------------------------- vitrine */
 
-  const updateHero = useCallback<AdminContextValue["updateHero"]>(
-    (hero) => setState((courant) => ({ ...courant, hero })),
-    [],
-  );
 
   const updateSettings = useCallback<AdminContextValue["updateSettings"]>(
     (patch) =>
@@ -1004,7 +996,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       addMedia,
       televerserMedia,
       removeMedia,
-      updateHero,
       updateSettings,
       resetDemoData,
     }),
@@ -1014,7 +1005,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       createProduct, deleteProduct,
       duplicateProduct, setProductStatus, setOrderStatus, restoreOrder, saveTeamMember, setTeamMemberActive, saveCategory,
       deleteCategory, savePromotion, deletePromotion, saveSizes,
-      saveColor, deleteColor, saveMaterial, deleteMaterial, addMedia, televerserMedia, removeMedia, updateHero,
+      saveColor, deleteColor, saveMaterial, deleteMaterial, addMedia, televerserMedia, removeMedia,
       updateSettings, resetDemoData,
     ],
   );

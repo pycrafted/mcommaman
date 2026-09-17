@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/lib/products";
+import type { VideoAccueilApi } from "@/lib/api";
 import { formatXOF } from "@/lib/format";
 import { useReducedMotion } from "./reveal";
 import { IconArrow, IconMuet, IconSon } from "./icons";
@@ -16,12 +17,37 @@ import { IconArrow, IconMuet, IconSon } from "./icons";
    alternent pour que deux tuiles voisines ne montrent jamais le même plan, et
    chacune démarre à un instant différent : côte à côte, deux lectures
    synchronisées se lisent immédiatement comme une copie. */
-const BANDE = [
-  { video: "/videos/hero-1.mp4", poster: "/images/hero/fille-cour.webp", depart: 0 },
-  { video: "/videos/hero-2.mp4", poster: "/images/hero/robe-rouge.webp", depart: 0 },
-  { video: "/videos/hero-1.mp4", poster: "/images/hero/garcon-cour.webp", depart: 5 },
-  { video: "/videos/hero-2.mp4", poster: "/images/hero/duo-pyjamas.webp", depart: 4 },
-] as const;
+type Tuile = {
+  cle: string;
+  video: string;
+  poster?: string;
+  depart: number;
+  titre?: string;
+  /** La pièce montrée sous la vidéo, quand la vidéothèque en désigne une. */
+  piece?: { slug: string; name: string; price: number; image: string };
+};
+
+const BANDE: Tuile[] = [
+  { cle: "livree-1", video: "/videos/hero-1.mp4", poster: "/images/hero/fille-cour.webp", depart: 0 },
+  { cle: "livree-2", video: "/videos/hero-2.mp4", poster: "/images/hero/robe-rouge.webp", depart: 0 },
+  { cle: "livree-3", video: "/videos/hero-1.mp4", poster: "/images/hero/garcon-cour.webp", depart: 5 },
+  { cle: "livree-4", video: "/videos/hero-2.mp4", poster: "/images/hero/duo-pyjamas.webp", depart: 4 },
+];
+
+/* Les vidéos de la vidéothèque remplacent celles du site dès qu'il y en a une
+   à l'accueil. Sans affiche, le navigateur montre la première image : le
+   fragment `#t=0.1` l'y oblige, sinon certains mobiles laissent une tuile
+   noire jusqu'à la lecture. */
+const versTuiles = (videos: VideoAccueilApi[]): Tuile[] =>
+  videos.map((v) => ({
+    cle: `video-${v.id}`,
+    video: `${v.url}#t=0.1`,
+    depart: 0,
+    titre: v.titre,
+    piece: v.produit
+      ? { slug: v.produit.slug, name: v.produit.nom, price: v.produit.prix, image: v.produit.image }
+      : undefined,
+  }));
 
 /**
  * Bande de séquences verticales, à la façon d'un banc de montage : les tuiles
@@ -32,7 +58,15 @@ const BANDE = [
  * d'office, c'est la seule façon qu'un navigateur accepte de lancer une vidéo
  * sans clic ; un bouton par tuile le rend, une tuile à la fois.
  */
-export function EnMouvement({ pieces = [] }: { pieces?: Product[] }) {
+export function EnMouvement({
+  pieces = [],
+  films = [],
+}: {
+  pieces?: Product[];
+  /** Les vidéos de la vidéothèque choisies pour l'accueil. */
+  films?: VideoAccueilApi[];
+}) {
+  const bande = films.length > 0 ? versTuiles(films) : BANDE;
   const reduced = useReducedMotion();
   const [son, setSon] = useState<number | null>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
@@ -72,7 +106,7 @@ export function EnMouvement({ pieces = [] }: { pieces?: Product[] }) {
 
   return (
     <div className="bande -mx-5 px-5 pb-2 md:-mx-8 md:px-8 lg:mx-0 lg:px-0">
-      {BANDE.map((item, i) => {
+      {bande.map((item, i) => {
         /* Une tuile sur deux descend : la bande cesse d'être une rangée et
            devient une composition. */
         const decalage = i % 2 === 1 ? "lg:mt-12" : "";
@@ -81,10 +115,12 @@ export function EnMouvement({ pieces = [] }: { pieces?: Product[] }) {
         /* Une pièce par tuile, prise dans le catalogue publié. Moins de
            pièces que de tuiles : on repasse sur les mêmes plutôt que de
            laisser une vignette sans article. */
-        const piece = pieces.length > 0 ? pieces[i % pieces.length] : undefined;
+        /* La pièce choisie avec la vidéo ; à défaut, une du catalogue. */
+        const piece =
+          item.piece ?? (films.length === 0 && pieces.length > 0 ? pieces[i % pieces.length] : undefined);
 
         return (
-          <div key={`${item.video}-${i}`} className={`group ${cadre}`}>
+          <div key={item.cle} className={`group ${cadre}`}>
             <div className="relative aspect-9/16 overflow-hidden">
               <video
                 ref={(el) => {
@@ -92,6 +128,7 @@ export function EnMouvement({ pieces = [] }: { pieces?: Product[] }) {
                 }}
                 src={item.video}
                 poster={item.poster}
+                aria-label={item.titre}
                 muted
                 loop
                 playsInline
