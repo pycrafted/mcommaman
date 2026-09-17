@@ -47,7 +47,15 @@ export type OrderStatus =
   | "livree"
   | "annulee";
 
-export type PaymentMethod = "wave" | "orange_money" | "carte" | "livraison";
+export type PaymentMethod =
+  | "wave"
+  | "om"
+  | "cb"
+  | "cod"
+  | "esp"
+  | "orange_money"
+  | "carte"
+  | "livraison";
 
 export interface OrderLine {
   productId: string;

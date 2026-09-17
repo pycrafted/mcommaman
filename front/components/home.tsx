@@ -279,7 +279,8 @@ export function Home({
      y en a un. Avant l'hydratation la liste est vide : le premier rendu reste
      donc identique côté serveur et client. */
   const { avis: deposes, resume: noteBoutique, pret: avisPrets } = useAvis({ kind: "shop" });
-  const publies = deposes.filter((a) => a.state === "publie");
+  /* L'accueil cite des avis : une note sans commentaire n'a rien à citer. */
+  const publies = deposes.filter((a) => a.state === "publie" && a.comment.trim());
   const avisReels = avisPrets && publies.length > 0;
   const avis = avisReels
     ? publies.slice(0, 3).map((a) => ({
@@ -757,7 +758,6 @@ export function Home({
 
               <div className="mt-5 border-t border-line pt-3.5">
                 <div className="text-[13px] font-bold">{r.who}</div>
-                <div className="mt-0.5 text-xs text-muted">Cliente vérifiée</div>
               </div>
             </article>
           ))}

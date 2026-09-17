@@ -17,8 +17,8 @@ export type Reglages = ReglagesApi;
 export const REGLAGES_DEFAUT: Reglages = {
   nom_boutique: "M comme Maman",
   signature: "Le monde des mamans",
-  email_contact: "bonjour@mcommaman.com",
-  telephone: "+221 77 000 00 00",
+  email_contact: "mamand202122@gmail.com",
+  telephone: "+221 76 208 02 02",
   devise: "F",
   franco_dakar: 25_000,
   frais_dakar: 2_000,

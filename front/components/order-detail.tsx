@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { formatXOF, waLink } from "@/lib/format";
 import { methodOf, zoneLabel } from "@/lib/livraison";
+import { messageSuivi } from "@/lib/whatsapp";
+import { ORDER_STATUS_LABELS } from "./orders-context";
 import { useCart } from "./cart-context";
 import { useOrders } from "./orders-context";
 import { OrderStatusBadge } from "./order-status-badge";
@@ -333,7 +335,29 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
               ))}
 
             <a
-              href={waLink(`Bonjour, je souhaite suivre ma commande ${commande.ref}`, reglages.telephone)}
+              href={waLink(
+                messageSuivi({
+                  reference: commande.ref,
+                  statut: ORDER_STATUS_LABELS[commande.status],
+                  articles: commande.lines.map((l) => ({
+                    nom: l.name,
+                    option: l.option,
+                    quantite: l.quantity,
+                    prixUnitaire: l.price,
+                  })),
+                  sousTotal: commande.subtotal,
+                  livraison: commande.shipping,
+                  remise: commande.discount,
+                  total: commande.total,
+                  zone: commande.delivery.zone,
+                  quartier: commande.delivery.city,
+                  repere: commande.delivery.address,
+                  paiement: paiement.t,
+                  nom: commande.customer.name,
+                  telephone: commande.customer.phone,
+                }),
+                reglages.telephone,
+              )}
               target="_blank"
               rel="noreferrer"
               className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-center text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"

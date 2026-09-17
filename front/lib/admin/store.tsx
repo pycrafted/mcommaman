@@ -188,6 +188,8 @@ interface AdminContextValue extends AdminState {
   cloche: Cloche;
   /** Marque toute la cloche comme lue, pour ce membre de l'équipe. */
   lireCloche: () => void;
+  /** Relit tout le back-office — après une écriture faite hors du store. */
+  rafraichir: () => Promise<void>;
   /* Produits */
   saveProduct: (product: AdminProduct) => void;
   createProduct: (product: AdminProduct) => void;
@@ -967,6 +969,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       notify: (type, message) => setNotification({ type, message }),
       cloche,
       lireCloche,
+      rafraichir: async () => {
+        await Promise.all([relire(), relireCloche()]);
+      },
       compteursProduits,
       versionProduits,
       saveProduct,
@@ -995,7 +1000,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }),
     [
       state, hydrated, enCours, erreur, notification,
-      cloche, lireCloche, compteursProduits, versionProduits, saveProduct, createProduct, deleteProduct,
+      cloche, lireCloche, relire, relireCloche, compteursProduits, versionProduits, saveProduct,
+      createProduct, deleteProduct,
       duplicateProduct, setProductStatus, setOrderStatus, saveTeamMember, setTeamMemberActive, saveCategory,
       deleteCategory, savePromotion, deletePromotion, saveSizes,
       saveColor, deleteColor, saveMaterial, deleteMaterial, addMedia, televerserMedia, removeMedia, updateHero,
@@ -1188,8 +1194,13 @@ export const ORDER_PIPELINE: OrderStatus[] = [
   "livree",
 ];
 
+/* Les codes du serveur (`Commande.Paiement`), et les anciens de la maquette. */
 export const PAYMENT_LABELS: Record<string, string> = {
   wave: "Wave",
+  om: "Orange Money",
+  cb: "Carte bancaire",
+  cod: "À la livraison",
+  esp: "Espèces en boutique",
   orange_money: "Orange Money",
   carte: "Carte bancaire",
   livraison: "À la livraison",

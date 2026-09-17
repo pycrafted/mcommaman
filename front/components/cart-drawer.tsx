@@ -4,15 +4,27 @@ import Link from "next/link";
 import { formatXOF, waLink } from "@/lib/format";
 import { useCart } from "./cart-context";
 import { useReglages } from "./reglages-context";
+import { useAuth } from "./auth-context";
+import { messageCommande, useOrigine } from "@/lib/whatsapp";
 
 export function CartDrawer() {
   const { drawerOpen, closeDrawer, lignes, subtotal, complet, bump, erreur } = useCart();
   const reglages = useReglages();
+  const { account, defaultAddress } = useAuth();
+  const origine = useOrigine();
 
   if (!drawerOpen) return null;
 
-  const message =
-    "Bonjour, je souhaite commander : " + lignes.map((l) => `${l.nom} ×${l.quantite}`).join(", ");
+  const message = messageCommande(
+    lignes.map((l) => ({
+      nom: l.nom,
+      option: l.option,
+      quantite: l.quantite,
+      prixUnitaire: l.prix_unitaire,
+      lien: origine ? `${origine}/p/${l.slug}` : undefined,
+    })),
+    { compte: account, adresse: defaultAddress },
+  );
 
   return (
     <div onClick={closeDrawer} className="fixed inset-0 z-95 flex justify-end bg-ink/45">

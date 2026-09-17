@@ -12,6 +12,8 @@ import { useAvis } from "./reviews-context";
 import { FavoriteButton } from "./favorite-button";
 import { ReviewForm, ReviewList, StarRow } from "./review-form";
 import { useReglages } from "./reglages-context";
+import { useAuth } from "./auth-context";
+import { messageCommande, useOrigine } from "@/lib/whatsapp";
 
 /**
  * La fiche produit.
@@ -31,6 +33,8 @@ export function ProductDetail({
 }) {
   const { add, erreur } = useCart();
   const reglages = useReglages();
+  const { account, defaultAddress } = useAuth();
+  const origine = useOrigine();
   /* Les avis de cette fiche, demandés au serveur au montage. Ni la note ni le
      nombre ne sont écrits dans la page : tant que personne n'a écrit, l'article
      l'annonce plutôt que d'inventer une moyenne. */
@@ -294,11 +298,22 @@ export function ProductDetail({
             </button>
             <a
               href={waLink(
-                `Bonjour, je suis intéressée par : ${product.name}${
-                  variante
-                    ? ` (taille ${variante.taille_valeur}${variante.coloris_nom ? `, ${variante.coloris_nom}` : ""})`
-                    : ""
-                }`,
+                messageCommande(
+                  [
+                    {
+                      nom: product.name,
+                      option: variante
+                        ? [`Taille ${variante.taille_valeur}`, variante.coloris_nom]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : undefined,
+                      quantite: 1,
+                      prixUnitaire: product.price,
+                      lien: origine ? `${origine}/p/${product.slug}` : undefined,
+                    },
+                  ],
+                  { compte: account, adresse: defaultAddress },
+                ),
                 reglages.telephone,
               )}
               target="_blank"

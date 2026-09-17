@@ -25,7 +25,10 @@ export const ZONES: {
   { key: "regions", t: "Autres régions", short: "régions", delai: "3 à 4 jours" },
 ];
 
-export const zoneLabel = (key: ZoneKey) => ZONES.find((z) => z.key === key)?.t ?? ZONES[0].t;
+/* « retrait » n'est pas une zone du tunnel : seule l'équipe la saisit, mais la
+   cliente la retrouve dans son suivi. */
+export const zoneLabel = (key: ZoneKey | "retrait") =>
+  key === "retrait" ? "Retrait en boutique" : (ZONES.find((z) => z.key === key)?.t ?? ZONES[0].t);
 
 export const zoneIndex = (key: ZoneKey) => Math.max(0, ZONES.findIndex((z) => z.key === key));
 
@@ -75,7 +78,15 @@ export const METHODS: {
   { k: "cod", i: "₣", chip: "#eaf6ef", fg: "#2e7d52", t: "Paiement à la livraison", s: "Espèces ou Wave au livreur, Dakar uniquement", fee: "sans frais" },
 ];
 
-export const methodOf = (key: MethodKey) => METHODS.find((m) => m.k === key) ?? METHODS[0];
+/* Les espèces en boutique ne se choisissent pas en ligne : elles n'ont pas
+   leur carte dans le tunnel, seulement un libellé pour le suivi. */
+const ESPECES = {
+  k: "esp" as MethodKey, i: "₣", chip: "#eaf6ef", fg: "#2e7d52",
+  t: "Espèces en boutique", s: "Réglé à la boutique", fee: "",
+};
+
+export const methodOf = (key: MethodKey | "esp") =>
+  key === "esp" ? ESPECES : (METHODS.find((m) => m.k === key) ?? METHODS[0]);
 
 /* La boutique n'a pas de code de réduction.
    Une campagne vit en base, avec sa fenêtre de validité, sa portée et sa

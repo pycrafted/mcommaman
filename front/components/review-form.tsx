@@ -127,7 +127,8 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
     );
   }
 
-  const valide = note > 0 && texte.trim().length >= 10;
+  /* Seule la note est demandée : le commentaire est libre, et facultatif. */
+  const valide = note > 0;
 
   const soumettre = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,7 +165,6 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
         }
         value={texte}
         onChange={setTexte}
-        hint="Au moins 10 caractères. Votre nom et la mention « achat vérifié » seront affichés."
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -201,7 +201,7 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
         {envoye && (
           <span className="anim-fade-up inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#3f8a5f]">
             <IconCheck className="h-4 w-4" />
-            Merci, votre avis paraîtra après relecture.
+            Merci pour votre avis !
           </span>
         )}
 
@@ -211,7 +211,7 @@ export function ReviewForm({ target, titre }: { target: ReviewTarget; titre: str
   );
 }
 
-/** Liste d'avis, avec la mention d'achat vérifié. */
+/** Liste d'avis. */
 export function ReviewList({ reviews }: { reviews: Review[] }) {
   if (reviews.length === 0) {
     return (
@@ -230,24 +230,16 @@ export function ReviewList({ reviews }: { reviews: Review[] }) {
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-rose text-[12px] font-extrabold text-white">
                 {initiales(avis.authorName)}
               </span>
-              <div>
-                <p className="text-[13.5px] font-bold">{avis.authorName}</p>
-                {/* La référence de commande n'est plus affichée : sous chaque
-                    avis, elle donnerait le compte des ventes à qui sait lire.
-                    « Achat vérifié » dit ce qu'il y a à savoir. */}
-                <p className="text-[11px] text-[#3f8a5f]">
-                  {avis.state === "publie"
-                    ? "Achat vérifié"
-                    : "Achat vérifié · en cours de relecture"}
-                </p>
-              </div>
+              <p className="text-[13.5px] font-bold">{avis.authorName}</p>
             </div>
             <div className="flex items-center gap-3">
               <StarRow rating={avis.rating} />
               <span className="text-[11px] text-muted">{dateLongue(avis.createdAt)}</span>
             </div>
           </div>
-          <p className="mt-3 text-[13.5px] leading-relaxed text-[#3d2f35]">{avis.comment}</p>
+          {avis.comment && (
+            <p className="mt-3 text-[13.5px] leading-relaxed text-[#3d2f35]">{avis.comment}</p>
+          )}
         </li>
       ))}
     </ul>

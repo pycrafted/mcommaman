@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { formatXOF } from "@/lib/format";
 import {
   ORDER_PIPELINE,
@@ -19,7 +20,7 @@ import {
   Table,
   dateLongue,
 } from "@/components/admin/ui";
-import { IconCheck, IconX } from "@/components/admin/icons";
+import { IconCheck, IconPlus, IconX } from "@/components/admin/icons";
 
 type Filtre = OrderStatus | "toutes";
 
@@ -71,7 +72,8 @@ export default function Page() {
         return (
           o.ref.toLowerCase().includes(q) ||
           o.city.toLowerCase().includes(q) ||
-          (cliente?.name.toLowerCase().includes(q) ?? false)
+          (cliente?.name.toLowerCase().includes(q) ?? false) ||
+          (o.customerName?.toLowerCase().includes(q) ?? false)
         );
       })
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -87,7 +89,16 @@ export default function Page() {
         eyebrow="Logistique"
         title="Commandes"
         sub="Le statut se change ici, et nulle part ailleurs. Une commande annulée ne revient pas dans le circuit."
-      />
+      >
+        {/* Une vente conclue sur WhatsApp ou à la boutique se saisit ici : sans
+            elle, le stock resterait faux. */}
+        <Link href="/admin/commandes/nouvelle">
+          <Button variant="rose">
+            <IconPlus />
+            Nouvelle commande
+          </Button>
+        </Link>
+      </PageHeader>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <SearchField
