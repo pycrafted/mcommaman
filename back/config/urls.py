@@ -8,7 +8,8 @@ l'équipe technique, pas la gérante — elle, elle a le back-office de la vitri
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path, re_path
-from django.views.static import serve
+
+from .medias import servir_media
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -31,8 +32,7 @@ urlpatterns = [
 urlpatterns += [
     re_path(
         rf"^{settings.MEDIA_URL.lstrip('/')}(?P<path>.*)$",
-        serve,
-        {"document_root": settings.MEDIA_ROOT},
+        servir_media,
     ),
 ]
 

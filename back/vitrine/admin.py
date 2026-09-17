@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Bandeau, EntreeJournal, Reglages
+from .models import Bandeau, EntreeJournal, Reglages, Video
 
 
 @admin.register(Reglages)
@@ -29,3 +29,10 @@ class EntreeJournalAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(Video)
+class VideoAdmin(admin.ModelAdmin):
+    list_display = ["titre", "produit", "sur_accueil", "ordre", "ajoutee_le"]
+    list_editable = ["sur_accueil", "ordre"]
+

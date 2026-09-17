@@ -48,6 +48,36 @@ class Reglages(models.Model):
         default="Livraison offerte à Dakar dès 25 000 F — Retours gratuits sous 14 jours",
     )
 
+    # Le bandeau d'accueil : ses textes et les pièces qui défilent dans la carte
+    # posée sur la photo. Ses photos, elles, sont les lignes de `Bandeau`.
+    hero_pastille = models.CharField(
+        "pastille", max_length=60, blank=True, default="Nouvelle collection · 2026",
+    )
+    hero_titre = models.CharField(
+        "titre", max_length=120, default="Des looks\nqui suivent",
+        help_text="Un retour à la ligne pour couper le titre",
+    )
+    hero_accent = models.CharField(
+        "fin du titre en couleur", max_length=60, blank=True, default="leurs aventures.",
+    )
+    hero_chapo = models.CharField(
+        "texte d'introduction", max_length=240, blank=True,
+        default="Des pièces joyeuses, faciles à vivre et choisies avec le regard exigeant d’une maman.",
+    )
+    hero_sceau = models.CharField(
+        "texte du macaron", max_length=60, blank=True, default="LIVRAISON 24 H · DAKAR ·",
+        help_text="Le texte qui tourne autour du macaron ; vide, le macaron disparaît",
+    )
+    hero_sceau_centre = models.CharField("centre du macaron", max_length=12, blank=True, default="24 h")
+    hero_sceau_legende = models.CharField(
+        "sous le centre du macaron", max_length=20, blank=True, default="chez vous",
+    )
+    hero_produits = models.ManyToManyField(
+        "catalogue.Produit", blank=True, related_name="+",
+        verbose_name="produits mis en avant",
+        help_text="Vide : les dernières nouveautés défilent",
+    )
+
     modifie_le = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -119,6 +149,62 @@ class Bandeau(models.Model):
 
     def __str__(self):
         return self.etiquette or self.texte_alternatif[:40]
+
+
+class Video(models.Model):
+    """
+    Une vidéo de la vidéothèque.
+
+    Celles qui sont `sur_accueil` défilent dans la section « Nos pièces,
+    filmées » de la page d'accueil, dans l'ordre choisi, chacune avec la pièce
+    qu'elle montre. Sans aucune vidéo à l'accueil, la vitrine garde celles
+    livrées avec le site.
+    """
+
+    fichier = models.FileField(upload_to="videotheque/%Y/%m")
+    # L'adresse publique, calculée à l'enregistrement comme pour la photothèque.
+    url = models.URLField(max_length=500, blank=True)
+    titre = models.CharField(max_length=120)
+    produit = models.ForeignKey(
+        "catalogue.Produit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="videos",
+        help_text="La pièce proposée sous la vidéo",
+    )
+    sur_accueil = models.BooleanField("sur l'accueil", default=True)
+    ordre = models.PositiveSmallIntegerField(default=0)
+    ajoutee_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "vidéo"
+        verbose_name_plural = "vidéothèque"
+        ordering = ["ordre", "-ajoutee_le"]
+
+    def __str__(self):
+        return self.titre
+
+    def save(self, *args, **kwargs):
+        # Même règle que `catalogue.Media` : l'adresse n'existe qu'une fois le
+        # fichier écrit, et elle doit être absolue.
+        super().save(*args, **kwargs)
+        if self.fichier:
+            from django.conf import settings
+
+            adresse = self.fichier.url
+            if not adresse.startswith(("http://", "https://")):
+                adresse = settings.URL_API.rstrip("/") + adresse
+            if self.url != adresse:
+                self.url = adresse
+                super().save(update_fields=["url"])
+
+    def delete(self, *args, **kwargs):
+        fichier = self.fichier
+        super().delete(*args, **kwargs)
+        # Une vidéo pèse lourd : on ne laisse pas le fichier orphelin.
+        if fichier:
+            fichier.delete(save=False)
 
 
 class EntreeJournal(models.Model):

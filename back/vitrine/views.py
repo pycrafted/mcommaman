@@ -13,9 +13,11 @@ from rest_framework.views import APIView
 
 from clientele.permissions import EstEquipe, EstGerante
 
-from .models import Bandeau, EntreeJournal, Reglages
+from .models import Bandeau, EntreeJournal, Reglages, Video
 from .serializers import (
     BandeauSerializer,
+    VideoAccueilSerializer,
+    VideoSerializer,
     EntreeJournalSerializer,
     ReglagesPublicSerializer,
     ReglagesSerializer,
@@ -70,6 +72,26 @@ class BandeauGestionViewSet(viewsets.ModelViewSet):
     permission_classes = [EstEquipe]
     serializer_class = BandeauSerializer
     queryset = Bandeau.objects.select_related("media", "produit_associe")
+    pagination_class = None
+
+
+class VideoAccueilViewSet(viewsets.ReadOnlyModelViewSet):
+    """Les vidéos de l'accueil, dans l'ordre. Vide : la vitrine garde les siennes."""
+
+    permission_classes = [AllowAny]
+    serializer_class = VideoAccueilSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return Video.objects.filter(sur_accueil=True).select_related("produit")
+
+
+class VideoGestionViewSet(viewsets.ModelViewSet):
+    """La vidéothèque du back-office : envoi, choix pour l'accueil, ordre, retrait."""
+
+    permission_classes = [EstEquipe]
+    serializer_class = VideoSerializer
+    queryset = Video.objects.select_related("produit")
     pagination_class = None
 
 

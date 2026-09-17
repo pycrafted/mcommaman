@@ -9,14 +9,18 @@ from .views import (
     JournalViewSet,
     ReglagesGestionView,
     ReglagesPublicView,
+    VideoAccueilViewSet,
+    VideoGestionViewSet,
 )
 
 public = DefaultRouter()
 public.register("bandeau", BandeauPublicViewSet, basename="bandeau-public")
+public.register("videos", VideoAccueilViewSet, basename="video-accueil")
 
 gestion = DefaultRouter()
 gestion.register("bandeau", BandeauGestionViewSet, basename="bandeau-gestion")
 gestion.register("journal", JournalViewSet, basename="journal")
+gestion.register("videotheque", VideoGestionViewSet, basename="video-gestion")
 
 urlpatterns = [
     path("vitrine/reglages/", ReglagesPublicView.as_view(), name="reglages-public"),
