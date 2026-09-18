@@ -16,8 +16,3 @@ python manage.py collectstatic --no-input
 
 # Le schéma, mis au niveau du code qu'on livre.
 python manage.py migrate
-
-# Les photos envoyées avant les variantes web reçoivent leurs trois largeurs.
-# Sans effet sur celles déjà traitées : la relancer à chaque livraison ne coûte
-# presque rien.
-python manage.py compresser_photheque

@@ -42,3 +42,19 @@ max_requests_jitter = 60
 # Sur la sortie standard : c'est là que l'hébergeur va chercher les journaux.
 accesslog = "-"
 errorlog = "-"
+
+
+# ── Variantes web des photos déjà en ligne ──────────────────────────────────
+# Lancé ici et non dans `build.sh` : le disque persistant n'est monté qu'au
+# démarrage du service, jamais pendant la construction. La commande n'y
+# trouvait donc aucune photo. Dans un processus à part, pour ne retarder ni
+# bloquer aucun worker ; elle ne refait rien pour une photo déjà traitée.
+def when_ready(server):
+    import os
+    import subprocess
+    import sys
+
+    subprocess.Popen(
+        [sys.executable, "manage.py", "compresser_photheque"],
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+    )

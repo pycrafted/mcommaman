@@ -20,6 +20,18 @@ from django.views.static import serve
 
 PLAGE = re.compile(r"bytes=(\d*)-(\d*)$")
 
+# Un fichier envoyé ne change jamais sous le même nom : Django en invente un
+# nouveau en cas de doublon, et les variantes web portent celui de leur
+# original. Le navigateur peut donc le garder un an sans le redemander. Sans
+# cet en-tête, chaque visite retéléchargeait toutes les photos depuis l'Oregon.
+CACHE_LONG = "public, max-age=31536000, immutable"
+
+
+def _cachable(reponse):
+    if reponse.status_code in (200, 206, 304):
+        reponse["Cache-Control"] = CACHE_LONG
+    return reponse
+
 
 class _Tranche:
     """Un fichier lu de `debut` à `fin` inclus, par blocs."""
@@ -54,7 +66,7 @@ def servir_media(request, path):
         reponse = serve(request, path, document_root=document_root)
         # Annonce que les lectures partielles sont possibles.
         reponse["Accept-Ranges"] = "bytes"
-        return reponse
+        return _cachable(reponse)
 
     try:
         chemin = safe_join(str(document_root), path)
@@ -66,7 +78,7 @@ def servir_media(request, path):
     taille = os.path.getsize(chemin)
     debut_txt, fin_txt = trouve.groups()
     if debut_txt == "" and fin_txt == "":
-        return serve(request, path, document_root=document_root)
+        return _cachable(serve(request, path, document_root=document_root))
     if debut_txt == "":
         # « bytes=-500 » : les 500 derniers octets.
         debut = max(0, taille - int(fin_txt))
@@ -88,4 +100,4 @@ def servir_media(request, path):
     reponse["Content-Length"] = str(longueur)
     reponse["Content-Range"] = f"bytes {debut}-{fin}/{taille}"
     reponse["Accept-Ranges"] = "bytes"
-    return reponse
+    return _cachable(reponse)
