@@ -213,7 +213,19 @@ export function ParallaxFond({
       raf = requestAnimationFrame(placer);
     };
 
-    /* Hors champ, on cesse de calculer. */
+    /* Hors champ, on cesse de calculer. Sans observateur (vieux navigateurs),
+       on calcule tout le temps. */
+    if (typeof IntersectionObserver === "undefined") {
+      visible = true;
+      placer();
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll, { passive: true });
+      return () => {
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onScroll);
+        if (raf) cancelAnimationFrame(raf);
+      };
+    }
     const io = new IntersectionObserver(
       ([entry]) => {
         visible = entry.isIntersecting;
@@ -456,6 +468,11 @@ export function Carousel({
     const el = railRef.current;
     if (!el) return;
     measure();
+    /* Safari < 13.1 n'a pas `ResizeObserver` : on se rabat sur le redimensionnement. */
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     if (passRef.current) ro.observe(passRef.current);

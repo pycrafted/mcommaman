@@ -83,6 +83,7 @@ export function EnMouvement({
      principal que lorsqu'une tuile passe le seuil. */
   useEffect(() => {
     if (reduced) return;
+    if (typeof IntersectionObserver === "undefined") return;
 
     const io = new IntersectionObserver(
       (entrees) => {
