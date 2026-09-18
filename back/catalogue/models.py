@@ -5,6 +5,8 @@ Les prix sont des entiers en francs CFA. Le franc CFA n'a pas de centime : un
 décimal n'apporterait que des arrondis à surveiller.
 """
 
+import os
+
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
@@ -188,19 +190,36 @@ class Media(models.Model):
         if self.fichier:
             from django.conf import settings
 
+            from .imaging import est_variante, generer_variantes
+
+            # Variantes déjà faites pour ce fichier : l'adresse est bonne, on
+            # ne repasse pas par Pillow à chaque enregistrement.
+            racine = os.path.splitext(os.path.basename(self.fichier.name))[0]
+            if est_variante(self.url) and f"/{racine}-web-" in self.url:
+                return
+
+            # La boutique affiche la variante web, pas l'original : voir
+            # `imaging.py`. Une photo déjà légère est servie telle quelle.
+            adresse, dimensions = generer_variantes(self)
+            if adresse is None:
+                adresse = self.fichier.url
+            champs = ["url"]
+            if dimensions:
+                self.largeur, self.hauteur = dimensions
+                champs += ["largeur", "hauteur"]
+
             # Absolue, pas relative : la vitrine tourne sur un autre port et
             # `/media/...` la renverrait chez elle.
             #
-            # Selon le stockage, `fichier.url` est déjà absolue — Cloudflare R2
+            # Selon le stockage, l'adresse est déjà absolue — Cloudflare R2
             # rend `https://<domaine>/photheque/...` — ou relative, quand les
             # fichiers sont sur le disque et servis par Django. Préfixer une
             # adresse déjà complète donnerait une URL inutilisable, d'où le test.
-            adresse = self.fichier.url
             if not adresse.startswith(("http://", "https://")):
                 adresse = settings.URL_API.rstrip("/") + adresse
-            if self.url != adresse:
+            if self.url != adresse or len(champs) > 1:
                 self.url = adresse
-                super().save(update_fields=["url"])
+                super().save(update_fields=champs)
 
 
 class Produit(models.Model):

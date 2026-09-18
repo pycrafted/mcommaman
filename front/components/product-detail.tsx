@@ -13,6 +13,7 @@ import { FavoriteButton } from "./favorite-button";
 import { ReviewForm, ReviewList, StarRow } from "./review-form";
 import { useReglages } from "./reglages-context";
 import { PhotoEntiere } from "./photo-entiere";
+import { variante as varianteWeb } from "@/lib/images";
 import { useAuth } from "./auth-context";
 import { messageCommande, useOrigine } from "@/lib/whatsapp";
 
@@ -152,7 +153,7 @@ export function ProductDetail({
                     className={`h-14 w-12 shrink-0 rounded-xl sm:h-16 sm:w-14 bg-stone bg-cover bg-center transition-all duration-300 ${
                       i === principale ? "ring-2 ring-ink" : "opacity-70 hover:opacity-100"
                     }`}
-                    style={{ backgroundImage: `url(${image})` }}
+                    style={{ backgroundImage: `url(${varianteWeb(image, 400)})` }}
                   />
                 ))}
               </div>

@@ -12,6 +12,7 @@ import {
 
 
 import { envoyer, televerser, type Page, type RayonApi } from "@/lib/api";
+import { reduirePourEnvoi } from "./reduire-image";
 import {
   depuisPromotion,
   depuisProduit,
@@ -918,13 +919,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    */
   const televerserMedia = useCallback<AdminContextValue["televerserMedia"]>(
     async (fichier, nom) => {
-      const forme = new FormData();
-      forme.append("fichier", fichier);
-      forme.append("nom", nom?.trim() || fichier.name);
-
       setEnCours(true);
       setErreur("");
       try {
+        // Nommée d'après l'original : la réduction change l'extension en .jpg.
+        const forme = new FormData();
+        forme.append("fichier", await reduirePourEnvoi(fichier));
+        forme.append("nom", nom?.trim() || fichier.name);
         const brut = await televerser<MediaApi>("/api/gestion/photheque/", forme);
         await relire();
         return versMedia(brut);

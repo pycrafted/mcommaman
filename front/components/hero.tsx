@@ -8,6 +8,7 @@ import { IconArrow, IconWhatsApp } from "./icons";
 import { formatXOF, waLink } from "@/lib/format";
 import { useReglages } from "./reglages-context";
 import type { BandeauApi } from "@/lib/api";
+import { srcSetWeb } from "@/lib/images";
 import { HERO_VIDEOS, HERO_VIGNETTES, type Product } from "@/lib/products";
 
 /* ------------------------------------------------------------------ la parole
@@ -305,6 +306,8 @@ export function Hero({
                     <img
                       key={s.cle}
                       src={s.image}
+                      srcSet={srcSetWeb(s.image)}
+                      sizes="(min-width: 1024px) 480px, 420px"
                       alt={i === actif ? s.alt : ""}
                       aria-hidden={i !== actif}
                       style={{ objectPosition: s.pos }}
