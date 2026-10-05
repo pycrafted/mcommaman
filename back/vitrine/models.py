@@ -54,11 +54,11 @@ class Reglages(models.Model):
         "pastille", max_length=60, blank=True, default="Nouvelle collection · 2026",
     )
     hero_titre = models.CharField(
-        "titre", max_length=120, default="Des looks\nqui suivent",
+        "titre", max_length=120, default="Bienvenue chez\nM comme Maman,",
         help_text="Un retour à la ligne pour couper le titre",
     )
     hero_accent = models.CharField(
-        "fin du titre en couleur", max_length=60, blank=True, default="leurs aventures.",
+        "fin du titre en couleur", max_length=60, blank=True, default="le coin des enfants et des mamans.",
     )
     hero_chapo = models.CharField(
         "texte d'introduction", max_length=240, blank=True,

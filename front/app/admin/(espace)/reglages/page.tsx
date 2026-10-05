@@ -78,14 +78,14 @@ export default function Page() {
                 inputMode="numeric"
               />
             </Field>
-            <Field label="Frais — Dakar">
+            <Field label="Frais Dakar">
               <Input
                 value={String(settings.shippingDakar)}
                 onChange={(v) => updateSettings({ shippingDakar: nombre(v) })}
                 inputMode="numeric"
               />
             </Field>
-            <Field label="Frais — régions">
+            <Field label="Frais régions">
               <Input
                 value={String(settings.shippingRegions)}
                 onChange={(v) => updateSettings({ shippingRegions: nombre(v) })}
@@ -99,7 +99,7 @@ export default function Page() {
               checked={settings.acceptOrders}
               onChange={(v) => updateSettings({ acceptOrders: v })}
               label="La boutique accepte les commandes"
-              hint="Décoché, le tunnel se ferme — à utiliser pendant un inventaire ou un congé."
+              hint="Décoché, le tunnel se ferme, à utiliser pendant un inventaire ou un congé."
             />
           </div>
         </Section>

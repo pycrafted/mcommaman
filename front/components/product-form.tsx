@@ -29,7 +29,7 @@ import {
 } from "./admin/icons";
 
 const inputClass =
-  "w-full rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3.5 text-sm outline-none transition-colors placeholder:text-[#b3a5aa] focus:border-rose";
+  "w-full rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3.5 text-sm outline-none transition-colors placeholder:text-[#b3a5aa] focus:border-accent";
 
 const Field = ({
   label,
@@ -90,7 +90,7 @@ const AjoutRapide = ({
       <button
         type="button"
         onClick={() => setOuvert(true)}
-        className="flex items-center gap-1.5 rounded-full border-[1.5px] border-dashed border-[#e0d3d9] px-3.5 py-2 text-[12.5px] font-semibold text-muted transition-colors hover:border-rose hover:text-rose"
+        className="flex items-center gap-1.5 rounded-full border-[1.5px] border-dashed border-[#e0d3d9] px-3.5 py-2 text-[12.5px] font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
       >
         <IconPlus />
         Autre
@@ -99,7 +99,7 @@ const AjoutRapide = ({
   }
 
   return (
-    <span className="flex items-center gap-1 rounded-full border-[1.5px] border-rose bg-white p-1">
+    <span className="flex items-center gap-1 rounded-full border-[1.5px] border-accent bg-white p-1">
       {couleur && (
         <input
           type="color"
@@ -136,7 +136,7 @@ const AjoutRapide = ({
         type="button"
         onClick={fermer}
         aria-label="Annuler"
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-rose-soft hover:text-rose-deep"
+        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-accent-deep"
       >
         <IconX className="h-3.5 w-3.5" />
       </button>
@@ -607,7 +607,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
           <button
             type="button"
             onClick={() => router.push("/admin/produits")}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-accent"
           >
             <IconArrowLeft className="h-3.5 w-3.5" />
             Retour aux produits
@@ -652,7 +652,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
               {slugPris && (
                 <p
                   style={{ gridColumn: "span 2" }}
-                  className="rounded-xl bg-rose-soft px-4 py-3 text-[12.5px] font-semibold text-rose-deep"
+                  className="rounded-xl bg-accent-soft px-4 py-3 text-[12.5px] font-semibold text-accent-deep"
                 >
                   Un produit portant ce nom existe déjà.
                 </p>
@@ -676,7 +676,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                 label="Catégorie"
               >
                 {rayons.length === 0 ? (
-                  <p className="rounded-xl bg-rose-soft px-4 py-3 text-[12.5px] leading-relaxed text-rose-deep">
+                  <p className="rounded-xl bg-accent-soft px-4 py-3 text-[12.5px] leading-relaxed text-accent-deep">
                     Aucune catégorie disponible.{" "}
                     <Link href="/admin/categories" className="underline underline-offset-2">
                       Ajouter une catégorie
@@ -775,7 +775,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                 type="button"
                 onClick={() => fichierRef.current?.click()}
                 disabled={envoiPhotos}
-                className="flex aspect-3/4 flex-col items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-[#e0d3d9] text-muted transition-colors hover:border-rose hover:text-rose disabled:opacity-50"
+                className="flex aspect-3/4 flex-col items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-[#e0d3d9] text-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
               >
                 <IconPlus />
                 <span className="text-[11px] font-semibold">
@@ -914,7 +914,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                         }))
                       }
                       aria-label={`Stock ${libelleOption(size, color)}`}
-                      className="w-full rounded-lg border-[1.5px] border-[#ece3e7] bg-white px-3 py-2 text-[13px] tabular-nums outline-none focus:border-rose"
+                      className="w-full rounded-lg border-[1.5px] border-[#ece3e7] bg-white px-3 py-2 text-[13px] tabular-nums outline-none focus:border-accent"
                     />
                     {/* Une fiche sans déclinaison n'a qu'une ligne, celle de son
                         propre stock : la retirer ne voudrait rien dire. */}
@@ -927,7 +927,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                           setVarianteASupprimer({ key, label: libelleOption(size, color) })
                         }
                         aria-label={`Supprimer ${libelleOption(size, color)}`}
-                        className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-rose-soft hover:text-rose-deep"
+                        className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-accent-soft hover:text-accent-deep"
                       >
                         <IconTrash className="h-4 w-4" />
                       </button>
@@ -962,7 +962,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                 <ul className="mt-2 flex flex-col gap-2">
                   {blockers.map((b) => (
                     <li key={b} className="flex gap-2.5 text-[13px] leading-snug text-muted">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose" />
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                       {b}
                     </li>
                   ))}
@@ -981,7 +981,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                 style={photos[0] ? { backgroundImage: `url(${photos[0]})` } : undefined}
               >
                 {Boolean(product?.compareAt) && (
-                  <span className="absolute left-3 top-3 rounded-full bg-rose px-3 py-1.5 text-[11.5px] font-bold text-white">
+                  <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1.5 text-[11.5px] font-bold text-white">
                     Promo
                   </span>
                 )}
@@ -995,7 +995,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                 </div>
                 <div className="mt-1.5 flex items-baseline gap-2.5">
                   <span className="text-[15px] font-extrabold tabular-nums">
-                    {priceNumber > 0 ? formatXOF(priceNumber) : "— F"}
+                    {priceNumber > 0 ? formatXOF(priceNumber) : "- F"}
                   </span>
                   {product?.compareAt && (
                     <span className="text-[13px] text-muted line-through">

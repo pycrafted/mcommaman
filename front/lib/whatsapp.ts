@@ -118,7 +118,7 @@ export function messageSuivi(c: CommandeSuivie): string {
     "Bonjour M comme Maman 👋",
     `Je souhaite suivre ma commande *${c.reference}*.`,
     "",
-    `📦 *Commande ${c.reference}* — ${c.statut}`,
+    `📦 *Commande ${c.reference}* : ${c.statut}`,
     ...blocArticles(c.articles),
     "",
     `Articles : ${formatXOF(c.sousTotal)}`,

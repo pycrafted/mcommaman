@@ -4,12 +4,11 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ProductCard } from "./product-card";
-import { QuickView } from "./quick-view";
 import { PAR_PAGE, type Facettes, type Tri } from "@/lib/catalogue";
 import { formatXOF } from "@/lib/format";
 import type { Product } from "@/lib/products";
 
-const TRIS: { valeur: Tri; libelle: string }[] = [
+export const TRIS: { valeur: Tri; libelle: string }[] = [
   { valeur: "nouveautes", libelle: "Nouveautés" },
   { valeur: "prix-croissant", libelle: "Prix croissant" },
   { valeur: "prix-decroissant", libelle: "Prix décroissant" },
@@ -60,7 +59,7 @@ function adresse(chemin: string, e: EtatBoutique): string {
  * Le curseur bouge librement ; la boutique n'est relue qu'au lâcher
  * (`onValider`) — une requête par cran de glissé ne servirait à rien.
  */
-function CurseurPrix({
+export function CurseurPrix({
   min,
   max,
   bas: basInitial,
@@ -93,9 +92,9 @@ function CurseurPrix({
   return (
     <div className="pt-5">
       <div className="curseur-double relative h-5">
-        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#eee2e7]" />
+        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-blush" />
         <div
-          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-rose"
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#e24f88]"
           style={{ left: `${position(bas)}%`, right: `${100 - position(haut)}%` }}
         />
         <input
@@ -150,12 +149,14 @@ function numeros(page: number, pages: number): (number | "…")[] {
 }
 
 /**
- * La boutique : toutes les pièces, ou celles d'une catégorie.
+ * La boutique, posée sur la page d'accueil : toutes les pièces, ou celles
+ * d'une catégorie, avec les filtres dans la colonne de gauche.
  *
  * Filles, Garçons, Coin Maman… sont des catégories au même titre : « ?cat= »
  * en choisit une, et ses sous-catégories deviennent des filtres. Le composant
- * ne filtre rien lui-même : chaque choix change l'adresse, et la page relit
- * sur le serveur la seule page d'articles à afficher.
+ * ne filtre rien lui-même : chaque choix change l'adresse (`/?cat=…`), et la
+ * page relit sur le serveur la seule page d'articles à afficher, sans remonter
+ * en haut (`scroll: false`) : le bandeau reste hors champ.
  */
 export function Catalogue({
   produits,
@@ -176,7 +177,6 @@ export function Catalogue({
   const router = useRouter();
   const chemin = usePathname();
   const [enCours, demarrer] = useTransition();
-  const [quick, setQuick] = useState<Product | null>(null);
   /* Au doigt, les filtres se replient sous un bouton : ouverts d'office, ils
      repoussaient les pièces sous la ligne de flottaison. */
   const [filtresOuverts, setFiltresOuverts] = useState(false);
@@ -204,33 +204,22 @@ export function Catalogue({
   const nombreFiltres = etat.sous.length + etat.tailles.length + (prixFiltre ? 1 : 0);
   const filtre = nombreFiltres > 0;
   const nomSous = (slug: string) => categorie?.enfants.find((e) => e.slug === slug)?.nom ?? slug;
-  const titre = categorie?.nom ?? "Boutique";
   const triCourant = TRIS.findIndex((t) => t.valeur === etat.tri);
   const titreFacette = "border-b border-line pb-3 text-[12.5px] font-extrabold uppercase tracking-[.06em]";
   const debut = (etat.page - 1) * PAR_PAGE;
   const pastille = "flex items-center gap-2.5 rounded-full bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white";
 
   return (
-    <div ref={haut} className="mx-auto max-w-[1400px] scroll-mt-24 px-5 pt-5 md:px-8 md:pt-8 lg:px-10">
-      <div className="text-[12.5px] text-muted">
-        <Link href="/" className="hover:text-rose">Accueil</Link>
-        {" · "}
-        {categorie ? (
-          <>
-            <Link href="/boutique" className="hover:text-rose">Boutique</Link>
-            {" · "}
-            {categorie.nom}
-          </>
-        ) : (
-          "Boutique"
-        )}
-      </div>
-
-      <div className="mt-3 md:mt-3.5 md:flex md:items-end md:justify-between md:gap-6">
+    <div ref={haut} id="boutique" className="mx-auto max-w-[1400px] scroll-mt-24 px-5 pt-8 md:px-8 md:pt-10 lg:px-10">
+      <div className="md:flex md:items-end md:justify-between md:gap-6">
         <div>
-          <h1 className="text-[34px] font-extrabold leading-[1.05] tracking-[-.035em] sm:text-[42px] lg:text-5xl">
-            {titre}
-          </h1>
+          {/* Le nom de la catégorie ouverte ; sans catégorie, rien : la page
+              a déjà son titre dans le bandeau. */}
+          {categorie && (
+            <h2 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-[-.02em] sm:text-[36px]">
+              {categorie.nom}
+            </h2>
+          )}
           <p className="mt-2 text-[13.5px] text-muted sm:text-[14.5px]">
             {total === 0
               ? filtre
@@ -254,7 +243,7 @@ export function Catalogue({
           >
             Filtres
             {filtre && (
-              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-rose px-1 text-[11px] font-bold text-white">
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-bold text-white">
                 {nombreFiltres}
               </span>
             )}
@@ -264,7 +253,7 @@ export function Catalogue({
             onClick={() => aller({ tri: TRIS[(triCourant + 1) % TRIS.length].valeur })}
             className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 py-3 text-[13.5px] font-semibold md:flex-none md:px-4.5"
           >
-            Trier : {TRIS[Math.max(0, triCourant)].libelle} <span className="text-rose">↓</span>
+            Trier : {TRIS[Math.max(0, triCourant)].libelle} <span className="text-accent">↓</span>
           </button>
         </div>
       </div>
@@ -275,53 +264,73 @@ export function Catalogue({
             filtresOuverts ? "block" : "hidden"
           } rounded-3xl border border-line bg-white p-5 lg:block lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0`}
         >
-          {categorie
-            ? categorie.enfants.length > 0 && (
-                <div className="mb-6.5 last:mb-0">
-                  <div className={titreFacette}>Sous-catégories</div>
-                  <div className="flex flex-col pt-2">
-                    {categorie.enfants.map((e) => {
-                      const on = etat.sous.includes(e.slug);
-                      return (
-                        <button
-                          key={e.slug}
-                          type="button"
-                          onClick={() => aller({ sous: bascule(etat.sous, e.slug) })}
-                          aria-pressed={on}
-                          className={`flex items-center gap-3 py-2 text-left text-sm ${on ? "font-bold" : "font-medium text-[#4a3a41]"}`}
-                        >
-                          <span
-                            className={`h-4.5 w-4.5 shrink-0 rounded-md border-[1.5px] transition-colors ${
-                              on ? "border-rose bg-rose" : "border-[#dfd3d8] bg-white"
-                            }`}
-                          />
-                          <span className="flex-1">{e.nom}</span>
-                          <span className="text-xs text-[#9c8d93]">
-                            {facettes.sousCategories[e.slug] ?? 0}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )
-            : rayons.length > 0 && (
-                <div className="mb-6.5 last:mb-0">
-                  <div className={titreFacette}>Catégories</div>
-                  <div className="flex flex-col pt-2">
-                    {rayons.map((c) => (
+          {rayons.length > 0 && (
+            <div className="mb-6.5 last:mb-0">
+              <div className={titreFacette}>Catégories</div>
+              <div className="flex flex-col pt-2">
+                {/* « Tout » puis chaque catégorie ; celle qui est ouverte est en
+                    gras et déplie ses sous-catégories, cochables, juste sous
+                    elle. Cliquer une catégorie remet ses sous-catégories à zéro. */}
+                <Link
+                  href={adresse(chemin, { ...etat, categorie: "", sous: [], page: 1 })}
+                  scroll={false}
+                  aria-current={!categorie || undefined}
+                  className={`flex items-center gap-3 py-2 text-sm transition-colors hover:text-accent ${
+                    !categorie ? "font-bold text-ink" : "font-medium text-[#4a3a41]"
+                  }`}
+                >
+                  <span className="flex-1">Tout</span>
+                  <span className="text-xs text-[#9c8d93]">
+                    {rayons.reduce((n, c) => n + c.nombre_produits, 0)}
+                  </span>
+                </Link>
+                {rayons.map((c) => {
+                  const ouverte = categorie?.slug === c.slug;
+                  return (
+                    <div key={c.slug}>
                       <Link
-                        key={c.slug}
                         href={adresse(chemin, { ...etat, categorie: c.slug, sous: [], page: 1 })}
-                        className="flex items-center gap-3 py-2 text-sm font-medium text-[#4a3a41] transition-colors hover:text-rose"
+                        scroll={false}
+                        aria-current={ouverte || undefined}
+                        className={`flex items-center gap-3 py-2 text-sm transition-colors hover:text-accent ${
+                          ouverte ? "font-bold text-ink" : "font-medium text-[#4a3a41]"
+                        }`}
                       >
                         <span className="flex-1">{c.nom}</span>
                         <span className="text-xs text-[#9c8d93]">{c.nombre_produits}</span>
                       </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      {ouverte && c.enfants.length > 0 && (
+                        <div className="mb-1 ml-3 flex flex-col border-l border-line pl-3">
+                          {c.enfants.map((e) => {
+                            const on = etat.sous.includes(e.slug);
+                            return (
+                              <button
+                                key={e.slug}
+                                type="button"
+                                onClick={() => aller({ sous: bascule(etat.sous, e.slug) })}
+                                aria-pressed={on}
+                                className={`flex items-center gap-3 py-1.5 text-left text-sm ${on ? "font-bold" : "font-medium text-[#4a3a41]"}`}
+                              >
+                                <span
+                                  className={`h-4.5 w-4.5 shrink-0 rounded-md border-[1.5px] transition-colors ${
+                                    on ? "border-accent bg-accent" : "border-[#dfd3d8] bg-white"
+                                  }`}
+                                />
+                                <span className="flex-1">{e.nom}</span>
+                                <span className="text-xs text-[#9c8d93]">
+                                  {facettes.sousCategories[e.slug] ?? 0}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {facettes.tailles.length > 0 && (
             <div className="mb-6.5 last:mb-0">
@@ -339,7 +348,7 @@ export function Catalogue({
                       className={`min-w-11 rounded-xl border-[1.5px] px-3 py-2 text-[13px] font-semibold transition-colors ${
                         on
                           ? "border-ink bg-ink text-white"
-                          : "border-[#e5d9de] bg-white text-[#4a3a41] hover:border-rose hover:text-rose"
+                          : "border-[#e5d9de] bg-white text-[#4a3a41] hover:border-accent hover:text-accent"
                       }`}
                     >
                       {valeur}
@@ -415,7 +424,7 @@ export function Catalogue({
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:gap-5.5">
             {produits.map((p, i) => (
-              <ProductCard key={p.id} product={p} onQuickView={setQuick} delay={i * 45} />
+              <ProductCard key={p.id} product={p} delay={i * 45} />
             ))}
           </div>
 
@@ -423,7 +432,7 @@ export function Catalogue({
             <p className="py-12 text-center text-[14px] text-muted sm:py-16 sm:text-[14.5px]">
               {filtre
                 ? "Aucune pièce ne répond à cette combinaison. Retirez un filtre pour élargir."
-                : "Aucune pièce en ligne pour le moment — elles seront disponibles bientôt."}
+                : "Aucune pièce en ligne pour le moment, elles seront disponibles bientôt."}
             </p>
           )}
 
@@ -443,7 +452,7 @@ export function Catalogue({
                   <Link
                     href={adresse(chemin, { ...etat, page: etat.page - 1 })}
                     onClick={() => haut.current?.scrollIntoView({ behavior: "smooth" })}
-                    className="grid h-10 place-items-center rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 text-[13px] font-semibold hover:border-rose hover:text-rose"
+                    className="grid h-10 place-items-center rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 text-[13px] font-semibold hover:border-accent hover:text-accent"
                   >
                     ← Précédente
                   </Link>
@@ -460,7 +469,7 @@ export function Catalogue({
                       className={`hidden h-10 min-w-10 place-items-center rounded-full px-2 text-[13px] font-semibold sm:grid ${
                         n === etat.page
                           ? "bg-ink text-white"
-                          : "border-[1.5px] border-[#e5d9de] bg-white hover:border-rose hover:text-rose"
+                          : "border-[1.5px] border-[#e5d9de] bg-white hover:border-accent hover:text-accent"
                       }`}
                     >
                       {n}
@@ -474,7 +483,7 @@ export function Catalogue({
                   <Link
                     href={adresse(chemin, { ...etat, page: etat.page + 1 })}
                     onClick={() => haut.current?.scrollIntoView({ behavior: "smooth" })}
-                    className="grid h-10 place-items-center rounded-full bg-rose px-4 text-[13px] font-semibold text-white"
+                    className="grid h-10 place-items-center rounded-full bg-accent px-4 text-[13px] font-semibold text-white"
                   >
                     Suivante →
                   </Link>
@@ -485,7 +494,6 @@ export function Catalogue({
         </div>
       </div>
 
-      <QuickView product={quick} onClose={() => setQuick(null)} />
     </div>
   );
 }

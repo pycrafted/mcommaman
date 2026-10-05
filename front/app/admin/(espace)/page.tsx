@@ -37,14 +37,14 @@ function CarteRubrique({
   return (
     <Link
       href={href}
-      className="group relative overflow-hidden rounded-[22px] border border-line bg-white p-6 transition-all duration-400 ease-soft hover:-translate-y-1 hover:border-rose/50 sm:p-7"
+      className="group relative overflow-hidden rounded-[22px] border border-line bg-white p-6 transition-all duration-400 ease-soft hover:-translate-y-1 hover:border-accent/50 sm:p-7"
     >
       {/* Le voile rose monte du bas au survol : la carte s'allume sans déplacer
           d'un pixel le texte qu'elle porte. */}
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-0 bg-linear-to-t from-rose/8 to-transparent transition-all duration-500 ease-soft group-hover:h-full" />
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-0 bg-linear-to-t from-accent/8 to-transparent transition-all duration-500 ease-soft group-hover:h-full" />
 
       <span className="relative flex items-start justify-between gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-mist text-ink transition-colors duration-300 group-hover:bg-rose group-hover:text-white">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-mist text-ink transition-colors duration-300 group-hover:bg-accent group-hover:text-white">
           <Icone className="h-5 w-5" />
         </span>
         <IconArrowRight className="h-4 w-4 -translate-x-1 text-muted opacity-0 transition-all duration-300 ease-soft group-hover:translate-x-0 group-hover:opacity-100" />
@@ -90,7 +90,7 @@ export default function Page() {
           timeZone: "UTC",
         })}
         title="Tableau de bord"
-        sub={`${settings.storeName} — choisissez une rubrique.`}
+        sub={`${settings.storeName}, choisissez une rubrique.`}
       >
         <Link href="/admin/produits/nouveau">
           <Button variant="rose">Nouveau produit</Button>

@@ -103,7 +103,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
 
         <div className="p-5 sm:p-9">
           <div className="flex items-start justify-between gap-4">
-            <span className="text-xs font-bold uppercase tracking-[.1em] text-rose">Aperçu rapide</span>
+            <span className="text-xs font-bold uppercase tracking-[.1em] text-accent">Aperçu rapide</span>
             <button onClick={onClose} aria-label="Fermer" className="text-xl leading-none text-muted">
               ×
             </button>
@@ -112,7 +112,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
           <h2 className="mt-3 text-[24px] font-extrabold tracking-tight sm:mt-3.5 sm:text-[28px]">{product.name}</h2>
 
           <div className="mt-3 flex flex-wrap items-baseline gap-2.5">
-            <span className={`text-2xl font-extrabold ${product.compareAt ? "text-rose" : ""}`}>
+            <span className={`text-2xl font-extrabold ${product.compareAt ? "text-accent" : ""}`}>
               {formatXOF(product.price)}
             </span>
             {product.compareAt && (
@@ -120,7 +120,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 <span className="text-[15px] text-muted line-through">
                   {formatXOF(product.compareAt)}
                 </span>
-                <span className="rounded-full bg-rose-soft px-2.5 py-1 text-[11.5px] font-bold text-rose-deep">
+                <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-bold text-accent-deep">
                   −{Math.round((1 - product.price / product.compareAt) * 100)} %
                 </span>
               </>
@@ -188,7 +188,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
           )}
 
           {erreur && (
-            <p className="mt-4 rounded-2xl bg-rose-soft px-4 py-2.5 text-[12.5px] text-rose-deep">
+            <p className="mt-4 rounded-2xl bg-accent-soft px-4 py-2.5 text-[12.5px] text-accent-deep">
               {erreur}
             </p>
           )}
@@ -197,7 +197,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             <button
               onClick={ajouter}
               disabled={!enStock || envoi}
-              className="flex-1 rounded-full bg-rose py-3.5 text-[14.5px] font-bold text-white transition-transform hover:-translate-y-0.5 active:scale-97 disabled:opacity-50"
+              className="flex-1 rounded-full bg-accent py-3.5 text-[14.5px] font-bold text-white transition-transform hover:-translate-y-0.5 active:scale-97 disabled:opacity-50"
             >
               {!fiche ? "Un instant…" : enStock ? (envoi ? "Ajout…" : "Ajouter au panier") : "Épuisé"}
             </button>

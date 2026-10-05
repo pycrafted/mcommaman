@@ -58,7 +58,7 @@ export function CartDrawer() {
                 {/* Une ligne devenue inservable reste visible et se signale : un
                     panier qui maigrit tout seul est incompréhensible. */}
                 {!l.disponible && (
-                  <div className="mt-1.5 text-[12px] font-semibold text-rose-deep">
+                  <div className="mt-1.5 text-[12px] font-semibold text-accent-deep">
                     {l.stock_restant > 0
                       ? `Il n'en reste que ${l.stock_restant}`
                       : "Épuisé pour le moment"}
@@ -80,7 +80,7 @@ export function CartDrawer() {
 
         <div className="border-t border-line px-6 py-5">
           {erreur && (
-            <p className="mb-3 rounded-2xl bg-rose-soft px-4 py-2.5 text-[12.5px] text-rose-deep">
+            <p className="mb-3 rounded-2xl bg-accent-soft px-4 py-2.5 text-[12.5px] text-accent-deep">
               {erreur}
             </p>
           )}
@@ -90,14 +90,14 @@ export function CartDrawer() {
           </div>
           <p className="mt-1.5 text-[12.5px] text-muted">Livraison offerte à Dakar dès {formatXOF(reglages.franco_dakar)}.</p>
           {!complet && (
-            <p className="mt-2 text-[12.5px] font-semibold text-rose-deep">
+            <p className="mt-2 text-[12.5px] font-semibold text-accent-deep">
               Un article n&apos;est plus disponible dans cette quantité : ajustez avant de commander.
             </p>
           )}
           <Link
             href="/commande"
             onClick={closeDrawer}
-            className="mt-4 block rounded-full bg-rose py-4 text-center text-[15px] font-bold text-white transition-transform hover:-translate-y-0.5"
+            className="mt-4 block rounded-full bg-accent py-4 text-center text-[15px] font-bold text-white transition-transform hover:-translate-y-0.5"
           >
             Commander
           </Link>

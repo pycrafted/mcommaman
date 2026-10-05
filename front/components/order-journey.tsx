@@ -50,16 +50,16 @@ function Pastille({ etape, etat }: { etape: Etape; etat: "fait" | "encours" | "a
     <span
       className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-full border-4 transition-colors duration-500 sm:h-14 sm:w-14 ${
         etat === "fait"
-          ? "border-rose/15 bg-rose text-white"
+          ? "border-accent/15 bg-accent text-white"
           : etat === "encours"
-            ? "border-rose/20 bg-white text-rose shadow-[0_0_0_8px_rgba(224,65,127,.09)]"
+            ? "border-accent/20 bg-white text-accent shadow-[0_0_0_8px_rgba(224,65,127,.09)]"
             : "border-cream bg-stone text-muted/70"
       }`}
     >
       {etat === "fait" ? <IconCheck className="h-4 w-4" /> : <Icone className="h-5 w-5" />}
       {etat === "encours" && (
-        <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-rose">
-          <span className="absolute inset-0 animate-ping rounded-full bg-rose/50" />
+        <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-accent">
+          <span className="absolute inset-0 animate-ping rounded-full bg-accent/50" />
         </span>
       )}
     </span>
@@ -79,13 +79,13 @@ export function OrderJourney({
 }) {
   if (status === "annulee") {
     return (
-      <section className="mb-7 overflow-hidden rounded-[26px] border-[1.5px] border-rose-deep/20 bg-rose-soft/60 p-7 sm:p-9">
+      <section className="mb-7 overflow-hidden rounded-[26px] border-[1.5px] border-accent-deep/20 bg-accent-soft/60 p-7 sm:p-9">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-rose-deep text-white">
+          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-accent-deep text-white">
             <IconClose className="h-7 w-7" />
           </span>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[.16em] text-rose-deep">
+            <p className="text-[11px] font-bold uppercase tracking-[.16em] text-accent-deep">
               Parcours interrompu
             </p>
             <h2 className="mt-2 text-[clamp(1.5rem,3.4vw,2rem)] font-extrabold tracking-[-.03em]">
@@ -111,7 +111,7 @@ export function OrderJourney({
       {/* ------------------------------------------------------ bandeau sombre */}
       <div className="noise relative overflow-hidden bg-ink px-6 py-7 text-white sm:px-9 sm:py-9">
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="aurora absolute -left-16 -top-12 h-64 w-64 rounded-full bg-rose/40 blur-[90px]" />
+          <div className="aurora absolute -left-16 -top-12 h-64 w-64 rounded-full bg-accent/40 blur-[90px]" />
           <div className="aurora absolute -right-10 bottom-0 h-56 w-56 rounded-full bg-gold/25 blur-[90px] [animation-delay:-11s]" />
         </div>
 
@@ -140,7 +140,7 @@ export function OrderJourney({
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
               <span
-                className="block h-full rounded-full bg-rose transition-[width] duration-700 ease-soft"
+                className="block h-full rounded-full bg-accent transition-[width] duration-700 ease-soft"
                 style={{ width: `${progression}%` }}
               />
             </div>
@@ -161,7 +161,7 @@ export function OrderJourney({
                   {i < ORDER_STEPS.length - 1 && (
                     <span
                       className={`min-h-8 w-px flex-1 ${
-                        i < index ? "bg-rose" : "border-l border-dashed border-line"
+                        i < index ? "bg-accent" : "border-l border-dashed border-line"
                       }`}
                     />
                   )}
@@ -174,7 +174,7 @@ export function OrderJourney({
                       {etape.label}
                     </h3>
                     {etat === "encours" && (
-                      <span className="rounded-full bg-rose-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.12em] text-rose">
+                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.12em] text-accent">
                         Maintenant
                       </span>
                     )}
@@ -189,7 +189,7 @@ export function OrderJourney({
         <div className="relative hidden sm:block">
           <div className="absolute left-[12.5%] right-[12.5%] top-7 h-1 rounded-full bg-stone">
             <span
-              className="block h-full rounded-full bg-rose transition-[width] duration-700 ease-soft"
+              className="block h-full rounded-full bg-accent transition-[width] duration-700 ease-soft"
               style={{ width: `${(index / (ORDER_STEPS.length - 1)) * 100}%` }}
             />
           </div>
@@ -208,7 +208,7 @@ export function OrderJourney({
                     {etape.hint}
                   </p>
                   {etat === "encours" && (
-                    <span className="mt-2 rounded-full bg-rose-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-rose">
+                    <span className="mt-2 rounded-full bg-accent-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-accent">
                       Maintenant
                     </span>
                   )}
@@ -221,14 +221,14 @@ export function OrderJourney({
         {/* ------------------------------------------------- les trois repères */}
         <div className="mt-6 grid gap-2 rounded-2xl bg-mist p-2 sm:mt-7 sm:grid-cols-3">
           <div className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-3">
-            <IconClock className="h-4 w-4 shrink-0 text-rose" />
+            <IconClock className="h-4 w-4 shrink-0 text-accent" />
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[.14em] text-muted">Commandée le</p>
               <p className="mt-0.5 text-[12.5px] font-bold">{dateCourte(createdAt)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-3">
-            <IconPin className="h-4 w-4 shrink-0 text-rose" />
+            <IconPin className="h-4 w-4 shrink-0 text-accent" />
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[.14em] text-muted">Destination</p>
               <p className="mt-0.5 truncate text-[12.5px] font-bold">{city}</p>
@@ -236,7 +236,7 @@ export function OrderJourney({
           </div>
           <div className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-3">
             {suivante ? (
-              <IconTruck className="h-4 w-4 shrink-0 text-rose" />
+              <IconTruck className="h-4 w-4 shrink-0 text-accent" />
             ) : (
               <IconCheck className="h-4 w-4 shrink-0 text-[#3f8a5f]" />
             )}

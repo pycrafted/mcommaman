@@ -202,7 +202,7 @@ export default function Page() {
                     disabled={usages > 0}
                     title={usages > 0 ? "Utilisée par des produits" : "Retirer"}
                     aria-label={`Retirer la taille ${s.value}`}
-                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white hover:text-rose-deep disabled:opacity-25"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white hover:text-accent-deep disabled:opacity-25"
                   >
                     <IconTrash className="h-4 w-4" />
                   </button>
@@ -268,7 +268,7 @@ export default function Page() {
                     disabled={usages > 0}
                     title={usages > 0 ? "Utilisé par des produits" : "Retirer"}
                     aria-label={`Retirer le coloris ${c.name}`}
-                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white hover:text-rose-deep disabled:opacity-25"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white hover:text-accent-deep disabled:opacity-25"
                   >
                     <IconTrash className="h-4 w-4" />
                   </button>
@@ -313,7 +313,7 @@ export default function Page() {
                   type="button"
                   onClick={() => deleteMaterial(m.id)}
                   aria-label={`Retirer ${m.name}`}
-                  className="text-muted transition-colors hover:text-rose-deep"
+                  className="text-muted transition-colors hover:text-accent-deep"
                 >
                   <IconX className="h-3.5 w-3.5" />
                 </button>

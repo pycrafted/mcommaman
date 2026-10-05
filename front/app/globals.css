@@ -1,14 +1,17 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-rose: #e0417f;
-  --color-rose-deep: #b3306a;
-  --color-rose-soft: #fbeaf1;
+  /* Les couleurs de M comme Maman : le rose de la marque pour tout ce qui
+     appelle le clic, et un fond de blancs rosés de la même famille. Les jetons
+     portent des noms de rôle, pas de teinte, pour que la prochaine couleur de
+     marque ne demande qu'un changement ici. */
+  --color-accent: #e0417f;
+  --color-accent-deep: #b3306a;
+  --color-accent-soft: #fbeaf1;
   --color-ink: #241a20;
   /* Quatre valeurs d'un même rose très dilué, du plus clair au plus soutenu :
      `cream` pour ce qui doit ressortir (cartes, en-tête), `blush` pour le sol
-     de la page, `mist` et `stone` pour les blocs posés dessus. Le fond du site
-     est ainsi de la même famille que le bandeau d'accueil, en plus calme. */
+     de la page, `mist` et `stone` pour les blocs posés dessus. */
   --color-cream: #fffdfe;
   --color-blush: #fdf4f8;
   --color-mist: #f9ecf2;
@@ -17,7 +20,10 @@
   --color-muted: #7a6b72;
   --color-gold: #f0c24a;
   --color-gold-soft: #fdf3dc;
+  --color-sage: #6b8763;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Les titres : une serif à empattements souples, reprise de King Crêperie. */
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
 
   /* Une seule courbe pour tout le site : les mouvements se ressemblent. */
   --ease-soft: cubic-bezier(0.22, 0.68, 0.16, 1);
@@ -101,6 +107,39 @@ body {
 @keyframes veil { from { opacity: 0 } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-12px) scale(.97) } }
 
+
+/* ------------------------------------------------- le bandeau, côté enfants */
+/* La forme de la photo respire : quatre rayons qui ne tombent jamais d'accord. */
+@keyframes morph {
+  0%, 100% { border-radius: 58% 42% 55% 45% / 48% 56% 44% 52% }
+  33%      { border-radius: 45% 55% 40% 60% / 55% 45% 58% 42% }
+  66%      { border-radius: 52% 48% 60% 40% / 42% 58% 46% 54% }
+}
+/* Les nuages glissent d'un bord à l'autre, lentement, et reviennent. */
+@keyframes cloud { from { transform: translateX(-10%) } to { transform: translateX(10%) } }
+/* Une étoile qui scintille : elle grossit, tourne un peu, pâlit. */
+@keyframes twinkle {
+  0%, 100% { opacity: .3; transform: scale(.7) rotate(0deg) }
+  50%      { opacity: 1; transform: scale(1.15) rotate(25deg) }
+}
+/* Un confetti tombe du haut du bandeau en tournant sur lui-même. */
+@keyframes confetti {
+  0%   { transform: translateY(-12vh) rotate(0deg); opacity: 0 }
+  8%   { opacity: 1 }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: .6 }
+}
+/* Une pastille qui se balance, comme suspendue à un fil. */
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg) }
+  50%      { transform: translateY(-12px) rotate(3deg) }
+}
+/* L'arrivée de la photo : elle grossit et se pose, avec un petit rebond. */
+@keyframes arrive { from { opacity: 0; transform: scale(.72) translateY(40px) } }
+/* Le petit coeur bat. */
+@keyframes beat { 0%, 100% { transform: scale(1) } 14% { transform: scale(1.25) } 28% { transform: scale(1) } 42% { transform: scale(1.18) } }
+/* Une pastille qu'on touche remue des épaules. */
+@keyframes wobble { 0%, 100% { transform: rotate(0) } 25% { transform: rotate(-4deg) } 75% { transform: rotate(4deg) } }
+
 /* ---------------------------------------------------------------- utilitaires */
 
 .anim-hero { animation: hero .7s var(--ease-soft) backwards; }
@@ -111,6 +150,20 @@ body {
 .anim-slide-in { animation: slide-in .24s var(--ease-soft); }
 .anim-fade-up { animation: fade-up .26s var(--ease-soft); }
 .anim-cue { animation: cue 1.8s ease-in-out infinite; }
+
+/* Le bandeau : chaque mouvement a sa durée propre, pour qu'aucun ne se cale
+   sur un autre. Toutes sont coupées par le bloc `prefers-reduced-motion`. */
+.anim-morph { animation: morph 14s ease-in-out infinite; }
+.anim-cloud { animation: cloud var(--dur, 18s) ease-in-out infinite alternate; }
+.anim-twinkle { animation: twinkle var(--dur, 3s) var(--delay, 0s) ease-in-out infinite; }
+.anim-confetti { animation: confetti var(--dur, 12s) var(--delay, 0s) linear infinite; }
+.anim-bob { animation: bob var(--dur, 5s) var(--delay, 0s) ease-in-out infinite; }
+.anim-arrive { animation: arrive 1s .3s var(--ease-back) backwards; }
+.anim-beat { animation: beat 1.6s ease-in-out infinite; transform-origin: center; }
+.wobble:hover { animation: wobble .5s ease-in-out; }
+/* L'onde d'une case qu'on vient de cocher : un anneau qui s'élargit et s'efface. */
+.anim-onde { animation: ring .55s ease-out backwards; pointer-events: none; }
+
 
 /* Reveal : état de repos + une classe par variante.
    `backwards` et non `both` : une animation remplie vers l'avant garderait
@@ -170,6 +223,10 @@ body {
   background: rgba(255, 255, 255, .55);
   animation: ring 2.4s ease-out infinite;
 }
+
+/* Onglets de la boutique d'accueil : ils défilent au doigt, sans barre. */
+.rail-onglets { scrollbar-width: none; }
+.rail-onglets::-webkit-scrollbar { display: none; }
 
 /* Rail horizontal : on cache la barre, le doigt et la souris suffisent. */
 .rail {
@@ -351,17 +408,21 @@ body {
   height: 20px;
   border-radius: 9999px;
   background: #fff;
-  border: 2px solid var(--color-rose);
+  border: 2px solid #e24f88;
   box-shadow: 0 2px 8px rgba(36, 26, 32, 0.18);
   cursor: grab;
+  transition: transform .25s var(--ease-back), box-shadow .25s;
 }
+/* La poignée grossit sous le doigt et s'enfonce quand on la tient. */
+.curseur-double input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.2); box-shadow: 0 4px 14px rgba(224, 65, 127, .35); }
+.curseur-double input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.1); cursor: grabbing; }
 .curseur-double input[type="range"]::-moz-range-thumb {
   pointer-events: auto;
   width: 16px;
   height: 16px;
   border-radius: 9999px;
   background: #fff;
-  border: 2px solid var(--color-rose);
+  border: 2px solid #e24f88;
   box-shadow: 0 2px 8px rgba(36, 26, 32, 0.18);
   cursor: grab;
 }
@@ -372,10 +433,10 @@ body {
   outline: none;
 }
 .curseur-double input[type="range"]:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--color-rose);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 .curseur-double input[type="range"]:focus-visible::-moz-range-thumb {
-  outline: 2px solid var(--color-rose);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }

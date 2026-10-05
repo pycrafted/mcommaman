@@ -4,7 +4,7 @@ import { ORDER_STATUS_LABELS, type OrderStatus } from "./orders-context";
    (`components/admin.tsx`) : une commande garde sa couleur des deux côtés. */
 const TEINTES: Record<OrderStatus, string> = {
   recue: "bg-gold-soft text-[#8a6a12]",
-  preparation: "bg-rose-soft text-rose-deep",
+  preparation: "bg-accent-soft text-accent-deep",
   expediee: "bg-[#eef3fd] text-[#33538f]",
   livree: "bg-[#eaf6ef] text-[#2e7d52]",
   annulee: "bg-stone text-[#5d5157]",

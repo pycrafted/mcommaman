@@ -4,13 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatXOF, jusquAu, waLink } from "@/lib/format";
 import type { ProduitApi } from "@/lib/api";
-import { lienCategorie } from "@/lib/catalogue";
 import type { Product } from "@/lib/products";
 import { ProductCard } from "./product-card";
 import { useCart } from "./cart-context";
-import { useAvis } from "./reviews-context";
 import { FavoriteButton } from "./favorite-button";
-import { ReviewForm, ReviewList, StarRow } from "./review-form";
 import { useReglages } from "./reglages-context";
 import { PhotoEntiere } from "./photo-entiere";
 import { variante as varianteWeb } from "@/lib/images";
@@ -37,14 +34,6 @@ export function ProductDetail({
   const reglages = useReglages();
   const { account, defaultAddress } = useAuth();
   const origine = useOrigine();
-  /* Les avis de cette fiche, demandés au serveur au montage. Ni la note ni le
-     nombre ne sont écrits dans la page : tant que personne n'a écrit, l'article
-     l'annonce plutôt que d'inventer une moyenne. */
-  const { avis, resume: note, pret: avisPrets } = useAvis({
-    kind: "product",
-    productId: product.id,
-  });
-
   const coloris = fiche.coloris ?? [];
   const tailles = fiche.tailles ?? [];
   const variantes = fiche.variantes ?? [];
@@ -126,9 +115,7 @@ export function ProductDetail({
     <div className="mx-auto max-w-[1400px] px-5 pb-20 pt-5 md:px-8 md:pt-7 lg:px-10">
       <div className="truncate text-[12.5px] text-muted">
         <Link href="/">Accueil</Link> ·{" "}
-        <Link href={product.categorySlug ? lienCategorie(product.categorySlug) : "/boutique"}>
-          {product.category}
-        </Link>{" "}
+        {product.category}{" "}
         · {product.name}
       </div>
 
@@ -163,26 +150,11 @@ export function ProductDetail({
 
         <div className="min-w-0 md:pt-1.5">
           {/* La référence reste une affaire de boutique : la cliente ne la voit pas. */}
-          <span className="text-xs font-bold uppercase tracking-[.1em] text-rose">{product.category}</span>
+          <span className="text-xs font-bold uppercase tracking-[.1em] text-accent">{product.category}</span>
 
           <h1 className="mt-3 text-[28px] font-extrabold leading-[1.08] tracking-[-.03em] sm:text-[34px] lg:mt-3.5 lg:text-[40px]">
             {product.name}
           </h1>
-
-          <div className="mt-3 flex items-center gap-2.5">
-            {note.count > 0 ? (
-              <>
-                <StarRow rating={note.average} />
-                <a href="#avis" className="text-[13px] text-muted transition-colors hover:text-rose">
-                  {String(note.average).replace(".", ",")} · {note.count} avis
-                </a>
-              </>
-            ) : (
-              <a href="#avis" className="text-[13px] text-muted transition-colors hover:text-rose">
-                Aucun avis pour le moment
-              </a>
-            )}
-          </div>
 
           {/* En promotion, le prix du jour passe en rose et l'ancien s'efface.
               Deux prix de même poids se lisent mal, et c'est le nouveau qu'on
@@ -190,7 +162,7 @@ export function ProductDetail({
           <div className="mt-5 flex flex-wrap items-baseline gap-3">
             <span
               className={`text-[26px] font-extrabold tracking-[-.03em] sm:text-[30px] ${
-                product.compareAt ? "text-rose" : ""
+                product.compareAt ? "text-accent" : ""
               }`}
             >
               {formatXOF(product.price)}
@@ -199,7 +171,7 @@ export function ProductDetail({
               <span className="text-base text-[#9c8d93] line-through">{formatXOF(product.compareAt)}</span>
             )}
             {discount && (
-              <span className="rounded-full bg-rose-soft px-2.5 py-1 text-xs font-bold text-rose-deep">
+              <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent-deep">
                 {discount}
               </span>
             )}
@@ -208,7 +180,7 @@ export function ProductDetail({
           {/* La campagne se nomme : « −15 % » ne dit pas pourquoi, ni jusqu'à
               quand. Une remise sans échéance n'en presse aucune. */}
           {product.promotion && (
-            <p className="mt-2.5 inline-flex flex-wrap items-baseline gap-x-2 rounded-2xl bg-rose-soft px-4 py-2.5 text-[13px] leading-relaxed text-rose-deep">
+            <p className="mt-2.5 inline-flex flex-wrap items-baseline gap-x-2 rounded-2xl bg-accent-soft px-4 py-2.5 text-[13px] leading-relaxed text-accent-deep">
               <strong className="font-bold">{product.promotion.libelle}</strong>
               <span>
                 vous économisez {formatXOF(product.promotion.economie)}, jusqu&apos;au{" "}
@@ -296,7 +268,7 @@ export function ProductDetail({
             <button
               onClick={ajouter}
               disabled={!enStock || envoi}
-              className="w-full rounded-full sm:w-auto sm:flex-1 bg-rose py-4.5 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-all hover:-translate-y-[3px] active:scale-97 disabled:opacity-50"
+              className="w-full rounded-full sm:w-auto sm:flex-1 bg-accent py-4.5 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-all hover:-translate-y-[3px] active:scale-97 disabled:opacity-50"
             >
               {enStock ? (envoi ? "Ajout…" : "Ajouter au panier") : "Épuisé"}
             </button>
@@ -337,7 +309,7 @@ export function ProductDetail({
 
           {/* Le refus vient du serveur, qui seul connaît le stock à l'instant du clic. */}
           {erreur && (
-            <p className="mt-3 rounded-2xl bg-rose-soft px-4 py-3 text-[13px] text-rose-deep">
+            <p className="mt-3 rounded-2xl bg-accent-soft px-4 py-3 text-[13px] text-accent-deep">
               {erreur}
             </p>
           )}
@@ -356,7 +328,7 @@ export function ProductDetail({
                   className="flex w-full items-center justify-between py-4.5 text-left text-[14.5px] font-bold"
                 >
                   {b.t}
-                  <span className="text-lg text-rose">{openBlock === i ? "−" : "+"}</span>
+                  <span className="text-lg text-accent">{openBlock === i ? "−" : "+"}</span>
                 </button>
                 {openBlock === i && (
                   <p className="whitespace-pre-line pb-5 text-sm leading-[1.7] text-[#6b5a61]">{b.c}</p>
@@ -378,32 +350,6 @@ export function ProductDetail({
         </div>
       )}
 
-      {/* Les avis ferment la fiche, sous les recommandations : c’est là que la
-          page d’avis renvoie les clientes. */}
-      <section id="avis" className="scroll-mt-28 pt-14 lg:pt-17">
-        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-[26px] font-extrabold tracking-[-.03em] sm:text-[32px]">Avis sur cet article</h2>
-          {note.count > 0 && (
-            <span className="flex items-center gap-2.5 text-[13.5px] text-muted">
-              <StarRow rating={note.average} />
-              {String(note.average).replace(".", ",")}/5 · {note.count} avis
-            </span>
-          )}
-        </div>
-
-        <div className="grid items-start gap-7 lg:grid-cols-[1.35fr_.95fr] lg:gap-14">
-          {/* Avant la réponse du serveur on ne sait pas encore ce qui existe. */}
-          <div>{avisPrets && <ReviewList reviews={avis} />}</div>
-
-          <div className="rounded-3xl border border-line bg-mist p-5 sm:p-6">
-            <h3 className="text-[15px] font-bold">Vous l’avez reçu&nbsp;?</h3>
-            <p className="mb-5 mt-1.5 text-[13px] leading-relaxed text-muted">
-              La taille, la matière, la tenue au lavage : ce qui aide la prochaine maman à choisir.
-            </p>
-            <ReviewForm target={{ kind: "product", productId: product.id }} titre="Votre note" />
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

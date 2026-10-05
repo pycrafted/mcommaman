@@ -158,7 +158,7 @@ export function EnMouvement({
                 onClick={() => setSon((s) => (s === i ? null : i))}
                 aria-pressed={son === i}
                 aria-label={son === i ? "Couper le son" : "Écouter cette séquence"}
-                className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/85 text-ink backdrop-blur transition-colors duration-300 hover:bg-rose hover:text-white"
+                className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/85 text-ink backdrop-blur transition-colors duration-300 hover:bg-accent hover:text-white"
               >
                 {son === i ? <IconSon className="h-4 w-4" /> : <IconMuet className="h-4 w-4" />}
               </button>

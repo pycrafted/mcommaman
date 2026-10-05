@@ -19,9 +19,9 @@ const CHAMP =
   "w-full rounded-2xl border-[1.5px] bg-white py-3.5 text-sm outline-none transition-colors placeholder:text-[#b3a5aa]";
 
 function bord(error?: string, valid?: boolean) {
-  if (error) return "border-rose-deep";
+  if (error) return "border-accent-deep";
   if (valid) return "border-[#8fbfa2]";
-  return "border-[#ece3e7] focus:border-rose";
+  return "border-[#ece3e7] focus:border-accent";
 }
 
 export function TextField({
@@ -68,7 +68,7 @@ export function TextField({
       </div>
 
       {error ? (
-        <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-rose-deep">{error}</p>
+        <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-accent-deep">{error}</p>
       ) : (
         hint && <p className="mt-1.5 text-[11.5px] leading-snug text-muted">{hint}</p>
       )}
@@ -113,7 +113,7 @@ export function TextareaField({
         {...props}
       />
       {error ? (
-        <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-rose-deep">{error}</p>
+        <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-accent-deep">{error}</p>
       ) : (
         hint && <p className="mt-1.5 text-[11.5px] leading-snug text-muted">{hint}</p>
       )}
@@ -174,7 +174,7 @@ export function PasswordField({
       </div>
 
       {error ? (
-        <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-rose-deep">{error}</p>
+        <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-accent-deep">{error}</p>
       ) : (
         hint && <p className="mt-1.5 text-[11.5px] leading-snug text-muted">{hint}</p>
       )}
@@ -192,7 +192,7 @@ const CRITERES: { test: (v: string) => boolean; label: string }[] = [
 ];
 
 const NIVEAUX = ["Trop court", "Faible", "Correct", "Bon", "Solide"];
-const TEINTES = ["bg-line", "bg-rose-deep", "bg-gold", "bg-[#8fbfa2]", "bg-[#3f8a5f]"];
+const TEINTES = ["bg-line", "bg-accent-deep", "bg-gold", "bg-[#8fbfa2]", "bg-[#3f8a5f]"];
 
 export function PasswordMeter({ password }: { password: string }) {
   if (!password) return null;
@@ -214,7 +214,7 @@ export function PasswordMeter({ password }: { password: string }) {
       </div>
       <p className="mt-1.5 text-[11.5px] leading-snug text-muted">
         <span className="font-semibold text-ink">{NIVEAUX[remplis]}</span>
-        {manquants.length > 0 && ` — il manque ${manquants.join(", ")}.`}
+        {manquants.length > 0 && `, il manque ${manquants.join(", ")}.`}
       </p>
     </div>
   );
@@ -250,8 +250,8 @@ export function Checkbox({
         />
         <label
           htmlFor={id}
-          className={`mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded-md border-[1.5px] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-rose/50 peer-focus-visible:ring-offset-2 ${
-            checked ? "border-rose bg-rose text-white" : error ? "border-rose-deep" : "border-[#e5d9de] bg-white"
+          className={`mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded-md border-[1.5px] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-accent/50 peer-focus-visible:ring-offset-2 ${
+            checked ? "border-accent bg-accent text-white" : error ? "border-accent-deep" : "border-[#e5d9de] bg-white"
           }`}
         >
           {checked && <IconCheck className="h-3 w-3" />}
@@ -260,7 +260,7 @@ export function Checkbox({
           {children}
         </label>
       </div>
-      {error && <p className="mt-1.5 pl-8 text-[11.5px] font-semibold text-rose-deep">{error}</p>}
+      {error && <p className="mt-1.5 pl-8 text-[11.5px] font-semibold text-accent-deep">{error}</p>}
     </div>
   );
 }
@@ -269,7 +269,7 @@ export function Alert({ children }: { children: React.ReactNode }) {
   return (
     <p
       role="alert"
-      className="anim-fade-up rounded-2xl bg-rose-soft px-4 py-3 text-[13px] font-semibold leading-relaxed text-rose-deep"
+      className="anim-fade-up rounded-2xl bg-accent-soft px-4 py-3 text-[13px] font-semibold leading-relaxed text-accent-deep"
     >
       {children}
     </p>
@@ -289,7 +289,7 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={pending}
-      className="shine w-full rounded-full bg-rose px-8 py-4 text-[14.5px] font-bold text-white shadow-[0_16px_38px_-16px_rgba(224,65,127,.9)] transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+      className="shine w-full rounded-full bg-accent px-8 py-4 text-[14.5px] font-bold text-white shadow-[0_16px_38px_-16px_rgba(224,65,127,.9)] transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
     >
       {pending ? pendingLabel : children}
     </button>
@@ -339,7 +339,7 @@ export function AuthShell({
   return (
     <div className="mx-auto grid max-w-[1180px] gap-10 px-5 pb-22 pt-10 md:px-8 lg:grid-cols-[1.05fr_.95fr] lg:items-start lg:px-10">
       <div className="anim-fade-up">
-        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">{eyebrow}</span>
+        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">{eyebrow}</span>
         <h1 className="mt-3 text-[clamp(2rem,4.6vw,2.9rem)] font-extrabold leading-[1.05] tracking-[-.035em]">
           {title}
         </h1>
@@ -375,7 +375,7 @@ export function AuthShell({
             <p className="text-[19px] font-bold leading-snug tracking-[-.02em] text-balance">
               «&nbsp;{quote}&nbsp;»
             </p>
-            <p className="mt-3 text-[12.5px] text-white/60">M comme Maman — Dakar</p>
+            <p className="mt-3 text-[12.5px] text-white/60">M comme Maman · Dakar</p>
           </div>
         </div>
       </aside>

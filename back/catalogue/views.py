@@ -7,7 +7,7 @@ permission expose un champ de gestion à la boutique.
 """
 
 from django.db import transaction
-from django.db.models import Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, Subquery, Sum
+from django.db.models import Case, Count, Exists, F, IntegerField, Max, Min, OuterRef, Prefetch, Q, Subquery, Sum, When
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -49,6 +49,9 @@ TRIS = {
     "prix-croissant": "prix_effectif",
     "prix-decroissant": "-prix_effectif",
     "nom": "nom",
+    # Les pièces en promotion d'abord, puis les nouveautés : l'annotation est
+    # posée dans `get_queryset`, où le prix du jour est connu.
+    "promotion": "-en_promotion",
 }
 
 
@@ -133,9 +136,18 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         if voulus:
             return selection.filter(pk__in=voulus)
 
-        return self.filtrer(selection, params).order_by(
-            TRIS.get(params.get("tri", ""), "-cree_le"), "-pk"
-        )
+        selection = self.filtrer(selection, params)
+        if params.get("tri") == "promotion":
+            selection = selection.annotate(
+                en_promotion=Case(
+                    When(Q(prix_effectif__lt=F("prix")) | Q(prix_barre__gt=F("prix")), then=1),
+                    default=0,
+                    output_field=IntegerField(),
+                )
+            ).order_by("-en_promotion", "-cree_le", "-pk")
+        else:
+            selection = selection.order_by(TRIS.get(params.get("tri", ""), "-cree_le"), "-pk")
+        return selection
 
     @staticmethod
     def filtrer(selection, params, sans=()):
@@ -159,6 +171,13 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
             selection = selection.filter(
                 Exists(Variante.objects.filter(
                     produit=OuterRef("pk"), stock__gt=0, taille__valeur__in=tailles
+                ))
+            )
+        # Un coloris ne compte que s'il est encore en stock, comme une taille.
+        if "coloris" not in sans and (coloris := _liste(params.get("coloris", ""))):
+            selection = selection.filter(
+                Exists(Variante.objects.filter(
+                    produit=OuterRef("pk"), stock__gt=0, coloris__nom__in=coloris
                 ))
             )
         # Le prix filtré est celui du jour, remise comprise.
@@ -199,6 +218,7 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         selection = self.filtrer(base, params)
         pour_sous = self.filtrer(base, params, sans=("sous",))
         pour_tailles = self.filtrer(base, params, sans=("taille",))
+        pour_coloris = self.filtrer(base, params, sans=("coloris",))
         pour_prix = self.filtrer(base, params, sans=("prix",))
 
         bornes = pour_prix.aggregate(minimum=Min("prix_effectif"), maximum=Max("prix_effectif"))
@@ -213,6 +233,14 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
             .annotate(nombre=Count("produit", distinct=True))
             .order_by("taille__ordre", "taille__valeur")
         )
+        coloris = (
+            Variante.objects.filter(
+                stock__gt=0, coloris__isnull=False, produit__in=pour_coloris.values("pk")
+            )
+            .values("coloris__nom", "coloris__hexa")
+            .annotate(nombre=Count("produit", distinct=True))
+            .order_by("coloris__nom")
+        )
         return Response({
             "total": selection.count(),
             "prix_min": bornes["minimum"] or 0,
@@ -220,6 +248,10 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
             "sous_categories": {ligne["rayon__slug"]: ligne["nombre"] for ligne in sous},
             "tailles": [
                 {"valeur": ligne["taille__valeur"], "nombre": ligne["nombre"]} for ligne in tailles
+            ],
+            "coloris": [
+                {"nom": ligne["coloris__nom"], "hexa": ligne["coloris__hexa"], "nombre": ligne["nombre"]}
+                for ligne in coloris
             ],
         })
 

@@ -280,7 +280,7 @@ export function Marquee({
             {items.map((item, i) => (
               <span key={i} className="flex items-center gap-3 whitespace-nowrap px-6">
                 {item}
-                <IconHeartFull className="h-2.5 w-2.5 shrink-0 text-rose/70" />
+                <IconHeartFull className="h-2.5 w-2.5 shrink-0 text-accent/70" />
               </span>
             ))}
           </div>
@@ -713,7 +713,7 @@ export function ScrollProgress() {
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-transparent">
-      <div ref={ref} className="progress h-full bg-linear-to-r from-rose to-gold" />
+      <div ref={ref} className="progress h-full bg-linear-to-r from-accent to-gold" />
     </div>
   );
 }

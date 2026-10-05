@@ -1,425 +1,255 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { CountUp, Magnetic, SplitText, useSpotlight } from "./motion";
-import { IconArrow, IconWhatsApp } from "./icons";
-import { formatXOF, waLink } from "@/lib/format";
+import { Magnetic, Parallax, SplitText } from "./motion";
+import { IconArrow, IconHeart, IconInstagram, IconPin, IconStar, IconTikTok, IconWhatsApp } from "./icons";
+import { ADRESSE, INSTAGRAM, INSTAGRAM_URL, MAPS_URL, TIKTOK, TIKTOK_URL, waLink } from "@/lib/format";
+import { srcSetWeb } from "@/lib/images";
 import { useReglages } from "./reglages-context";
 import type { BandeauApi } from "@/lib/api";
-import { srcSetWeb } from "@/lib/images";
-import { HERO_VIDEOS, HERO_VIGNETTES, type Product } from "@/lib/products";
+import { HERO_VIDEOS } from "@/lib/products";
 
 /* ------------------------------------------------------------------ la parole
-   Les textes du bandeau — pastille, titre, fin du titre en couleur, chapô,
-   macaron — se règlent dans le back-office (`Reglages.hero_*`). Les photos
-   aussi : `/api/vitrine/bandeau/`. Tant qu'aucune photo n'y est active, la
-   vitrine fait défiler les deux vidéos livrées avec le site (`HERO_VIDEOS`) —
-   la page d'accueil n'est jamais nue. */
+   Le titre du bandeau et sa fin en couleur se règlent dans le back-office
+   (`Reglages.hero_titre`, `Reglages.hero_accent`). */
 
-/* Le titre ne bouge pas d'une séquence à l'autre : c'est la promesse de la
-   boutique, pas une légende. Seuls la vidéo, son étiquette et la pièce
-   proposée en dessous changent. */
+/* Un bandeau qui sent la chambre d'enfant : le rose de la marque plein
+   cadre (le reste du site garde son fond clair), des nuages qui glissent, des étoiles qui scintillent, des confettis
+   qui tombent sans se presser. Le texte à gauche, en blanc, monte mot à mot ;
+   la photo à droite vit dans une forme ronde qui respire, entourée de
+   pastilles qui se balancent. Tout est écrit en CSS (`app/globals.css`), et
+   tout s'arrête quand le mouvement réduit est demandé.
 
-/** Repli si la durée de la vidéo n'est pas encore connue : le minuteur et la
-    barre de progression lisent tous les deux cette valeur. */
-const DUREE = 6500;
+   La photo est celle du bandeau d'accueil réglé dans le back-office
+   (`/api/vitrine/bandeau/`) : la première active, telle que la gérante l'a
+   recadrée. Tant qu'il n'y en a pas, la photo livrée avec le site prend la
+   place. */
 
-/** Un halo par séquence : le fond se teinte de ce que l'image a de dominant. */
-const HALOS = ["bg-gold-soft/85", "bg-rose-soft/85"];
-
-/**
- * Une séquence du bandeau.
- *
- * `video` n'existe que pour les séquences livrées avec le site : une photo du
- * back-office n'en a pas, et l'arche montre alors l'image seule.
- */
-type Sequence = {
-  cle: string;
-  video?: string;
+/** La photo du bandeau, et ce qu'on en dit. */
+type Photo = {
   image: string;
   alt: string;
   /** Recadrage CSS, quand le sujet n'est pas au centre. */
   pos: string;
-  tag: string;
 };
 
-const SEQUENCES_LIVREES: Sequence[] = HERO_VIDEOS.map((v) => ({
-  cle: v.src,
-  video: v.src,
-  image: v.poster,
-  alt: v.alt,
-  pos: v.pos,
-  tag: v.tag,
-}));
+const PHOTO_LIVREE: Photo = {
+  image: HERO_VIDEOS[0].poster,
+  alt: HERO_VIDEOS[0].alt,
+  pos: HERO_VIDEOS[0].pos,
+};
+
+/* Les confettis : une position, un retard, une durée, une couleur — tirés une
+   fois pour toutes, pour que le rendu serveur et le rendu client s'accordent.
+   Les couleurs sont celles d'une boîte de craies : jaune, ciel, menthe, blanc. */
+const CONFETTIS = [
+  { x: 6, delai: 0, duree: 13, couleur: "#f0c24a", forme: "rond" },
+  { x: 14, delai: 4, duree: 16, couleur: "#ffffff", forme: "carre" },
+  { x: 23, delai: 9, duree: 12, couleur: "#9ad8f5", forme: "rond" },
+  { x: 31, delai: 2, duree: 15, couleur: "#bfe8c6", forme: "carre" },
+  { x: 40, delai: 7, duree: 14, couleur: "#f0c24a", forme: "carre" },
+  { x: 48, delai: 11, duree: 17, couleur: "#ffffff", forme: "rond" },
+  { x: 57, delai: 1, duree: 13, couleur: "#9ad8f5", forme: "carre" },
+  { x: 66, delai: 6, duree: 15, couleur: "#f0c24a", forme: "rond" },
+  { x: 74, delai: 10, duree: 12, couleur: "#bfe8c6", forme: "rond" },
+  { x: 83, delai: 3, duree: 16, couleur: "#ffffff", forme: "carre" },
+  { x: 91, delai: 8, duree: 14, couleur: "#9ad8f5", forme: "rond" },
+  { x: 96, delai: 5, duree: 18, couleur: "#f0c24a", forme: "carre" },
+] as const;
+
+/* Les étoiles : posées à la main là où elles ne gênent pas la lecture. */
+const ETOILES = [
+  { x: "8%", y: "14%", taille: 18, delai: 0, duree: 3.2 },
+  { x: "30%", y: "8%", taille: 12, delai: 1.1, duree: 2.6 },
+  { x: "46%", y: "22%", taille: 22, delai: 0.6, duree: 3.8 },
+  { x: "12%", y: "78%", taille: 14, delai: 2.0, duree: 3.1 },
+  { x: "60%", y: "88%", taille: 16, delai: 1.5, duree: 2.9 },
+  { x: "92%", y: "10%", taille: 20, delai: 0.3, duree: 3.5 },
+  { x: "86%", y: "70%", taille: 12, delai: 2.4, duree: 2.7 },
+] as const;
+
+/** Un nuage de bande dessinée : trois bosses, une base plate. */
+function Nuage({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg viewBox="0 0 200 110" aria-hidden className={className} style={style} fill="currentColor">
+      <path d="M48 104c-22 0-40-15-40-34 0-17 13-31 31-34C44 18 61 6 80 6c22 0 40 14 46 33 4-2 9-3 14-3 20 0 36 15 36 34s-16 34-36 34H48z" />
+    </svg>
+  );
+}
 
 export function Hero({
-  pieces = [],
   bandeau = [],
-  avis = { count: 0, average: 0 },
-  telephone,
 }: {
-  /** Le catalogue publié : c'est lui qui défile dans la carte flottante. */
-  pieces?: Product[];
-  /** Le bandeau réglé dans le back-office. Vide, on garde les vidéos. */
+  /** Les photos actives du bandeau, dans l'ordre du back-office. Seule la première sert. */
   bandeau?: BandeauApi[];
-  /** La note de la boutique, telle que les avis la donnent. */
-  avis?: { count: number; average: number };
-  /** Le numéro de la boutique, celui des réglages. */
-  telephone?: string;
 }) {
   const reglages = useReglages();
   /* `SplitText` coupe sur « \n » entouré d'espaces. */
   const titre = reglages.hero_titre.split("\n").map((l) => l.trim()).filter(Boolean).join(" \n ");
 
-  const sequences: Sequence[] =
-    bandeau.length > 0
-      ? bandeau.map((b) => ({
-          cle: String(b.id),
-          image: b.url,
-          alt: b.texte_alternatif,
-          pos: b.cadrage || "50% 40%",
-          tag: b.etiquette,
-        }))
-      : SEQUENCES_LIVREES;
-
-  const [actif, setActif] = useState(0);
-  const [pause, setPause] = useState(false);
-
-  /* La carte flottante fait défiler tout le catalogue, une pièce à la fois,
-     sans se caler sur la vidéo : les deux rythmes se superposent au lieu de se
-     répéter. Elle s'arrête au survol et au focus — sinon la pièce change entre
-     le moment où on la vise et celui où on clique, et le lien mène ailleurs. */
-  const [piece, setPiece] = useState(0);
-  const [pieceFigee, setPieceFigee] = useState(false);
-
-  useEffect(() => {
-    if (pieceFigee || pieces.length === 0) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setInterval(() => setPiece((p) => (p + 1) % pieces.length), 3400);
-    return () => window.clearInterval(t);
-  }, [pieceFigee, pieces.length]);
-
-  /* Le catalogue peut avoir rétréci entre deux tours — une fiche dépubliée —
-     et l'index rester au-delà : le modulo évite une carte vide. */
-  const vedette = pieces.length > 0 ? pieces[piece % pieces.length] : undefined;
-
-  /* L'inclinaison est portée par un calque au-dessus de l'arche : posée sur
-     l'arche elle-même, elle se battrait avec l'animation d'entrée, qui écrit
-     déjà dans `transform`. */
-  const inclinaison = useSpotlight<HTMLDivElement>(5);
-
-  /* La séquence dure ce que dure sa vidéo. Tant que le navigateur ne l'a pas
-     annoncée, on retombe sur `DUREE` : le bandeau ne doit jamais se figer en
-     attendant un fichier. */
-  const [duree, setDuree] = useState(DUREE);
-  const videos = useRef<(HTMLVideoElement | null)[]>([]);
-
-  /* Minuteur relancé à chaque changement : cliquer une barre redonne le temps
-     de plein, au lieu d'enchaîner sur le reliquat du tour précédent. */
-  useEffect(() => {
-    if (pause) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (sequences.length < 2) return;
-    const t = window.setTimeout(() => setActif((a) => (a + 1) % sequences.length), duree);
-    return () => window.clearTimeout(t);
-  }, [actif, pause, duree, sequences.length]);
-
-  /* Une seule vidéo joue à la fois : les autres sont remises à zéro, sinon
-     elles reprennent en plein milieu au tour suivant. Le survol met la lecture
-     en pause en même temps que le minuteur. */
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    videos.current.forEach((v, i) => {
-      if (!v) return;
-      if (i !== actif) {
-        v.pause();
-        v.currentTime = 0;
-      } else if (pause) {
-        v.pause();
-      } else {
-        /* Refusée par le navigateur — onglet en arrière-plan, économie de
-           batterie — la lecture n'est pas une erreur : le poster reste. */
-        void v.play().catch(() => {});
+  const premiere = bandeau[0];
+  const photo: Photo = premiere
+    ? {
+        image: premiere.url,
+        alt: premiere.texte_alternatif || premiere.titre || "Le bandeau d'accueil M comme Maman",
+        pos: premiere.cadrage || "50% 40%",
       }
-    });
-  }, [actif, pause]);
+    : PHOTO_LIVREE;
+
+  const contacts = [
+    { canal: "WhatsApp", valeur: reglages.telephone, href: waLink("Bonjour, j'ai une question", reglages.telephone), Icone: IconWhatsApp, pastille: "bg-[#25d366] text-white" },
+    { canal: "TikTok", valeur: `@${TIKTOK}`, href: TIKTOK_URL, Icone: IconTikTok, pastille: "bg-ink text-white" },
+    { canal: "Instagram", valeur: `@${INSTAGRAM}`, href: INSTAGRAM_URL, Icone: IconInstagram, pastille: "bg-accent text-white" },
+  ];
 
   return (
-    <section className="hero-canvas relative isolate overflow-hidden">
-      {/* Fond : une trame de points qui s'éteint sur les bords, deux halos très
-          lents. Rien de tout cela ne doit se remarquer — seulement se sentir. */}
-      <div aria-hidden className="hero-dots pointer-events-none absolute inset-0" />
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="aurora absolute -left-40 top-0 h-[480px] w-[480px] rounded-full bg-rose/15 blur-[120px]" />
-        <div className="aurora absolute -right-32 bottom-0 h-[440px] w-[440px] rounded-full bg-gold/25 blur-[110px] [animation-delay:-11s]" />
+    <section className="relative isolate overflow-hidden bg-[#e24f88] text-white lg:min-h-[min(100svh,880px)]">
+      {/* ------------------------------------------------------- le décor
+          Derrière tout le reste, dans l'ordre : deux halos clairs, les
+          nuages, les étoiles, les confettis. Rien n'attrape le pointeur. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="aurora absolute -left-[12%] -top-[20%] h-[62%] w-[52%] rounded-full bg-white/15 blur-3xl" />
+        <div className="aurora absolute -bottom-[25%] right-[2%] h-[60%] w-[46%] rounded-full bg-gold/25 blur-3xl [animation-delay:-11s]" />
+
+        <Nuage className="anim-cloud absolute left-[2%] top-[9%] w-40 text-white/35 md:w-56" style={{ "--dur": "20s" } as React.CSSProperties} />
+        <Nuage className="anim-cloud absolute right-[6%] top-[4%] w-28 text-white/25 md:w-40" style={{ "--dur": "26s", animationDelay: "-9s" } as React.CSSProperties} />
+        <Nuage className="anim-cloud absolute bottom-[8%] left-[38%] w-32 text-white/20 md:w-48" style={{ "--dur": "23s", animationDelay: "-15s" } as React.CSSProperties} />
+
+        {ETOILES.map((e, i) => (
+          <span
+            key={i}
+            className="anim-twinkle absolute block text-gold"
+            style={{ left: e.x, top: e.y, width: e.taille, height: e.taille, "--dur": `${e.duree}s`, "--delay": `${e.delai}s` } as React.CSSProperties}
+          >
+            <IconStar className="h-full w-full" />
+          </span>
+        ))}
+
+        {CONFETTIS.map((c, i) => (
+          <span
+            key={i}
+            className={`anim-confetti absolute top-0 block ${c.forme === "rond" ? "h-2.5 w-2.5 rounded-full" : "h-3 w-2 rounded-[2px]"}`}
+            style={{ left: `${c.x}%`, background: c.couleur, "--dur": `${c.duree}s`, "--delay": `${c.delai}s` } as React.CSSProperties}
+          />
+        ))}
       </div>
 
-      <div className="relative mx-auto grid max-w-[1400px] gap-12 px-5 pb-16 pt-12 md:px-8 md:pt-14 lg:min-h-[calc(100svh-118px)] lg:grid-cols-12 lg:items-center lg:gap-0 lg:px-10 lg:pb-0 lg:pt-0">
-        {/* --------------------------------------------------------- le texte
-            Les deux colonnes partagent la colonne 7 : le titre passe devant
-            l'arche, et le bandeau gagne la profondeur qu'une grille sagement
-            découpée n'a jamais. */}
-        <div className="relative z-20 lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:py-16">
-          {reglages.hero_pastille && (
-          <span className="anim-hero inline-flex items-center gap-2.5 rounded-full border border-line bg-white/75 px-4 py-2 text-[11.5px] font-bold backdrop-blur-sm sm:text-xs">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose" />
-            </span>
-            {reglages.hero_pastille}
-          </span>
-          )}
-
-          <h1 className="mt-6 max-w-[16ch] text-[clamp(2.4rem,5.6vw,4.6rem)] font-extrabold leading-[.94] tracking-[-.045em] sm:mt-7">
-            <SplitText key={titre} text={titre} delay={120} />
+      <div className="relative mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-10 px-5 pb-20 pt-10 md:px-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-6 lg:px-10 lg:py-16 lg:pr-28">
+        {/* --------------------------------------------------------- le texte */}
+        <div className="order-2 flex flex-col lg:order-1">
+          <h1 className="max-w-[16ch] font-serif text-[clamp(2.35rem,5.6vw,4.6rem)] font-medium leading-[1.02] tracking-[-.02em] text-white">
+            <SplitText key={titre} text={titre} delay={200} />
             <br />
-            {/* Le trait est posé hors du masque : `word-mask` coupe ce qui
-                dépasse, il l'aurait avalé. */}
-            <span className="relative inline-block">
-              <span className="word-mask">
-                <span
-                  className="bg-linear-to-r from-rose via-[#ff7fae] to-gold bg-clip-text text-transparent"
-                  style={{ animationDelay: "540ms" }}
-                >
-                  {reglages.hero_accent}
-                </span>
-              </span>
-              <svg
-                viewBox="0 0 300 16"
-                fill="none"
-                aria-hidden
-                className="pointer-events-none absolute -bottom-2.5 left-0 w-full sm:-bottom-4"
-              >
-                <defs>
-                  <linearGradient id="trait-hero" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0" stopColor="#e0417f" />
-                    <stop offset="1" stopColor="#f0c24a" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M4 11C50 4.2 108 3 154 6.4c44 3.2 92 4.6 142 1.4"
-                  stroke="url(#trait-hero)"
-                  strokeWidth="4.5"
-                  strokeLinecap="round"
-                  className="anim-draw"
-                  style={{ "--len": 320 } as React.CSSProperties}
-                />
-              </svg>
-            </span>
+            <SplitText
+              key={`${titre}-${reglages.hero_accent}`}
+              text={reglages.hero_accent}
+              delay={720}
+              className="font-medium italic text-gold"
+            />
           </h1>
 
-          {/* `mt-11` et non `mt-8` : le trait dessiné descend sous la dernière
-              ligne du titre, il lui faut cet air-là. */}
-          <p className="anim-hero mt-11 max-w-[46ch] text-[15px] leading-[1.7] text-muted text-pretty sm:text-base [animation-delay:760ms]">
-            {reglages.hero_chapo}
-          </p>
+          {/* Le trait se dessine sous le titre, à main levée. Un bloc à part :
+              le mot d'accent peut tenir sur deux lignes au doigt, un trait
+              accroché au mot ne saurait pas où se mettre. */}
+          <svg
+            viewBox="0 0 320 14"
+            preserveAspectRatio="none"
+            aria-hidden
+            className="mt-2 h-3 w-[min(60%,320px)]"
+          >
+            <path
+              d="M3 10 C 60 2, 120 12, 180 6 S 290 3, 317 9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="5"
+              strokeLinecap="round"
+              className="anim-draw text-white/90"
+              style={{ "--len": 330 } as React.CSSProperties}
+            />
+          </svg>
 
-          <div className="anim-hero mt-8 flex flex-col gap-3 sm:flex-row sm:items-center [animation-delay:820ms]">
-            <Magnetic className="w-full sm:w-auto">
-              <Link
-                href="/boutique"
-                className="shine group flex items-center justify-center gap-2.5 rounded-full bg-rose px-8 py-4 text-[14.5px] font-bold text-white shadow-[0_18px_42px_-16px_rgba(224,65,127,.85)]"
-              >
-                Découvrir la boutique
-                <IconArrow className="h-4 w-4 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
-              </Link>
-            </Magnetic>
-            <Magnetic strength={7} className="w-full sm:w-auto">
+          {/* Les trois façons de joindre la boutique, puis le magasin : à même le
+              bandeau, sans légende. Chaque pastille arrive avec un temps de
+              retard sur la précédente et remue quand on la touche. */}
+          <div id="contact" className="mt-9 flex flex-wrap gap-2.5 scroll-mt-24">
+            {contacts.map((c, i) => (
               <a
-                href={waLink("Bonjour, je voudrais un conseil de taille", telephone)}
+                key={c.canal}
+                href={c.href}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-2.5 rounded-full border border-ink/15 bg-white/70 px-7 py-4 text-[14.5px] font-bold backdrop-blur-sm transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-cream"
+                aria-label={`${c.canal} : ${c.valeur}`}
+                className="anim-hero wobble flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-1.5 pr-4 text-[13.5px] font-semibold text-ink shadow-[0_10px_30px_-14px_rgba(36,26,32,.45)] transition-transform duration-400 ease-soft hover:-translate-y-1"
+                style={{ animationDelay: `${900 + i * 120}ms` }}
               >
-                <IconWhatsApp className="h-[18px] w-[18px] text-[#25d366]" />
-                Contactez-nous sur WhatsApp
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${c.pastille}`}>
+                  <c.Icone className="h-4 w-4" />
+                </span>
+                {c.valeur}
               </a>
-            </Magnetic>
+            ))}
           </div>
 
-          {/* Ni le nombre d'avis ni la note ne sont écrits ici : ils viennent
-              des avis déposés. Tant qu'aucune cliente n'a écrit, le bloc
-              disparaît — même principe que le compte à rebours, qui s'efface
-              plutôt que d'afficher 00:00:00. */}
-          {avis.count > 0 && (
-          <div className="anim-hero mt-9 flex flex-wrap items-center gap-x-4 gap-y-3 [animation-delay:900ms]">
-            <div className="flex -space-x-3">
-              {HERO_VIGNETTES.map((src, i) => (
-                <span
-                  key={src}
-                  className="relative h-11 w-11 overflow-hidden rounded-full ring-3 ring-cream"
-                  style={{ zIndex: HERO_VIGNETTES.length - i }}
-                >
-                  <Image src={src} alt="" fill sizes="44px" className="object-cover" />
-                </span>
-              ))}
-            </div>
-            <div>
-              <div className="text-[13px] tracking-[3px] text-gold">
-                {"★".repeat(Math.round(avis.average))}
-                <span className="text-gold/25">{"★".repeat(5 - Math.round(avis.average))}</span>
-              </div>
-              <div className="mt-0.5 text-[12.5px] font-medium text-muted">
-                <CountUp to={avis.count} /> avis de mamans ·{" "}
-                {String(avis.average).replace(".", ",")} sur 5
-              </div>
-            </div>
-          </div>
-          )}
+          <a
+            href={MAPS_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="group anim-hero mt-5 inline-flex items-center gap-2 self-start text-[13.5px] font-semibold text-white/90 [animation-delay:1300ms] hover:text-white"
+          >
+            <IconPin className="h-4 w-4 shrink-0 text-gold" />
+            {ADRESSE}
+            <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+          </a>
+
         </div>
 
-        {/* --------------------------------------------------------- l'arche
-            Une seule photo à la fois, cadrée en arche : la forme fait le
-            travail que trois visuels empilés faisaient mal. Les photos se
-            relaient toutes seules, et s'arrêtent dès qu'on s'en approche. */}
-        <div
-          className="relative z-10 lg:col-span-6 lg:col-start-7 lg:row-start-1 lg:py-16"
-          onPointerEnter={() => setPause(true)}
-          onPointerLeave={() => setPause(false)}
-          onFocusCapture={() => setPause(true)}
-          onBlurCapture={() => setPause(false)}
-        >
-          <div className="relative mx-auto w-full max-w-[420px] lg:ml-auto lg:mr-0 lg:max-w-[480px]">
-            <div
-              aria-hidden
-              className={`absolute -inset-5 rounded-t-full blur-2xl transition-colors duration-1000 ${
-                HALOS[actif % HALOS.length]
-              }`}
-            />
+        {/* --------------------------------------------------------- la photo
+            Dans une forme ronde qui respire, cernée d'un trait blanc, posée
+            sur son ombre. Elle arrive en grossissant, avec un petit rebond,
+            puis traîne un peu derrière le défilement. Autour, deux pastilles
+            se balancent : une étoile, un coeur. */}
+        <div className="order-1 lg:order-2">
+          <Parallax speed={18} className="relative mx-auto w-[76%] max-w-[520px] sm:w-full">
+            <div className="anim-arrive relative aspect-[4/5]">
+              {/* Le disque clair derrière la photo, décalé : il la détache du fond. */}
+              <div aria-hidden className="anim-morph absolute -inset-3 bg-white/20 [animation-delay:-7s]" />
 
-            <div ref={inclinaison} className="tilt">
-              <div className="anim-arch relative aspect-4/5 overflow-hidden rounded-t-[999px] rounded-b-[32px] bg-stone shadow-[0_60px_110px_-55px_rgba(36,26,32,.6)] ring-1 ring-ink/5">
-                {/* Les vidéos restent empilées : un fondu enchaîné ne peut pas
-                    se faire si l'ancienne est démontée avant la nouvelle. Muettes
-                    et `playsInline`, seules conditions pour qu'un mobile accepte
-                    de les lancer sans geste de l'utilisateur. */}
-                {sequences.map((s, i) =>
-                  s.video === undefined ? (
-                    /* Une photo réglée dans le back-office : pas de vidéo à
-                       lire, l'arche la montre telle quelle. `img` natif plutôt
-                       que `next/image` — l'adresse vient de la photothèque et
-                       peut pointer n'importe où. */
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={s.cle}
-                      src={s.image}
-                      srcSet={srcSetWeb(s.image)}
-                      sizes="(min-width: 1024px) 480px, 420px"
-                      alt={i === actif ? s.alt : ""}
-                      aria-hidden={i !== actif}
-                      style={{ objectPosition: s.pos }}
-                      className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-[1400ms] ease-soft ${
-                        i === actif ? "scale-100 opacity-100" : "scale-[1.06] opacity-0"
-                      }`}
-                    />
-                  ) : (
-                  <video
-                    key={s.cle}
-                    ref={(el) => {
-                      videos.current[i] = el;
-                    }}
-                    src={s.video}
-                    poster={s.image}
-                    aria-label={i === actif ? s.alt : undefined}
-                    aria-hidden={i !== actif}
-                    muted
-                    loop
-                    playsInline
-                    preload={i === 0 ? "auto" : "metadata"}
-                    onLoadedMetadata={(e) => {
-                      /* La séquence dure ce que dure sa vidéo, à la seconde près. */
-                      if (i !== actif) return;
-                      const d = e.currentTarget.duration;
-                      if (Number.isFinite(d) && d > 0) setDuree(d * 1000);
-                    }}
-                    style={{ objectPosition: s.pos }}
-                    className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-[1400ms] ease-soft ${
-                      i === actif ? "scale-100 opacity-100" : "scale-[1.06] opacity-0"
-                    }`}
-                  />
-                  ),
-                )}
-
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-linear-to-t from-ink/12 via-transparent to-transparent"
+              <div className="anim-morph relative h-full w-full overflow-hidden border-[6px] border-white shadow-[0_40px_80px_-30px_rgba(36,26,32,.55)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.image}
+                  srcSet={srcSetWeb(photo.image)}
+                  sizes="(min-width: 1024px) 45vw, 100vw"
+                  alt={photo.alt}
+                  fetchPriority="high"
+                  style={{ objectPosition: photo.pos }}
+                  className="anim-zoom h-full w-full object-cover"
                 />
               </div>
-            </div>
 
-            {/* Le sceau de la boutique, calé dans le bas de l'arche et débordant
-                sur la droite. Il reste dans la hauteur de la photo : posé plus
-                bas, il venait toucher les barres. */}
-            {reglages.hero_sceau.trim() && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute bottom-5 -right-5 z-20 hidden h-[112px] w-[112px] place-items-center rounded-full bg-ink text-cream shadow-[0_22px_46px_-20px_rgba(36,26,32,.75)] sm:grid lg:-right-7"
-            >
-              <svg viewBox="0 0 100 100" className="anim-seal absolute inset-0 h-full w-full">
-                <defs>
-                  <path
-                    id="sceau-hero"
-                    d="M50 50 m-39 0 a39 39 0 1 1 78 0 a39 39 0 1 1 -78 0"
-                  />
-                </defs>
-                <text
-                  className="fill-cream/75"
-                  style={{ fontSize: 8.6, fontWeight: 700, letterSpacing: ".1em" }}
+              {/* Les pastilles. `Magnetic` les attire vers le pointeur ; au
+                  repos elles se balancent chacune à son rythme. */}
+              <Magnetic className="absolute -right-4 top-[6%] sm:-right-6">
+                <div
+                  className="anim-bob grid h-14 w-14 place-items-center rounded-full bg-gold text-ink shadow-[0_18px_40px_-18px_rgba(36,26,32,.5)]"
+                  style={{ "--dur": "4.2s", "--delay": "-1.5s" } as React.CSSProperties}
                 >
-                  <textPath href="#sceau-hero">
-                    {reglages.hero_sceau.trim().replace(/\s*·?\s*$/, " · ")}
-                  </textPath>
-                </text>
-              </svg>
-              <span className="text-center text-[10px] font-extrabold uppercase leading-[1.15] tracking-[.08em]">
-                {reglages.hero_sceau_centre}
-                <span className="mt-0.5 block text-[8.5px] font-bold text-cream/60">
-                  {reglages.hero_sceau_legende}
-                </span>
-              </span>
-            </div>
+                  <IconStar className="h-6 w-6" />
+                </div>
+              </Magnetic>
 
-            )}
-
-            {/* Le catalogue qui passe, une pièce à la fois. */}
-            {vedette && (
-              <div
-                className="anim-float absolute -left-3 bottom-6 z-20 hidden sm:block lg:-left-16 lg:bottom-10"
-                onPointerEnter={() => setPieceFigee(true)}
-                onPointerLeave={() => setPieceFigee(false)}
-                onFocusCapture={() => setPieceFigee(true)}
-                onBlurCapture={() => setPieceFigee(false)}
-              >
-                <Link
-                  key={vedette.id}
-                  href={`/p/${vedette.slug}`}
-                  className="anim-fade-up group flex w-[252px] items-center gap-3 rounded-2xl border border-line bg-cream/95 p-2.5 shadow-[0_30px_60px_-28px_rgba(36,26,32,.5)] backdrop-blur"
+              <Magnetic className="absolute -right-5 bottom-[10%] sm:-right-7">
+                <div
+                  className="anim-bob grid h-16 w-16 place-items-center rounded-full bg-white text-accent shadow-[0_18px_40px_-18px_rgba(36,26,32,.5)]"
+                  style={{ "--dur": "6.3s", "--delay": "-3s" } as React.CSSProperties}
                 >
-                  <span className="relative h-14 w-12 shrink-0 overflow-hidden rounded-xl bg-stone">
-                    <Image src={vedette.image} alt="" fill sizes="48px" className="object-cover" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-bold uppercase tracking-[.14em] text-muted">
-                      Dans la boutique
-                    </span>
-                    <span className="mt-0.5 block truncate text-[13px] font-semibold">
-                      {vedette.name}
-                    </span>
-                    <span className="block text-[13px] font-extrabold text-rose">
-                      {formatXOF(vedette.price)}
-                    </span>
-                  </span>
-                  <IconArrow className="h-4 w-4 shrink-0 -translate-x-1 text-muted opacity-0 transition-all duration-300 ease-soft group-hover:translate-x-0 group-hover:opacity-100" />
-                </Link>
-              </div>
-            )}
-          </div>
-
+                  <IconHeart className="anim-beat h-7 w-7" />
+                </div>
+              </Magnetic>
+            </div>
+          </Parallax>
         </div>
       </div>
+
     </section>
   );
 }

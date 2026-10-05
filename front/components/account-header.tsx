@@ -85,13 +85,13 @@ export function AccountHeader({
       {/* ------------------------------------------------------ en-tête sombre */}
       <section className="noise anim-fade-up relative overflow-hidden rounded-[26px] bg-ink px-6 py-8 text-white sm:px-9 md:rounded-[30px]">
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="aurora absolute -left-16 -top-10 h-72 w-72 rounded-full bg-rose/40 blur-[90px]" />
+          <div className="aurora absolute -left-16 -top-10 h-72 w-72 rounded-full bg-accent/40 blur-[90px]" />
           <div className="aurora absolute -right-12 bottom-0 h-64 w-64 rounded-full bg-gold/25 blur-[90px] [animation-delay:-11s]" />
         </div>
 
         <div className="relative">
           <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-rose text-base font-extrabold sm:h-16 sm:w-16 sm:text-lg">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-accent text-base font-extrabold sm:h-16 sm:w-16 sm:text-lg">
               {initiales(account.name)}
             </span>
             <div className="min-w-0 flex-1">

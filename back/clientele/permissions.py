@@ -36,7 +36,7 @@ class EstProprietaire(BasePermission):
     """
     L'objet appartient à la personne connectée.
 
-    Vaut pour une adresse, un favori, une commande, un avis : tout ce qui porte
+    Vaut pour une adresse, un favori, une commande : tout ce qui porte
     un champ `cliente`, `auteur` ou `utilisateur`.
     """
 

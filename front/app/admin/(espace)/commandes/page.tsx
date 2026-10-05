@@ -289,7 +289,7 @@ function DetailCommande({
                   <li key={s} className="flex items-center gap-2.5 text-[13px]">
                     <span
                       className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] ${
-                        passe ? "bg-rose text-white" : "bg-stone text-muted"
+                        passe ? "bg-accent text-white" : "bg-stone text-muted"
                       }`}
                     >
                       {passe ? <IconCheck className="h-3 w-3" /> : i + 1}
@@ -316,7 +316,7 @@ function DetailCommande({
             )}
             {commande.status === "annulee" && (
               <>
-                <p className="rounded-2xl bg-rose-soft px-4 py-3 text-[12.5px] leading-relaxed text-rose-deep">
+                <p className="rounded-2xl bg-accent-soft px-4 py-3 text-[12.5px] leading-relaxed text-accent-deep">
                   Commande annulée.
                 </p>
                 {/* Une annulation faite par erreur se rattrape, tant que le

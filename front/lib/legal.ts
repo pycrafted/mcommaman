@@ -25,7 +25,7 @@ En cas d'indisponibilité constatée après commande, la cliente est prévenue s
     title: "Mentions légales",
     required: true,
     body: `Éditeur
-M comme Maman — commerce de détail d'articles d'habillement pour enfants.
+M comme Maman, commerce de détail d'articles d'habillement pour enfants.
 Dakar, Sénégal.
 Téléphone : +221 76 208 02 02
 Courriel : mamand202122@gmail.com

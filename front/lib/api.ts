@@ -266,6 +266,8 @@ export type FacettesApi = {
   sous_categories: Record<string, number>;
   /** Les tailles encore en stock, dans l'ordre du guide. */
   tailles: { valeur: string; nombre: number }[];
+  /** Les coloris encore en stock, avec leur teinte. */
+  coloris: { nom: string; hexa: string; nombre: number }[];
 };
 
 /** Un produit tel que sa fiche le décrit. */
@@ -454,47 +456,6 @@ export type CampagneApi = {
   produit_slug: string;
   condition: "premiere" | "montant_minimum";
   montant_minimum: number;
-};
-
-/* -------------------------------------------------------------------- avis */
-
-export type AvisApi = {
-  id: number;
-  note: number;
-  commentaire: string;
-  auteur_nom: string;
-  /** L'article noté, ou `null` pour un avis sur la boutique entière. */
-  produit: number | null;
-  produit_nom: string;
-  produit_slug: string;
-  /** Vrai pour l'autrice connectée : c'est ce qui ouvre modification et retrait. */
-  est_le_mien: boolean;
-  commande: number;
-  /** Un avis n'apparaît publiquement qu'une fois relu. Son autrice, elle, le
-      voit dans tous les états — sans quoi il disparaîtrait sous ses yeux. */
-  etat: "en_attente" | "publie" | "refuse";
-  ecrit_le: string;
-};
-
-/** Le résumé affiché sous une fiche : combien d'avis, quelle moyenne. */
-export type AgregatAvisApi = {
-  nombre: number;
-  moyenne: number;
-  /** Le nombre d'avis par note, de « 1 » à « 5 ». */
-  repartition: Record<string, number>;
-};
-
-/** Ce qu'une cliente peut encore noter : ses achats livrés, non déjà notés. */
-export type AvisPossibleApi = {
-  /** L'identifiant de la commande : c'est lui qu'il faut renvoyer pour écrire. */
-  commande: number;
-  /** Sa référence, celle qu'on montre à la cliente. */
-  commande_reference: string;
-  livree_le: string;
-  produit: number | null;
-  nom_produit: string;
-  slug_produit: string;
-  image: string;
 };
 
 /* ------------------------------------------------------------------- panier */

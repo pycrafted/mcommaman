@@ -50,7 +50,7 @@ export function versProduit(brut: ProduitCarteApi & Partial<ProduitApi>): Produc
   };
 }
 
-export type Tri = "nouveautes" | "prix-croissant" | "prix-decroissant" | "nom";
+export type Tri = "nouveautes" | "prix-croissant" | "prix-decroissant" | "nom" | "promotion";
 
 export type FiltresCatalogue = {
   univers?: Univers;
@@ -60,6 +60,8 @@ export type FiltresCatalogue = {
   sous?: string[];
   /** Des tailles encore en stock ; plusieurs s'additionnent. */
   tailles?: string[];
+  /** Des coloris encore en stock ; plusieurs s'additionnent. */
+  coloris?: string[];
   /** Bornes du prix du jour, remise comprise. */
   prixMin?: number;
   prixMax?: number;
@@ -79,6 +81,7 @@ function parametres(filtres: FiltresCatalogue): URLSearchParams {
   if (filtres.rayon) params.set("rayon", filtres.rayon);
   if (filtres.sous?.length) params.set("sous", filtres.sous.join(","));
   if (filtres.tailles?.length) params.set("taille", filtres.tailles.join(","));
+  if (filtres.coloris?.length) params.set("coloris", filtres.coloris.join(","));
   if (filtres.prixMin !== undefined) params.set("prix_min", String(filtres.prixMin));
   if (filtres.prixMax !== undefined) params.set("prix_max", String(filtres.prixMax));
   if (filtres.promo) params.set("promo", "1");
@@ -130,9 +133,10 @@ export type Facettes = {
   prixMax: number;
   sousCategories: Record<string, number>;
   tailles: { valeur: string; nombre: number }[];
+  coloris: { nom: string; hexa: string; nombre: number }[];
 };
 
-const FACETTES_VIDES: Facettes = { total: 0, prixMin: 0, prixMax: 0, sousCategories: {}, tailles: [] };
+const FACETTES_VIDES: Facettes = { total: 0, prixMin: 0, prixMax: 0, sousCategories: {}, tailles: [], coloris: [] };
 
 /**
  * De quoi dessiner les filtres : les décomptes, les tailles, les bornes de prix.
@@ -153,6 +157,7 @@ export async function lireFacettes(filtres: FiltresCatalogue = {}): Promise<Face
       prixMax: brut.prix_max,
       sousCategories: brut.sous_categories,
       tailles: brut.tailles,
+      coloris: brut.coloris ?? [],
     };
   } catch {
     return FACETTES_VIDES;
@@ -235,15 +240,16 @@ export type LienRayon = {
 /**
  * L'adresse d'une catégorie dans la boutique.
  *
- * Toutes les catégories — Filles, Garçons, Coin Maman… — vivent sur la même
- * page : `?cat=` nomme la catégorie, `&sous=` une de ses sous-catégories. On
+ * Toutes les catégories — Filles, Garçons, Coin Maman… — vivent sur la page
+ * d'accueil, qui est la seule page de pièces : `?cat=` nomme la catégorie,
+ * `&sous=` une de ses sous-catégories, et l'ancre descend aux pièces. On
  * passe par les slugs et non par les noms, qui peuvent se répéter d'une
  * catégorie à l'autre.
  */
 export function lienCategorie(cat: string, sous?: string): string {
   const params = new URLSearchParams({ cat });
   if (sous) params.set("sous", sous);
-  return `/boutique?${params}`;
+  return `/?${params}#boutique`;
 }
 
 /**

@@ -20,7 +20,7 @@ const dateCourte = (iso: string) =>
 
 
 const SELECT =
-  "w-full rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3.5 text-sm outline-none transition-colors focus:border-rose";
+  "w-full rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3.5 text-sm outline-none transition-colors focus:border-accent";
 
 export function AccountProfile() {
   const router = useRouter();
@@ -157,7 +157,7 @@ export function AccountProfile() {
       <AccountHeader />
 
       <div className="mb-8">
-        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Espace client</span>
+        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Espace client</span>
         <h2 className="mt-3 text-[clamp(1.55rem,3.4vw,2.1rem)] font-extrabold leading-[1.08] tracking-[-.035em]">
           Mon profil
         </h2>
@@ -176,12 +176,12 @@ export function AccountProfile() {
             {orders.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-line px-6 py-8 text-center">
                 <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-full bg-mist">
-                  <IconPackage className="h-5 w-5 text-rose" />
+                  <IconPackage className="h-5 w-5 text-accent" />
                 </span>
                 <p className="text-[13.5px] text-muted">Aucune commande pour le moment.</p>
                 <Link
-                  href="/boutique"
-                  className="mt-4 inline-block rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3 text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
+                  href="/"
+                  className="mt-4 inline-block rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3 text-[13.5px] font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
                 >
                   Découvrir la boutique
                 </Link>
@@ -215,7 +215,7 @@ export function AccountProfile() {
                             {dateCourte(commande.createdAt)} · {formatXOF(commande.total)}
                           </p>
                         </div>
-                        <IconArrow className="h-4 w-4 shrink-0 text-muted transition-transform duration-300 ease-soft group-hover:translate-x-1 group-hover:text-rose" />
+                        <IconArrow className="h-4 w-4 shrink-0 text-muted transition-transform duration-300 ease-soft group-hover:translate-x-1 group-hover:text-accent" />
                       </Link>
                     </li>
                   ))}
@@ -223,7 +223,7 @@ export function AccountProfile() {
 
                 <Link
                   href="/commandes"
-                  className="group mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-rose"
+                  className="group mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-accent"
                 >
                   Voir les {orders.length} commande{orders.length > 1 ? "s" : ""} et leur suivi
                   <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
@@ -271,7 +271,7 @@ export function AccountProfile() {
                 type="button"
                 onClick={enregistrerInfos}
                 disabled={!modifie}
-                className="inline-flex items-center gap-2 rounded-full bg-rose px-6 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
               >
                 <IconCheck className="h-4 w-4" />
                 Enregistrer
@@ -314,22 +314,22 @@ export function AccountProfile() {
                 <li
                   key={entree.id}
                   className={`rounded-2xl border-[1.5px] p-4 transition-colors ${
-                    entree.isDefault ? "border-rose bg-rose-soft/60" : "border-line"
+                    entree.isDefault ? "border-accent bg-accent-soft/60" : "border-line"
                   }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 text-[13.5px] font-bold">
-                        <IconPin className="h-4 w-4 shrink-0 text-rose" />
+                        <IconPin className="h-4 w-4 shrink-0 text-accent" />
                         {entree.label}
                         {entree.isDefault && (
-                          <span className="rounded-full bg-rose px-2 py-0.5 text-[10.5px] font-bold text-white">
+                          <span className="rounded-full bg-accent px-2 py-0.5 text-[10.5px] font-bold text-white">
                             par défaut
                           </span>
                         )}
                       </p>
                       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-                        {entree.address} — {entree.city} ·{" "}
+                        {entree.address}, {entree.city} ·{" "}
                         {ZONES.find((z) => z.key === entree.zone)?.t ?? ZONES[0].t}
                       </p>
                       {entree.notes && (
@@ -342,7 +342,7 @@ export function AccountProfile() {
                         <button
                           type="button"
                           onClick={() => setDefaultAddress(entree.id)}
-                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:text-rose"
+                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:text-accent"
                         >
                           <IconStar className="h-3.5 w-3.5" />
                           Par défaut
@@ -352,7 +352,7 @@ export function AccountProfile() {
                         type="button"
                         onClick={() => removeAddress(entree.id)}
                         aria-label={`Supprimer l'adresse ${entree.label}`}
-                        className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:text-rose-deep"
+                        className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:text-accent-deep"
                       >
                         <IconTrash className="h-4 w-4" />
                       </button>
@@ -426,14 +426,14 @@ export function AccountProfile() {
                 />
 
                 {erreurAdresse && (
-                  <p className="mt-4 rounded-xl bg-rose-soft px-4 py-2.5 text-[12.5px] font-semibold text-rose-deep">
+                  <p className="mt-4 rounded-xl bg-accent-soft px-4 py-2.5 text-[12.5px] font-semibold text-accent-deep">
                     {erreurAdresse}
                   </p>
                 )}
                 <button
                   type="submit"
                   disabled={envoiAdresse}
-                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-rose px-6 py-3.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:opacity-60"
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5 disabled:opacity-60"
                 >
                   <IconCheck className="h-4 w-4" />
                   {envoiAdresse ? "Enregistrement…" : "Enregistrer l'adresse"}
@@ -443,7 +443,7 @@ export function AccountProfile() {
               <button
                 type="button"
                 onClick={() => setFormulaireAdresse(true)}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-[#e0d3d9] px-6 py-3.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-rose hover:text-rose"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-[#e0d3d9] px-6 py-3.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-accent hover:text-accent"
               >
                 <IconPlus className="h-4 w-4" />
                 Ajouter une adresse
@@ -475,7 +475,7 @@ export function AccountProfile() {
               {messageMotDePasse && (
                 <p
                   className={`text-[12.5px] font-semibold ${
-                    messageMotDePasse.ok ? "text-[#3f8a5f]" : "text-rose-deep"
+                    messageMotDePasse.ok ? "text-[#3f8a5f]" : "text-accent-deep"
                   }`}
                 >
                   {messageMotDePasse.texte}
@@ -484,7 +484,7 @@ export function AccountProfile() {
 
               <button
                 type="submit"
-                className="rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
+                className="rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-[13.5px] font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
               >
                 Modifier le mot de passe
               </button>
@@ -494,7 +494,7 @@ export function AccountProfile() {
               <button
                 type="button"
                 onClick={() => setConfirmeSuppression(true)}
-                className="text-[13px] text-muted underline underline-offset-4 transition-colors hover:text-rose-deep"
+                className="text-[13px] text-muted underline underline-offset-4 transition-colors hover:text-accent-deep"
               >
                 Supprimer mon compte
               </button>

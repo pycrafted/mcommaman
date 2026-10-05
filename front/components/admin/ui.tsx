@@ -44,7 +44,7 @@ export function PageHeader({
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {eyebrow && (
-          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[.16em] text-rose">
+          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[.16em] text-accent">
             {eyebrow}
           </span>
         )}
@@ -88,11 +88,11 @@ export function Section({
 /* ------------------------------------------------------------------ */
 
 const VARIANTES = {
-  rose: "bg-rose text-white hover:-translate-y-0.5",
+  rose: "bg-accent text-white hover:-translate-y-0.5",
   ink: "bg-ink text-white hover:-translate-y-0.5",
-  contour: "border-[1.5px] border-[#e5d9de] bg-white text-ink hover:border-rose/40",
+  contour: "border-[1.5px] border-[#e5d9de] bg-white text-ink hover:border-accent/40",
   ghost: "text-muted hover:text-ink",
-  danger: "border-[1.5px] border-rose-deep/30 bg-white text-rose-deep hover:bg-rose-soft",
+  danger: "border-[1.5px] border-accent-deep/30 bg-white text-accent-deep hover:bg-accent-soft",
 };
 
 export function Button({
@@ -391,7 +391,7 @@ export function Table<T>({
 /* ------------------------------------------------------------------ */
 
 const CHAMP =
-  "w-full rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors placeholder:text-[#b3a5aa] focus:border-rose";
+  "w-full rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors placeholder:text-[#b3a5aa] focus:border-accent";
 
 export function Field({
   label,
@@ -496,7 +496,7 @@ export function Toggle({
         onChange={(e) => onChange(e.target.checked)}
         className="peer sr-only"
       />
-      <span className="mt-0.5 grid h-6 w-10 shrink-0 grid-cols-[1fr] items-center rounded-full bg-stone p-0.5 transition-colors duration-300 peer-checked:bg-rose peer-focus-visible:ring-2 peer-focus-visible:ring-rose/40">
+      <span className="mt-0.5 grid h-6 w-10 shrink-0 grid-cols-[1fr] items-center rounded-full bg-stone p-0.5 transition-colors duration-300 peer-checked:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40">
         <span
           className={`h-5 w-5 rounded-full bg-white transition-transform duration-300 ease-back ${
             checked ? "translate-x-4" : ""
@@ -598,7 +598,7 @@ export function GrilleMedias({
               type="button"
               onClick={() => onChoisir(media)}
               title={media.name}
-              className={`group relative aspect-3/4 overflow-hidden rounded-2xl bg-stone bg-cover bg-center ring-offset-2 transition-all hover:ring-2 hover:ring-rose ${
+              className={`group relative aspect-3/4 overflow-hidden rounded-2xl bg-stone bg-cover bg-center ring-offset-2 transition-all hover:ring-2 hover:ring-accent ${
                 estChoisi?.(media) ? "ring-2 ring-ink" : ""
               }`}
               style={{ backgroundImage: `url(${media.src})` }}
@@ -607,7 +607,7 @@ export function GrilleMedias({
                 {media.name}
               </span>
               {estChoisi?.(media) && (
-                <span className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-rose text-white">
+                <span className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-accent text-white">
                   <IconCheck className="h-3 w-3" />
                 </span>
               )}
@@ -851,7 +851,7 @@ export function BarChart({
         <div key={`${p.label}-${i}`} className="group/bar flex min-w-0 flex-1 flex-col items-center gap-2">
           <div className="relative flex w-full flex-1 items-end">
             <div
-              className="w-full rounded-t-md bg-rose/25 transition-colors duration-300 group-hover/bar:bg-rose"
+              className="w-full rounded-t-md bg-accent/25 transition-colors duration-300 group-hover/bar:bg-accent"
               style={{
                 height: `${Math.max(2, (p.value / max) * 100)}%`,
                 animation: `rise-scale .5s ${i * 22}ms var(--ease-soft) backwards`,

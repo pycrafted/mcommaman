@@ -330,7 +330,7 @@ export default function Page() {
                           type="button"
                           disabled={epuisee}
                           onClick={() => ajouter(v)}
-                          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[12.5px] font-semibold transition-colors hover:border-rose hover:text-rose disabled:cursor-not-allowed disabled:opacity-40"
+                          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[12.5px] font-semibold transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <IconPlus className="h-3.5 w-3.5" />
                           {option(v) || "Article"}
@@ -381,7 +381,7 @@ export default function Page() {
                       type="button"
                       onClick={() => setLignes((c) => c.filter((x) => x.variante !== l.variante))}
                       aria-label={`Retirer ${l.produit}`}
-                      className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-rose-soft hover:text-rose-deep"
+                      className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-accent-soft hover:text-accent-deep"
                     >
                       <IconTrash className="h-4 w-4" />
                     </button>
@@ -408,7 +408,7 @@ export default function Page() {
             {devis?.cliente_nom && (
               <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#eaf6ef] px-3 py-1.5 text-[12px] font-semibold text-[#256b46]">
                 <IconCheck className="h-3.5 w-3.5" />
-                Compte trouvé : {devis.cliente_nom} — la commande y sera rattachée.
+                Compte trouvé : {devis.cliente_nom}, la commande y sera rattachée.
               </p>
             )}
           </section>
@@ -497,7 +497,7 @@ export default function Page() {
             </p>
           )}
           {erreur && (
-            <p className="mt-3 rounded-xl bg-rose-soft px-3.5 py-2.5 text-[12.5px] font-semibold text-rose-deep">
+            <p className="mt-3 rounded-xl bg-accent-soft px-3.5 py-2.5 text-[12.5px] font-semibold text-accent-deep">
               {erreur}
             </p>
           )}

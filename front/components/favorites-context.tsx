@@ -165,7 +165,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         >
           <span
             className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
-              annonce.ajout ? "bg-rose" : "bg-white/15"
+              annonce.ajout ? "bg-accent" : "bg-white/15"
             }`}
             aria-hidden
           >
@@ -180,7 +180,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             <Link
               href="/favoris"
               onClick={() => setAnnonce(null)}
-              className="shrink-0 text-[13px] font-bold text-rose-soft underline underline-offset-4"
+              className="shrink-0 text-[13px] font-bold text-accent-soft underline underline-offset-4"
             >
               Voir
             </Link>

@@ -368,6 +368,26 @@ class ListePagineeTest(APITestCase):
         page = self.client.get(self.url, {"tri": "prix-decroissant", "page_size": 1}).data
         self.assertEqual(page["results"][0]["slug"], "jupe")
 
+    def test_le_filtre_par_coloris_ne_compte_que_le_stock(self):
+        """Chaque fiche fabriquée est écrue : 32 en tout, 31 chez les filles. Un coloris inconnu ne rend rien."""
+        reponse = self.client.get(reverse("produit-public-list"), {"coloris": "Écru"}).data
+        self.assertEqual(reponse["count"], 32)
+        rien = self.client.get(reverse("produit-public-list"), {"coloris": "Turquoise"}).data
+        self.assertEqual(rien["count"], 0)
+        facettes = self.client.get(reverse("produit-public-facettes"), {"rayon": "filles"}).data
+        self.assertEqual(facettes["coloris"], [{"nom": "Écru", "hexa": "#efe6da", "nombre": 31}])
+        # Un coloris coché ne se retire pas de sa propre facette.
+        avec = self.client.get(reverse("produit-public-facettes"), {"coloris": "Écru"}).data
+        self.assertEqual(avec["total"], 32)
+        self.assertEqual(avec["coloris"][0]["nombre"], 32)
+
+    def test_le_tri_par_promotion_met_les_remises_en_tete(self):
+        """La jupe est en campagne : elle passe devant, les autres suivent par nouveauté."""
+        reponse = self.client.get(reverse("produit-public-list"), {"tri": "promotion", "page_size": 3}).data
+        self.assertEqual(reponse["results"][0]["slug"], "jupe")
+        self.assertIsNotNone(reponse["results"][0]["promotion"])
+        self.assertIsNone(reponse["results"][1]["promotion"])
+
     def test_les_facettes_d_une_categorie(self):
         facettes = self.client.get(
             reverse("produit-public-facettes"), {"rayon": "filles", "taille": "6"}

@@ -52,7 +52,7 @@ export function FavoriteButton({
       title={aime ? "Retirer des favoris" : "Ajouter aux favoris"}
       className={`flex items-center justify-center rounded-full transition-all duration-300 ease-soft hover:scale-105 active:scale-90 ${
         t.boite
-      } ${FONDS[variant]} ${aime ? "text-rose" : "text-ink/70 hover:text-rose"} ${className}`}
+      } ${FONDS[variant]} ${aime ? "text-accent" : "text-ink/70 hover:text-accent"} ${className}`}
     >
       {/* Le cœur plein signale l'état ; l'animation ne joue qu'au moment du
           clic, pas à chaque rendu de la grille. */}

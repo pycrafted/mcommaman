@@ -21,7 +21,7 @@ export function OrdersList() {
       <AccountHeader />
 
       <div className="mb-8">
-        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Suivi</span>
+        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Suivi</span>
         <h2 className="mt-3 text-[clamp(1.55rem,3.4vw,2.1rem)] font-extrabold leading-[1.08] tracking-[-.035em]">
           Mes commandes
         </h2>
@@ -43,15 +43,15 @@ export function OrdersList() {
       {hydrated && orders.length === 0 && (
         <div className="mx-auto max-w-xl rounded-3xl border border-line bg-white px-8 py-14 text-center">
           <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-mist">
-            <IconPackage className="h-7 w-7 text-rose" />
+            <IconPackage className="h-7 w-7 text-accent" />
           </span>
           <h2 className="text-xl font-extrabold tracking-tight">Aucune commande pour l&apos;instant</h2>
           <p className="mx-auto mt-3 max-w-[44ch] text-[14px] leading-relaxed text-muted text-pretty">
             Vos commandes apparaîtront ici avec leur suivi, dès la première validation.
           </p>
           <Link
-            href="/boutique"
-            className="shine mt-7 inline-block rounded-full bg-rose px-8 py-3.5 text-[14px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
+            href="/"
+            className="shine mt-7 inline-block rounded-full bg-accent px-8 py-3.5 text-[14px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
           >
             Voir la sélection
           </Link>
@@ -109,7 +109,7 @@ export function OrdersList() {
                       <span
                         key={s.value}
                         title={s.label}
-                        className={`h-1.5 flex-1 rounded-full ${i <= etape ? "bg-rose" : "bg-stone"}`}
+                        className={`h-1.5 flex-1 rounded-full ${i <= etape ? "bg-accent" : "bg-stone"}`}
                       />
                     ))}
                   </div>
@@ -117,12 +117,12 @@ export function OrdersList() {
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="flex items-center gap-2 text-[13px] text-muted">
-                    <IconTruck className="h-4 w-4 shrink-0 text-rose" />
+                    <IconTruck className="h-4 w-4 shrink-0 text-accent" />
                     {commande.delivery.city} · {zoneLabel(commande.delivery.zone)}
                   </p>
                   <Link
                     href={`/commandes/${commande.ref}`}
-                    className="group inline-flex items-center gap-2 rounded-full border-[1.5px] border-[#e5d9de] px-5 py-2.5 text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
+                    className="group inline-flex items-center gap-2 rounded-full border-[1.5px] border-[#e5d9de] px-5 py-2.5 text-[13.5px] font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
                   >
                     Voir le détail
                     <IconArrow className="h-4 w-4 transition-transform duration-300 ease-soft group-hover:translate-x-1" />

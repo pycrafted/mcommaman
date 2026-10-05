@@ -35,7 +35,7 @@ Quatre applications, découpées par domaine métier et non par couche technique
 |---|---|
 | `clientele` | Utilisateurs (clientes **et** équipe), adresses, favoris, panier |
 | `catalogue` | Rayons, tailles, coloris, matières, photothèque, produits, variantes, mouvements de stock |
-| `ventes` | Commandes, lignes, paiements, campagnes de remise, avis |
+| `ventes` | Commandes, lignes, paiements, campagnes de remise |
 | `vitrine` | Réglages de la boutique, bandeau d'accueil, journal d'activité |
 
 ## Décisions structurantes
@@ -79,7 +79,6 @@ que par Django :
 - une seule adresse par défaut par cliente ;
 - un prix barré toujours supérieur au prix ;
 - le paiement à la livraison réservé à la zone Dakar ;
-- une note d'avis entre 1 et 5, et un seul avis par produit et par commande ;
 - un pourcentage de remise plafonné à 100 ;
 - unicité du couple produit × taille × coloris, du slug et de la référence.
 
@@ -97,7 +96,6 @@ dans l'un n'expose jamais les autres.
 | `/api/catalogue/`, `/api/vitrine/` | tout le monde, en lecture seule | produits publiés, rayons visibles, référentiels, réglages, bandeau |
 | `/api/gestion/` | l'équipe seule | fiches (brouillons compris), variantes et stock, photothèque, rayons, réglages, journal, commandes, campagnes |
 | `/api/commandes/`, `/api/devis/` | tout le monde | chiffrage d'un panier, passage de commande, suivi |
-| `/api/avis/` | lecture ouverte, écriture après livraison | avis publiés, résumé, dépôt, « ce que je peux noter » |
 
 Les sessions passent par un cookie signé, jamais lisible en JavaScript. Le front
 appelle d'abord `GET /api/compte/csrf/`, puis toutes ses requêtes avec
@@ -125,7 +123,8 @@ et sous-catégories, tailles en stock, prix du jour (`prix_effectif`, remise
 comprise, calculé en SQL par `ventes.remises.annoter_prix_effectif`). Une
 carte ne porte que dix champs ; la photo et la disponibilité sont des
 sous-requêtes, si bien que le nombre de requêtes ne dépend pas de la taille de
-la page. `produits/facettes/` rend les décomptes des filtres sans charger un
+la page. Les filtres de la liste : `univers`, `rayon`, `sous`, `taille`, `coloris`, `prix_min`,
+`prix_max`, `promo`, `q`, `tri`. `produits/facettes/` rend les décomptes des filtres sans charger un
 article.
 
 Côté gestion, `produits/` renvoie des lignes allégées (sans variantes ni
@@ -162,24 +161,12 @@ remet le stock. Sur Dakar, le paiement à la livraison suffit à ouvrir.
 Une commande passée sans compte se suit avec sa référence **et** le téléphone :
 la référence seule circule sur un ticket, elle ne prouve rien.
 
-## Favoris et avis
+## Favoris
 
 Les favoris d'une visiteuse non connectée restent dans son navigateur : lui
 demander un compte pour cliquer sur un cœur ferait perdre le geste. Ils
 remontent à la connexion par `POST /api/compte/favoris/fusionner/`, qui ajoute
 sans jamais effacer.
-
-**Le droit d'écrire un avis se prouve, il ne se déclare pas.** Il faut une
-commande livrée, qui appartienne à l'autrice, et qui contienne l'article noté.
-Un avis sur la boutique elle-même demande simplement une commande livrée. Un
-seul avis par article et par commande — la base le garantit.
-
-Tout avis attend la modération : il ne paraît qu'une fois approuvé, et le résumé
-affiché sous une fiche ne compte que les avis publiés.
-
-`GET /api/avis/a-noter/` renvoie ce qu'une cliente peut encore noter : ses
-commandes livrées moins ce qu'elle a déjà commenté. C'est cette liste qui
-alimente l'invitation de l'espace client.
 
 ## Le panier
 

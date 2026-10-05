@@ -3,20 +3,20 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth-context";
 import { CartProvider } from "@/components/cart-context";
 import { OrdersProvider } from "@/components/orders-context";
-import { ReviewsProvider } from "@/components/reviews-context";
 import { FavoritesProvider } from "@/components/favorites-context";
 import { ReglagesProvider } from "@/components/reglages-context";
+import { BarrePanier } from "@/components/barre-panier";
 import { lireReglages } from "@/lib/reglages";
 
 export const metadata: Metadata = {
   title: {
-    default: "M comme Maman — vêtements d'enfant à Dakar",
+    default: "M comme Maman, vêtements d'enfant à Dakar",
     template: "%s · M comme Maman",
   },
   description:
     "Vêtements d'enfant de 0 à 15 ans choisis pièce par pièce à Dakar. Livraison 24 h, paiement Wave, Orange Money ou à la livraison.",
   openGraph: {
-    title: "M comme Maman — vêtements d'enfant à Dakar",
+    title: "M comme Maman, vêtements d'enfant à Dakar",
     description: "Le monde des mamans. Livraison 24 h sur Dakar, paiement mobile money.",
     locale: "fr_SN",
     type: "website",
@@ -35,7 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
       </head>
@@ -43,11 +43,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ReglagesProvider valeur={reglages}>
           <AuthProvider>
             <OrdersProvider>
-              <ReviewsProvider>
-                <FavoritesProvider>
-                  <CartProvider>{children}</CartProvider>
-                </FavoritesProvider>
-              </ReviewsProvider>
+              <FavoritesProvider>
+                <CartProvider>
+                  {children}
+                  {/* Le panier flottant suit la cliente de page en page : on
+                      achète dès l'accueil, on commande sans remonter. */}
+                  <BarrePanier />
+                </CartProvider>
+              </FavoritesProvider>
             </OrdersProvider>
           </AuthProvider>
         </ReglagesProvider>

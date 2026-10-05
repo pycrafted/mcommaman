@@ -9,7 +9,6 @@ import { useCart } from "./cart-context";
 import { useFavorites } from "./favorites-context";
 import { AccountHeader } from "./account-header";
 import { ProductCard } from "./product-card";
-import { QuickView } from "./quick-view";
 import { FenetreConfirmation } from "./fenetre-confirmation";
 import { IconArrow, IconBag, IconCheck, IconHeart, IconTrash } from "./icons";
 
@@ -18,7 +17,6 @@ const SHELL = "mx-auto w-full max-w-[1400px] px-5 md:px-8 lg:px-10";
 export function FavoritesPage() {
   const { ids, clear, hydrated } = useFavorites();
   const { addBySlug } = useCart();
-  const [quick, setQuick] = useState<Product | null>(null);
   const [confirmeVidage, setConfirmeVidage] = useState(false);
   const [ajoutes, setAjoutes] = useState(false);
 
@@ -57,7 +55,7 @@ export function FavoritesPage() {
       {/* Aligné à gauche comme « Mes commandes » et « Mon profil » : un titre
           centré sous des pastilles alignées à gauche se voyait. */}
       <div className="mb-8">
-        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">
+        <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">
           Ma sélection
         </span>
         <h2 className="mt-3 text-[clamp(1.55rem,3.4vw,2.1rem)] font-extrabold leading-[1.08] tracking-[-.035em]">
@@ -84,8 +82,8 @@ export function FavoritesPage() {
 
       {hydrated && favoris.length === 0 && (
         <div className="anim-fade-up mx-auto max-w-[560px] rounded-[26px] border border-line bg-white px-8 py-14 text-center">
-          <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-rose-soft">
-            <IconHeart className="h-6 w-6 text-rose" />
+          <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-accent-soft">
+            <IconHeart className="h-6 w-6 text-accent" />
           </span>
           <h2 className="text-xl font-extrabold tracking-tight">
             Aucun favori pour l&apos;instant
@@ -95,15 +93,15 @@ export function FavoritesPage() {
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
-              href="/boutique"
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-rose px-7 py-3.5 text-[14px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
+              href="/"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-accent px-7 py-3.5 text-[14px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
             >
               Parcourir la boutique
               <IconArrow className="h-4 w-4 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
             </Link>
             <Link
-              href="/boutique"
-              className="inline-flex items-center justify-center rounded-full border-[1.5px] border-[#e5d9de] bg-white px-7 py-3.5 text-[14px] font-bold transition-colors duration-300 hover:border-rose hover:text-rose"
+              href="/"
+              className="inline-flex items-center justify-center rounded-full border-[1.5px] border-[#e5d9de] bg-white px-7 py-3.5 text-[14px] font-bold transition-colors duration-300 hover:border-accent hover:text-accent"
             >
               Voir la boutique
             </Link>
@@ -125,7 +123,7 @@ export function FavoritesPage() {
                 <button
                   type="button"
                   onClick={toutAjouter}
-                  className="inline-flex items-center gap-2 rounded-full bg-rose px-5 py-2.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
                 >
                   {ajoutes ? <IconCheck className="h-4 w-4" /> : <IconBag className="h-4 w-4" />}
                   {ajoutes
@@ -140,7 +138,7 @@ export function FavoritesPage() {
               <button
                 type="button"
                 onClick={() => setConfirmeVidage(true)}
-                className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 py-2.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-rose/40 hover:text-ink"
+                className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-[#e5d9de] bg-white px-4 py-2.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-accent/40 hover:text-ink"
               >
                 <IconTrash className="h-4 w-4" />
                 Vider la liste
@@ -166,7 +164,7 @@ export function FavoritesPage() {
           {/* Les mêmes cartes que la boutique : le cœur y sert de retrait. */}
           <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
             {favoris.map((p, i) => (
-              <ProductCard key={p.id} product={p} onQuickView={setQuick} delay={i * 45} />
+              <ProductCard key={p.id} product={p} delay={i * 45} />
             ))}
           </div>
 
@@ -181,7 +179,6 @@ export function FavoritesPage() {
         </>
       )}
 
-      <QuickView product={quick} onClose={() => setQuick(null)} />
     </div>
   );
 }

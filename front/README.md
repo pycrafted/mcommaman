@@ -28,9 +28,9 @@ npm run dev
 
 | Route | Fichier | Contenu |
 |---|---|---|
-| `/` | `app/page.tsx` → `components/home.tsx` | Bandeau d'accueil en arche (`components/hero.tsx`), bandeau défilant, réassurance, bento des âges, carrousel à onglets, compte à rebours, sélecteur d'univers en pile, histoire en défilement bloqué, le Coin Maman, le mot des mamans, section « Nous contacter » (`#contact`) avec l'adresse et le plan du magasin |
-| `/boutique` | `app/boutique/page.tsx` → `components/catalogue.tsx` | Toute la boutique, ou une catégorie avec `?cat=<slug>` (Filles, Garçons, Coin Maman…) . Tout vit dans l'adresse (`sous`, `taille`, `prix_min`, `prix_max`, `tri`, `page`) et le serveur filtre, trie et pagine : la page ne reçoit que ses 24 articles, et les filtres leurs décomptes (`/api/catalogue/produits/facettes/`) |
-| `/p/[slug]` | `app/p/[slug]/page.tsx` | Galerie, variantes couleur / taille, accordéons, recommandations, avis de l'article, JSON-LD Product |
+| `/` | `app/page.tsx` → `components/home.tsx` | Bandeau d'accueil animé (`components/hero.tsx`) ; **la boutique entière** (`components/boutique-accueil.tsx`) : filtres à gauche dans une carte blanche (catégorie, sous-catégories, prix, tri, taille, couleur) et la grille des pièces, avec ajout au panier sans quitter la page. Les filtres sont appliqués par le serveur et ne touchent pas à l'adresse ; puis le compte à rebours de la campagne en cours, quand il y en a une |
+| `/boutique` | — | Supprimée. Redirection permanente vers `/` dans `next.config.ts`, paramètres conservés |
+| `/p/[slug]` | `app/p/[slug]/page.tsx` | Galerie, variantes couleur / taille, accordéons, recommandations, JSON-LD Product |
 | `/panier` | `app/panier/page.tsx` | Tunnel à l'étape 1 |
 | `/commande` | `app/commande/page.tsx` | Tunnel à l'étape 2 : livraison validée → paiement → commande enregistrée |
 | `/commandes` | `app/commandes/page.tsx` → `components/orders-list.tsx` | Historique et avancement de chaque colis |
@@ -71,7 +71,6 @@ npm run dev
 | Campagne annoncée et son compte à rebours | `/api/campagnes/` — `lireCampagnes` |
 | Panier, favoris | `/api/compte/panier/`, `/api/compte/favoris/` |
 | Devis, commandes, suivi, annulation | `/api/devis/`, `/api/commandes/` |
-| Avis, résumé, « ce qu'il reste à noter » | `/api/avis/` |
 
 `lib/products.ts` ne garde que **la forme** d'une fiche (le type `Product`, que tous les
 composants attendent) et les deux vidéos du bandeau livrées avec le site. Il ne contient plus
@@ -81,12 +80,13 @@ Les réglages sont lus **une seule fois**, par `app/layout.tsx`, et posés dans
 `components/reglages-context.tsx` : le tunnel, le pied de page et l'accueil les
 trouvent là sans refaire l'appel chacun de leur côté.
 
-**Pas de recherche dans la vitrine**, à la demande de la cliente : la barre du haut nomme
-« Boutique » puis chaque catégorie du back-office, en liens simples, sans panneau déroulant.
-Le Coin Maman est une catégorie comme les autres et n'a plus de page à lui. Le serveur garde
+**Pas de barre du haut.** La navigation est un dock collé en bas à droite de l'écran
+(`components/dock.tsx`) : l'accueil, les favoris, les commandes, le compte et le panier. Les
+catégories se choisissent dans les filtres de l'accueil. Le Coin Maman est une catégorie comme
+les autres et n'a plus de page à lui. Le serveur garde
 sa recherche (`catalogue/recherche.py`, `?q=`) pour le back-office. Il n'y a plus non plus de
-pages `/avis` ni `/contact` : les avis se déposent sur la fiche de l'article, les coordonnées
-sont en bas de l'accueil (`/#contact`).
+page `/contact` : les coordonnées sont sur le bandeau de l'accueil (`/#contact`). Il n'y a pas
+d'avis clients : la fonction a été retirée de la vitrine et du serveur.
 
 **Quand le serveur ne répond pas**, chaque lecture retombe sur une valeur vide ou sur les
 valeurs par défaut du modèle Django : la boutique reste consultable, elle n'affiche jamais un
@@ -142,8 +142,8 @@ base ; seul le lien vers elle manque, alors le navigateur retient la référence
 ouverte ailleurs propose donc de saisir ce téléphone plutôt que de dire « introuvable ».
 
 **Le statut est piloté par la boutique**, depuis son back-office. Le bouton « J'ai reçu ma
-commande » a disparu : la cliente ne déclare plus sa propre livraison, et c'est le passage en
-« Livrée » par la boutique qui ouvre le droit à l'avis. Reste l'annulation par la cliente
+commande » a disparu : la cliente ne déclare plus sa propre livraison, et c'est la boutique qui
+fait avancer le suivi jusqu'à « Livrée ». Reste l'annulation par la cliente
 (`POST /api/commandes/<ref>/annuler/`), possible tant que rien n'est parti en préparation :
 elle remet le stock, et le refus au-delà est expliqué.
 
@@ -179,28 +179,6 @@ là : un panier qui maigrit tout seul est incompréhensible.
 back-office qui le pilotera. En ligne, il faudra aussi : commande écrite en base, référence
 tirée d'une séquence serveur, et validation du paiement par le webhook signé du prestataire,
 jamais par le retour du navigateur.
-
-### Avis
-
-**`components/reviews-context.tsx`** ne tient plus rien : les avis sont en base et modérés.
-Rien n'est chargé d'avance — une fiche demande les avis de son article (`useAvis`), l'accueil
-et la page d'avis ceux de la boutique. Le cache est partagé, si bien que la liste et le
-formulaire d'une même page lisent la même chose et se remettent à jour ensemble.
-
-**Le droit d'écrire ne se déclare plus, il se prouve.** C'est le serveur qui dit ce qu'il reste
-à noter (`/api/avis/a-noter/`) : une commande **livrée**, la sienne, contenant l'article. Le
-formulaire ne s'ouvre que pour ce que cette liste autorise, et il envoie l'identifiant de
-commande que le serveur lui a donné.
-
-**Un avis paraît après relecture.** Il part en `en_attente` — le message le dit — et n'apparaît
-publiquement qu'une fois publié depuis le back-office. Son autrice, elle, le voit dans tous ses
-états : sans ça il disparaîtrait sous ses yeux, et elle ne comprendrait pas pourquoi elle ne
-peut pas en écrire un second sur le même achat (un seul par achat, tenu en base).
-
-La note affichée vient de `/api/avis/resume/`, qui ne compte que les avis publiés. La fiche,
-l'accueil et le bandeau annoncent donc « aucun avis » — ou n'affichent rien du tout — tant que
-personne n'a écrit, au lieu d'inventer un 4,8 sur 126 avis. La référence de commande n'est plus
-affichée sous les avis : sous chacun, elle donnerait le compte des ventes à qui sait lire.
 
 ### Back-office
 
@@ -248,7 +226,7 @@ démonstration sont écrits en clair dans la page de connexion
 c'est sans conséquence. Dès qu'il écrit en base, il faut un vrai compte administrateur, une
 session en cookie signé, et la vérification du rôle sur le serveur à **chaque** écriture.
 
-**Les deux ponts sont posés.** Les commandes, les comptes et les avis de la vitrine sont en base
+**Les deux ponts sont posés.** Les commandes et les comptes de la vitrine sont en base
 et se lisent ici ; et ce qu'on modifie ici redescend sur la vitrine — rayons, fiches, réglages,
 bandeau, campagnes. Le tableau de bord compte à partir du **vrai jour** : la date de démonstration
 figée au 15 août 2026 a disparu avec la graine locale.
@@ -275,6 +253,28 @@ Trois points repris de l'audit et déjà tenus dans le code :
 
 ---
 
+## Palette et typographie
+
+La vitrine garde les couleurs de M comme Maman : le rose de la marque (`accent`, `#e0417f`,
+avec `accent-deep` et `accent-soft`) pour tout ce qui appelle le clic et pour le bandeau
+d'accueil, plein cadre ; un fond de blancs rosés pour le reste (`blush` pour la page, `cream`,
+`mist`, `stone` pour ce qui est posé dessus) ; le prune `ink` pour le texte, l'or pour les
+étoiles et le mot d'accent du bandeau, la sauge pour « Ajouté ». Les jetons sont des
+variables CSS dans `app/globals.css`, nommées par rôle et non par teinte : changer de couleur
+de marque ne demande qu'un changement là. La composition de la page d'accueil et la
+typographie serif viennent de King Crêperie.
+
+Les titres sont en Fraunces (serif), le texte en Plus Jakarta Sans — les deux chargées
+par un `<link>` Google Fonts dans `app/layout.tsx`, aucune dépendance.
+
+**Acheter depuis l'accueil.** Les cartes (`components/product-card.tsx`) portent deux
+boutons : « Choisir la taille » ouvre l'aperçu rapide, « Ajouter » met la première
+taille disponible au panier (`addBySlug`). Dès qu'un article est au panier, la barre
+flottante (`components/barre-panier.tsx`, montée dans `app/layout.tsx`) affiche le total
+et mène à `/commande` ; elle s'efface sur le tunnel et le back-office.
+
+---
+
 ## Animations
 
 Toujours aucune bibliothèque. Les keyframes vivent dans `app/globals.css`, les primitives
@@ -283,6 +283,7 @@ réutilisables dans `components/motion.tsx` et `components/reveal.tsx`.
 | Effet | Où |
 |---|---|
 | Rail produits qui défile seul en boucle, tiré à la souris, flèches et barre d'avancement | `<Carousel speed={46}>` |
+| Décor du bandeau : nuages, étoiles, confettis, forme qui respire, pastilles qui se balancent | `.anim-cloud`, `.anim-twinkle`, `.anim-confetti`, `.anim-morph`, `.anim-bob`, `.anim-arrive`, `.anim-beat`, `.wobble` |
 | Pile verticale des univers, visuels latéraux qui se substituent | `components/universes.tsx` |
 | Arche du bandeau d'accueil qui monte à l'ouverture | `.anim-arch` |
 | Trait dessiné sous le mot d'accent | `.anim-draw` + `--len` sur le `<path>` |
@@ -298,11 +299,11 @@ réutilisables dans `components/motion.tsx` et `components/reveal.tsx`.
 | Lueur et inclinaison 3D suivant le curseur | `<GlowCard tilt={5}>`, `useSpotlight` |
 | Bouton attiré par le curseur | `<Magnetic>` |
 | Photo qui traîne derrière le défilement | `<Parallax speed={26}>` |
-| Barre de lecture sous le header | `<ScrollProgress>` |
 | Pastille glissante sous l'onglet actif | mesure des boutons dans `components/home.tsx` |
 | Reflet qui traverse un bouton au survol | `.shine` |
-| Zoom image au survol des cartes | `group-hover:scale-108` sur `components/product-card.tsx` |
-| Impulsion de la pastille panier | `anim-pop` + `key={pulse}` dans `components/header.tsx` |
+| Carte produit : inclinaison et lueur sous le curseur, reflet sur la photo, zoom, prix qui se soulève, sac qui s'incline sur « Ajouter », coche qui saute sur « Ajouté » | `useSpotlight(4)` + `.spot.tilt`, `.shine`, `group-hover:scale-108` sur `components/product-card.tsx` |
+| Filtres de l'accueil, dans une carte blanche : entrée en cascade, pastilles roses qui se soulèvent et s'enfoncent (catégorie, sous-catégories avec coche), glissière de tri dont le curseur rose glisse, menus Taille et Couleur qui s'ouvrent d'un souffle avec cases à onde, pastilles de filtre actif qui sautent, grille qui rejoue sa cascade à chaque sélection | `<Reveal stagger>`, `.stagger`, `.anim-fade-up`, `.anim-pop-in`, `.anim-pop`, `.anim-onde`, `key={generation}` dans `components/boutique-accueil.tsx` |
+| Le dock (bas à droite, à la place de la barre du haut) : arrivée en glissant, boutons qui grossissent sous le curseur, pastille du panier qui saute | `.anim-fade-up`, `anim-pop` + `key={pulse}` dans `components/dock.tsx` |
 | Bascule des secondes, rotation du bandeau d'annonce | `anim-tick` + `key` sur la valeur |
 | Ouverture du panier / modale | `anim-slide-in`, `anim-fade-up` |
 
@@ -361,17 +362,21 @@ C'est ce qui dicte la construction du bandeau d'accueil : **une** photo, et une
 forme qui la met en valeur au lieu d'en réclamer d'autres. `8wy1hz0j.png` est
 cadrée en arche (`rounded-t-[999px]`), posée sur un lavis ivoire, et la robe
 qu'elle porte est justement au catalogue — la pastille « Sur elle » renvoie à sa
-fiche. `enf1` et `enf2` ne servent plus qu'en vignettes de 44 px sous les avis,
-où leur définition suffit.
+fiche. `enf1` et `enf2` ne servent plus.
 
 Le sujet doit rester **centré et sur fond calme** : la courbe de l'arche rogne les
 angles hauts, une photo cadrée serré y perdrait une tête. Le cadrage est réglé par
 `object-[50%_35%]` dans `components/hero.tsx`.
 
-**Après la séance photo**, rien à toucher dans le code : le bandeau se règle depuis le
-back-office (`/api/vitrine/bandeau/`). Tant qu'aucune photo n'y est active, la vitrine fait
-défiler les deux vidéos livrées avec le site (`HERO_VIDEOS`, `lib/products.ts`) — la page
-d'accueil n'est jamais nue.
+**Le bandeau d'accueil** est pensé pour une boutique d'enfants : le rose plein cadre, des
+nuages qui glissent, des étoiles qui scintillent, des confettis qui tombent, le titre blanc
+qui monte mot à mot avec un trait dessiné dessous, la photo dans une forme ronde qui respire
+(`morph`), entourée de trois pastilles qui se balancent (`bob`) et suivent le curseur
+(`<Magnetic>`). Tout est en CSS, et tout s'arrête sous `prefers-reduced-motion`. La photo
+est la première active du bandeau réglé dans le back-office (`/api/vitrine/bandeau/`), avec
+son recadrage ; tant qu'il n'y en a pas, la photo livrée avec le site (`HERO_VIDEOS[0].poster`,
+`lib/products.ts`, la photo du bandeau du site en production) prend la place. Pas de défilé ni de vidéo : les deux clips de
+`public/videos` ne sont plus montés nulle part.
 
 ---
 
@@ -383,7 +388,6 @@ Ce qui est fait — la vitrine ne fabrique plus rien qu'elle ne tienne du serveu
 - panier et favoris rattachés au compte, avec fusion à la connexion
 - commandes écrites en base : prix refaits par le serveur, stock retiré, référence numérotée,
   suivi piloté par le back-office, annulation par la cliente tant que rien n'est préparé
-- avis vérifiés côté serveur — commande livrée, la sienne, un seul par achat — et modérés
 - frais de livraison, franco, coordonnées, bandeau d'annonce et ouverture de la caisse réglés
   depuis le back-office
 - recherche faite en base, avec accents et synonymes

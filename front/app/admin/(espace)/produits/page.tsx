@@ -116,7 +116,7 @@ export default function Page() {
             <span className="min-w-0">
               <Link
                 href={`/admin/produits/${p.id}`}
-                className="line-clamp-1 font-bold transition-colors hover:text-rose"
+                className="line-clamp-1 font-bold transition-colors hover:text-accent"
               >
                 {p.name}
               </Link>

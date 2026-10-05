@@ -310,7 +310,7 @@ export default function Page() {
         affichage === "liste" ? (
           <div className="overflow-x-auto rounded-2xl border border-line bg-white">
             <table className="w-full min-w-[900px] border-collapse text-left">
-              <thead className="bg-rose-soft/70 text-[11px] font-bold uppercase text-muted">
+              <thead className="bg-accent-soft/70 text-[11px] font-bold uppercase text-muted">
                 <tr>
                   <th className="px-5 py-3.5">Promotion</th>
                   <th className="px-4 py-3.5">Réduction</th>
@@ -329,7 +329,7 @@ export default function Page() {
                         <p className="max-w-[250px] truncate text-[13.5px] font-extrabold">{p.name || "Sans nom"}</p>
                         {p.description && <p className="mt-0.5 max-w-[250px] truncate text-[11.5px] text-muted">{p.description}</p>}
                       </td>
-                      <td className="px-4 py-3.5 text-[13px] font-extrabold text-rose-deep">
+                      <td className="px-4 py-3.5 text-[13px] font-extrabold text-accent-deep">
                         {p.type === "pourcentage" ? `−${p.value} %` : `−${formatXOF(p.value)}`}
                       </td>
                       <td className="px-4 py-3.5 text-[12.5px] text-muted">{porteeLisible(p)}</td>
@@ -360,10 +360,10 @@ export default function Page() {
             {tranche.map((p) => {
               const { fin, statut, vive, avance, legende } = resumeCampagne(p);
               return (
-                <article key={p.id} className="rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-rose/40">
+                <article key={p.id} className="rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-accent/40">
                   <div className="flex items-start gap-3">
                     <div className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl text-center ${
-                      !vive ? "bg-mist text-muted" : p.type === "pourcentage" ? "bg-rose text-white" : "bg-ink text-white"
+                      !vive ? "bg-mist text-muted" : p.type === "pourcentage" ? "bg-accent text-white" : "bg-ink text-white"
                     }`}>
                       <span className="text-[15px] font-extrabold leading-tight tabular-nums">
                         {p.type === "pourcentage" ? `−${p.value}%` : `−${p.value.toLocaleString("fr-FR")}`}
@@ -384,7 +384,7 @@ export default function Page() {
                       <span className="shrink-0 tabular-nums">{legende}</span>
                     </div>
                     <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-stone">
-                      <span className={`block h-full rounded-full ${vive ? "bg-rose" : "bg-muted/40"}`} style={{ width: `${avance}%` }} />
+                      <span className={`block h-full rounded-full ${vive ? "bg-accent" : "bg-muted/40"}`} style={{ width: `${avance}%` }} />
                     </div>
                   </div>
 
@@ -513,7 +513,7 @@ export default function Page() {
                   <select
                     value={brouillon.categorySlug}
                     onChange={(e) => setBrouillon({ ...brouillon, categorySlug: e.target.value })}
-                    className="w-full cursor-pointer rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors focus:border-rose"
+                    className="w-full cursor-pointer rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors focus:border-accent"
                   >
                     <option value="">Choisir un rayon…</option>
                     {categories
@@ -535,7 +535,7 @@ export default function Page() {
                       onChange={(e) =>
                         setBrouillon({ ...brouillon, categorySlug: e.target.value, productId: "" })
                       }
-                      className="w-full cursor-pointer rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors focus:border-rose"
+                      className="w-full cursor-pointer rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors focus:border-accent"
                     >
                       <option value="">Choisir un rayon…</option>
                       {categories
@@ -555,7 +555,7 @@ export default function Page() {
                         onChange={(e) =>
                           setBrouillon({ ...brouillon, productId: e.target.value })
                         }
-                        className="w-full cursor-pointer rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors focus:border-rose"
+                        className="w-full cursor-pointer rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none transition-colors focus:border-accent"
                       >
                         <option value="">Choisir un article…</option>
                         {articlesDuRayon.map((a) => (
