@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { formatXOF } from "@/lib/format";
 import { type Product } from "@/lib/products";
 import { useCart } from "./cart-context";
-import { FavoriteButton } from "./favorite-button";
+import { useAuth } from "./auth-context";
+import { IconPencil } from "./admin/icons";
 import { useSpotlight } from "./motion";
 import { IconBag, IconCheck, IconRuler } from "./icons";
 
@@ -20,6 +22,10 @@ import { IconBag, IconCheck, IconRuler } from "./icons";
  * Tout le mouvement est en CSS (`app/globals.css`), et s'arrête quand le
  * mouvement réduit est demandé — `useSpotlight` ne pose alors aucun écouteur.
  */
+/* Le formulaire du back-office, chargé au premier clic sur le crayon : les
+   visiteuses ne téléchargent pas ce code. */
+const EditionPiece = dynamic(() => import("./edition-piece").then((m) => m.EditionPiece), { ssr: false });
+
 export function ProductCard({
   product,
   onQuickView,
@@ -31,6 +37,9 @@ export function ProductCard({
   delay?: number;
 }) {
   const { addBySlug } = useCart();
+  const { account } = useAuth();
+  /* Le crayon n'existe que pour l'équipe (repris de Golden Pousso). */
+  const [edition, setEdition] = useState(false);
   const carte = useSpotlight<HTMLElement>(4);
   /* Trois temps sur le bouton : au repos, pendant l'aller-retour, puis une
      seconde de « Ajouté » avant de redevenir cliquable. */
@@ -84,11 +93,19 @@ export function ProductCard({
           )}
         </div>
 
-        <FavoriteButton
-          productId={product.id}
-          productName={product.name}
-          className="absolute right-3 top-3 z-20"
-        />
+        {account?.equipe && (
+          <button
+            type="button"
+            onClick={() => setEdition(true)}
+            aria-label={`Modifier ${product.name}`}
+            title="Modifier la pièce"
+            className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/92 text-ink shadow-[0_8px_20px_-12px_rgba(36,26,32,.5)] backdrop-blur transition-[transform,background-color,color] duration-300 ease-back hover:scale-110 hover:bg-[#e24f88] hover:text-white active:scale-90"
+          >
+            <IconPencil className="h-4 w-4" />
+          </button>
+        )}
+        {edition && <EditionPiece produitId={product.id} onClose={() => setEdition(false)} />}
+
       </div>
 
       <div className="flex flex-1 flex-col p-4 sm:p-5">

@@ -3,7 +3,6 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth-context";
 import { CartProvider } from "@/components/cart-context";
 import { OrdersProvider } from "@/components/orders-context";
-import { FavoritesProvider } from "@/components/favorites-context";
 import { ReglagesProvider } from "@/components/reglages-context";
 import { BarrePanier } from "@/components/barre-panier";
 import { lireReglages } from "@/lib/reglages";
@@ -43,14 +42,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ReglagesProvider valeur={reglages}>
           <AuthProvider>
             <OrdersProvider>
-              <FavoritesProvider>
-                <CartProvider>
-                  {children}
-                  {/* Le panier flottant suit la cliente de page en page : on
-                      achète dès l'accueil, on commande sans remonter. */}
-                  <BarrePanier />
-                </CartProvider>
-              </FavoritesProvider>
+              <CartProvider>
+                {children}
+                {/* Le panier flottant suit la cliente de page en page : on
+                    achète dès l'accueil, on commande sans remonter. */}
+                <BarrePanier />
+              </CartProvider>
             </OrdersProvider>
           </AuthProvider>
         </ReglagesProvider>

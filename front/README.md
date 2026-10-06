@@ -30,12 +30,11 @@ npm run dev
 |---|---|---|
 | `/` | `app/page.tsx` → `components/home.tsx` | Bandeau d'accueil animé (`components/hero.tsx`) ; **la boutique entière** (`components/boutique-accueil.tsx`) : filtres à gauche dans une carte blanche (catégorie, sous-catégories, prix, tri, taille, couleur) et la grille des pièces, avec ajout au panier sans quitter la page. Les filtres sont appliqués par le serveur et ne touchent pas à l'adresse ; puis le compte à rebours de la campagne en cours, quand il y en a une |
 | `/boutique` | — | Supprimée. Redirection permanente vers `/` dans `next.config.ts`, paramètres conservés |
-| `/p/[slug]` | `app/p/[slug]/page.tsx` | Galerie, variantes couleur / taille, accordéons, recommandations, JSON-LD Product |
+| `/p/[slug]` | `app/p/[slug]/page.tsx` → `components/product-detail.tsx` | Fiche sur le modèle de Golden Pousso : le rayon seul en tête, photo 4/5 avec loupe (survol et molette à la souris, tape au doigt, réglage − / +), vues en surimpression, titre en capitales, prix, description lue avant les choix, couleur et taille en pilules, quantité et « Ajouter au panier », « Plus que N », bloc « prévenez-moi » sur une pièce épuisée (`POST /api/catalogue/produits/<slug>/alerte-stock/`), barre d'achat collante sous 900 px, « Dans le même esprit » avec nos cartes (pas au téléphone), JSON-LD Product |
 | `/panier` | `app/panier/page.tsx` | Tunnel à l'étape 1 |
 | `/commande` | `app/commande/page.tsx` | Tunnel à l'étape 2 : livraison validée → paiement → commande enregistrée |
 | `/commandes` | `app/commandes/page.tsx` → `components/orders-list.tsx` | Historique et avancement de chaque colis |
 | `/commandes/[ref]` | `app/commandes/[ref]/page.tsx` → `components/order-detail.tsx` | Suivi détaillé, frise en quatre temps, recommander, annuler |
-| `/favoris` | `app/favoris/page.tsx` → `components/favorites-page.tsx` | Pièces mises de côté, tout ajouter au panier, vider la liste |
 | `/compte` | `app/compte/page.tsx` → `components/account-dashboard.tsx` | Tableau de bord : dernière commande, panier en cours, mes envies, adresse par défaut |
 | `/compte/connexion` | `app/compte/connexion/page.tsx` → `components/account-auth.tsx` | Connexion, redirection `?suite=` |
 | `/compte/inscription` | `app/compte/inscription/page.tsx` → `components/account-auth.tsx` | Création de compte, six règles de validation, jauge de mot de passe |
@@ -69,7 +68,7 @@ npm run dev
 | Frais de livraison, franco, téléphone, courriel, bandeau d'annonce, caisse ouverte | `/api/vitrine/reglages/` — `lireReglages` |
 | Photos du bandeau d'accueil | `/api/vitrine/bandeau/` — `lireBandeau` |
 | Campagne annoncée et son compte à rebours | `/api/campagnes/` — `lireCampagnes` |
-| Panier, favoris | `/api/compte/panier/`, `/api/compte/favoris/` |
+| Panier | `/api/compte/panier/` |
 | Devis, commandes, suivi, annulation | `/api/devis/`, `/api/commandes/` |
 
 `lib/products.ts` ne garde que **la forme** d'une fiche (le type `Product`, que tous les
@@ -81,7 +80,7 @@ Les réglages sont lus **une seule fois**, par `app/layout.tsx`, et posés dans
 trouvent là sans refaire l'appel chacun de leur côté.
 
 **Pas de barre du haut.** La navigation est un dock collé en bas à droite de l'écran
-(`components/dock.tsx`) : l'accueil, les favoris, les commandes, le compte et le panier. Les
+(`components/dock.tsx`) : l'accueil, les commandes, le compte et le panier. Les
 catégories se choisissent dans les filtres de l'accueil. Le Coin Maman est une catégorie comme
 les autres et n'a plus de page à lui. Le serveur garde
 sa recherche (`catalogue/recherche.py`, `?q=`) pour le back-office. Il n'y a plus non plus de
@@ -107,26 +106,6 @@ Livraison du tunnel se pré-remplit depuis l'adresse par défaut, et propose de 
 sinon. Les trois zones de livraison — leur nom et leur délai — sont partagées entre le tunnel et
 le carnet d'adresses dans **`lib/livraison.ts`** ; **leurs montants n'y sont pas**, ils viennent
 des réglages de la boutique, et le total d'une commande est chiffré par le serveur.
-
-### Favoris
-
-**`components/favorites-context.tsx`** tient la liste : le dernier cœur touché passe en tête.
-Hors session elle reste dans le navigateur (`mcm-favoris-v1`) ; connectée, elle vient de
-`/api/compte/favoris/` et suit d'un appareil à l'autre. Le cœur
-lui-même est un seul composant, **`components/favorite-button.tsx`** — posé sur une carte, il
-intercepte le clic pour ne pas partir sur la fiche ; il se dessine vide tant que le stockage n'a
-pas été relu, sinon le premier rendu ne serait pas le même côté serveur et client.
-
-Le même cœur sert partout : carte de la boutique, aperçu rapide, fiche produit, et sur
-`/favoris` où il fait office de retrait. La page reprend les cartes de la boutique plutôt qu'un
-gabarit à part, ajoute une barre de tête (nombre d'articles, total, **Tout ajouter au panier**,
-**Vider la liste** en deux temps) et signale les identifiants qui ne correspondent plus à aucun
-article du catalogue au lieu de tomber dessus — les fiches sont demandées au serveur par leurs
-identifiants, une pièce dépubliée n'en revient tout simplement pas.
-
-**La liste du navigateur se fond dans celle du compte à la connexion**
-(`POST /api/compte/favoris/fusionner/`) : une cliente qui met des pièces de côté avant de créer
-son compte ne les perd pas en le créant.
 
 ### Commandes et suivi
 
@@ -164,7 +143,7 @@ commande achètera. La fiche (`components/product-detail.tsx`) et l'aperçu rapi
 plus les tailles de référence mais celles que le serveur déclare, et une taille absente du
 coloris choisi se barre au lieu de se proposer.
 
-Deux régimes, comme les favoris. Hors session le panier reste dans le navigateur
+Deux régimes. Hors session le panier reste dans le navigateur
 (`mcm-panier-v2` — nouvelle clé : l'ancienne gardait des indices de couleur et de taille qui ne
 veulent plus rien dire). À la connexion il remonte par `POST /api/compte/panier/fusionner/`,
 qui garde **la plus grande des deux quantités et non leur somme** : se reconnecter sur le même
@@ -303,6 +282,7 @@ réutilisables dans `components/motion.tsx` et `components/reveal.tsx`.
 | Reflet qui traverse un bouton au survol | `.shine` |
 | Carte produit : inclinaison et lueur sous le curseur, reflet sur la photo, zoom, prix qui se soulève, sac qui s'incline sur « Ajouter », coche qui saute sur « Ajouté » | `useSpotlight(4)` + `.spot.tilt`, `.shine`, `group-hover:scale-108` sur `components/product-card.tsx` |
 | Filtres de l'accueil, dans une carte blanche : entrée en cascade, pastilles roses qui se soulèvent et s'enfoncent (catégorie, sous-catégories avec coche), glissière de tri dont le curseur rose glisse, menus Taille et Couleur qui s'ouvrent d'un souffle avec cases à onde, pastilles de filtre actif qui sautent, grille qui rejoue sa cascade à chaque sélection | `<Reveal stagger>`, `.stagger`, `.anim-fade-up`, `.anim-pop-in`, `.anim-pop`, `.anim-onde`, `key={generation}` dans `components/boutique-accueil.tsx` |
+| Le crayon des cartes et le « + » du dock (équipe seulement) ouvrent le formulaire produit du back-office dans une fenêtre ; la grille se relit à la fermeture | `components/edition-piece.tsx`, événement `mcm:catalogue-modifie` |
 | Le dock (bas à droite, à la place de la barre du haut) : arrivée en glissant, boutons qui grossissent sous le curseur, pastille du panier qui saute | `.anim-fade-up`, `anim-pop` + `key={pulse}` dans `components/dock.tsx` |
 | Bascule des secondes, rotation du bandeau d'annonce | `anim-tick` + `key` sur la valeur |
 | Ouverture du panier / modale | `anim-slide-in`, `anim-fade-up` |
@@ -385,7 +365,7 @@ son recadrage ; tant qu'il n'y en a pas, la photo livrée avec le site (`HERO_VI
 Ce qui est fait — la vitrine ne fabrique plus rien qu'elle ne tienne du serveur :
 
 - catalogue, rayons, tailles et coloris lus en base ; plus une seule liste écrite dans le code
-- panier et favoris rattachés au compte, avec fusion à la connexion
+- panier rattaché au compte, avec fusion à la connexion
 - commandes écrites en base : prix refaits par le serveur, stock retiré, référence numérotée,
   suivi piloté par le back-office, annulation par la cliente tant que rien n'est préparé
 - frais de livraison, franco, coordonnées, bandeau d'annonce et ouverture de la caisse réglés

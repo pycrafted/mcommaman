@@ -6,16 +6,16 @@
  * paiement. Ces messages arrivent déjà structurés, comme un bon de commande,
  * pour que la gérante n'ait plus qu'à saisir la vente dans le back-office.
  *
- * Ce que le compte connaît (nom, téléphone, adresse par défaut) est rempli ;
- * le reste est laissé à compléter, visiblement. Les montants sont ceux
- * qu'affiche la boutique — le total d'une livraison reste « à confirmer » :
- * il dépend du quartier, et c'est le serveur qui le chiffre.
+ * Le message de commande ne porte aucune coordonnée de la cliente : WhatsApp
+ * donne déjà son numéro, et c'est dans la conversation qu'elle dit où livrer.
+ * Les montants sont ceux qu'affiche la boutique — le total d'une livraison
+ * reste « à confirmer » : il dépend du quartier, et c'est le serveur qui le
+ * chiffre.
  *
  * Les astérisques mettent le texte en gras dans WhatsApp.
  */
 
 import { useEffect, useState } from "react";
-import type { Account, SavedAddress } from "@/components/auth-context";
 import { formatXOF } from "./format";
 
 /**
@@ -40,11 +40,6 @@ export type ArticleMessage = {
   lien?: string;
 };
 
-export type ClienteMessage = {
-  compte: Account | null;
-  adresse: SavedAddress | null;
-};
-
 const A_COMPLETER = "…";
 
 const ZONES: Record<string, string> = {
@@ -64,20 +59,8 @@ function blocArticles(articles: ArticleMessage[]): string[] {
   });
 }
 
-function blocCliente({ compte, adresse }: ClienteMessage): string[] {
-  return [
-    "👤 *Mes coordonnées*",
-    `Nom : ${compte?.name || A_COMPLETER}`,
-    `Téléphone : ${compte?.phone || A_COMPLETER}`,
-    `Zone : ${adresse ? (ZONES[adresse.zone] ?? adresse.zone) : A_COMPLETER}`,
-    `Quartier : ${adresse?.city || compte?.city || A_COMPLETER}`,
-    `Point de repère : ${adresse?.address || A_COMPLETER}`,
-    `Paiement souhaité : ${A_COMPLETER} (à la livraison, Wave ou Orange Money)`,
-  ];
-}
-
-/** Une commande à passer : les articles, leur total, et les coordonnées. */
-export function messageCommande(articles: ArticleMessage[], cliente: ClienteMessage): string {
+/** Une commande à passer : les articles et leur total, rien d'autre. */
+export function messageCommande(articles: ArticleMessage[]): string {
   const sousTotal = articles.reduce((s, a) => s + a.prixUnitaire * a.quantite, 0);
   const pieces = articles.reduce((s, a) => s + a.quantite, 0);
   return [
@@ -89,8 +72,6 @@ export function messageCommande(articles: ArticleMessage[], cliente: ClienteMess
     "",
     `Articles (${pieces}) : ${formatXOF(sousTotal)}`,
     `Livraison : ${A_COMPLETER}`,
-    "",
-    ...blocCliente(cliente),
     "",
     "Merci de me confirmer la disponibilité 🙏",
   ].join("\n");

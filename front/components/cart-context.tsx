@@ -17,7 +17,7 @@ import { useAuth } from "./auth-context";
 /**
  * Le panier.
  *
- * Deux régimes, comme les favoris : tant que la cliente n'est pas connectée, son
+ * Deux régimes : tant que la cliente n'est pas connectée, son
  * panier reste dans son navigateur — écrire en base à chaque clic sur « ajouter »
  * coûterait un aller-retour pour rien, et lui demander un compte avant de
  * remplir son panier lui ferait fermer l'onglet. À la connexion, le panier local
@@ -203,8 +203,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const add = useCallback<Ctx["add"]>(
     async (article, quantite = 1) => {
+      /* La pastille saute, le tiroir reste fermé : il s'ouvre quand la
+         cliente le demande, pas à chaque article. */
       setPulse((p) => p + 1);
-      setDrawerOpen(true);
 
       if (connectee) {
         try {

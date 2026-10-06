@@ -1,24 +1,29 @@
 "use client";
 
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
-import { IconBag, IconHeart, IconPackage, IconUser } from "./icons";
+import { IconBag, IconPlus, IconUser } from "./icons";
+
+const EditionPiece = dynamic(() => import("./edition-piece").then((m) => m.EditionPiece), { ssr: false });
 
 /* Le dock : il remplace la barre du haut. Une colonne de boutons ronds
    (une rangée au doigt), collée en bas à droite de l'écran, qui suit la cliente de page en page :
-   l'accueil, les favoris, les commandes, le compte et le panier. Il ne monte
+   l'accueil, le compte et le panier, et pour l'équipe un « + » qui crée
+   une pièce. Il ne monte
    jamais jusqu'en haut ; le reste de l'écran est à la page.
 
    Il arrive en glissant depuis le bas, chaque bouton grossit sous le curseur
    et s'enfonce au clic ; la pastille du panier saute à chaque ajout. Le
    back-office a sa propre barre, le dock s'y efface. */
 
-const ENTREES = [
-  { href: "/favoris", label: "Mes favoris", Icone: IconHeart },
-  { href: "/commandes", label: "Mes commandes", Icone: IconPackage },
-];
+/* « Mes commandes » est caché pour l'instant : le paiement depuis la
+   plateforme n'est pas encore en service, la commande passe par WhatsApp.
+   Remettre l'entrée `/commandes` (icône colis) ici quand ce sera le cas. */
+const ENTREES: { href: string; label: string; Icone: typeof IconUser }[] = [];
 
 const BOUTON =
   "group/b relative grid h-12 w-12 place-items-center rounded-full transition-[transform,background-color,color,box-shadow] duration-300 ease-back hover:scale-110 active:scale-95";
@@ -27,6 +32,7 @@ export function Dock() {
   const pathname = usePathname();
   const { count, pulse, openDrawer } = useCart();
   const { account } = useAuth();
+  const [creation, setCreation] = useState(false);
 
   if (pathname.startsWith("/admin")) return null;
 
@@ -74,6 +80,21 @@ export function Dock() {
           <IconUser className="h-5 w-5" />
         )}
       </Link>
+
+      {/* L'équipe crée une pièce d'ici, comme chez Golden Pousso : le même
+          formulaire que le back-office, dans une fenêtre. */}
+      {account?.equipe && (
+        <button
+          type="button"
+          onClick={() => setCreation(true)}
+          aria-label="Créer une pièce"
+          title="Créer une pièce"
+          className={`${BOUTON} bg-[#fbe6ef] text-[#b3306a] hover:bg-[#e24f88] hover:text-white`}
+        >
+          <IconPlus className="h-5 w-5" />
+        </button>
+      )}
+      {creation && <EditionPiece onClose={() => setCreation(false)} />}
 
       <button
         type="button"

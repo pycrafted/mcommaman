@@ -414,3 +414,31 @@ class MouvementStock(models.Model):
     def __str__(self):
         signe = "+" if self.quantite > 0 else ""
         return f"{signe}{self.quantite} — {self.variante} ({self.get_motif_display()})"
+
+
+class AlerteStock(models.Model):
+    """
+    Une cliente qui veut être prévenue du retour d'une pièce épuisée.
+
+    Un courriel et un produit, rien de plus : on n'exige pas de compte pour
+    laisser une adresse. Le couple est unique — la même adresse deux fois sur
+    la même pièce ne crée pas deux alertes. Le serveur n'envoie rien tout seul
+    pour l'instant : la liste se lit dans l'admin, et c'est l'équipe qui écrit
+    aux clientes au réassort.
+    """
+
+    produit = models.ForeignKey(Produit, on_delete=models.CASCADE, related_name="alertes_stock")
+    email = models.EmailField()
+    cree_le = models.DateTimeField(auto_now_add=True)
+    prevenue_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "alerte de stock"
+        verbose_name_plural = "alertes de stock"
+        ordering = ["-cree_le"]
+        constraints = [
+            models.UniqueConstraint(fields=["produit", "email"], name="alerte_stock_unique")
+        ]
+
+    def __str__(self):
+        return f"{self.email} attend {self.produit.nom}"

@@ -137,6 +137,30 @@ class CataloguePublicTest(APITestCase):
         self.assertEqual(prix, sorted(prix))
 
 
+class AlerteStockTest(APITestCase):
+    """Laisser son courriel sur une pièce épuisée, sans compte."""
+
+    def setUp(self):
+        self.produit = fabriquer_produit()
+        self.url = reverse("produit-public-alerte-stock", args=[self.produit.slug])
+
+    def test_une_adresse_valide_est_enregistree(self):
+        reponse = self.client.post(self.url, {"email": "Aminata@Test.sn"}, format="json")
+        self.assertEqual(reponse.status_code, 201)
+        self.assertEqual(self.produit.alertes_stock.get().email, "aminata@test.sn")
+
+    def test_la_meme_adresse_deux_fois_ne_cree_qu_une_alerte(self):
+        self.client.post(self.url, {"email": "a@test.sn"}, format="json")
+        reponse = self.client.post(self.url, {"email": "a@test.sn"}, format="json")
+        self.assertEqual(reponse.status_code, 201)
+        self.assertEqual(self.produit.alertes_stock.count(), 1)
+
+    def test_une_adresse_invalide_est_refusee(self):
+        reponse = self.client.post(self.url, {"email": "pas une adresse"}, format="json")
+        self.assertEqual(reponse.status_code, 400)
+        self.assertEqual(self.produit.alertes_stock.count(), 0)
+
+
 class PublicationTest(APITestCase):
     def setUp(self):
         self.gerante = Utilisateur.objects.create_user(

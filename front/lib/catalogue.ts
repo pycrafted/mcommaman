@@ -167,7 +167,7 @@ export async function lireFacettes(filtres: FiltresCatalogue = {}): Promise<Face
 /**
  * Quelques fiches désignées par leur identifiant.
  *
- * Sert les favoris, qui ne connaissent que des identifiants et traversent les
+ * Sert ce qui ne connaît que des identifiants et traverse les
  * deux univers. L'ordre demandé est rendu : c'est celui de la mise de côté, la
  * dernière en tête.
  */

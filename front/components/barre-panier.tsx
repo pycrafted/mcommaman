@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { formatXOF } from "@/lib/format";
+import { formatXOF, waLink } from "@/lib/format";
+import { messageCommande, useOrigine } from "@/lib/whatsapp";
 import { useCart } from "./cart-context";
-import { IconArrow, IconBag } from "./icons";
+import { useReglages } from "./reglages-context";
+import { IconBag, IconWhatsApp } from "./icons";
 
 /* Les pages où la barre n'a pas sa place : le tunnel la répéterait, et le
    back-office n'y vend rien. */
@@ -14,13 +15,15 @@ const SANS_BARRE = ["/panier", "/commande", "/admin"];
  * La barre de panier flottante, reprise de King Crêperie.
  *
  * Dès qu'un article est au panier, elle se pose en bas de l'écran avec le
- * total et un bouton « Commander » : on peut remplir son panier depuis la
+ * total et un bouton « Commander » sur WhatsApp : on peut remplir son panier depuis la
  * page d'accueil et partir en caisse sans chercher l'icône en haut. Elle
  * s'efface quand le tiroir est ouvert — les deux montrent la même chose.
  */
 export function BarrePanier() {
-  const { count, subtotal, hydrated, drawerOpen, openDrawer, pulse } = useCart();
+  const { count, subtotal, hydrated, drawerOpen, openDrawer, pulse, lignes } = useCart();
   const pathname = usePathname();
+  const reglages = useReglages();
+  const origine = useOrigine();
 
   /* `hydrated` : le serveur ne connaît pas le panier, le premier rendu doit
      rester vide des deux côtés. */
@@ -53,13 +56,28 @@ export function BarrePanier() {
           </span>
         </button>
 
-        <Link
-          href="/commande"
-          className="group flex shrink-0 items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold transition-colors duration-300 hover:bg-accent-deep"
+        {/* Le tunnel (`/commande`) n'est pas encore en service : en attendant,
+            la commande part sur WhatsApp, avec le détail du panier. */}
+        <a
+          href={waLink(
+            messageCommande(
+              lignes.map((l) => ({
+                nom: l.nom,
+                option: l.option,
+                quantite: l.quantite,
+                prixUnitaire: l.prix_unitaire,
+                lien: origine ? `${origine}/p/${l.slug}` : undefined,
+              })),
+            ),
+            reglages.telephone,
+          )}
+          target="_blank"
+          rel="noreferrer"
+          className="group flex shrink-0 items-center gap-2 rounded-xl bg-[#25d366] px-4 py-3 text-sm font-bold transition-colors duration-300 hover:bg-[#1fb857]"
         >
+          <IconWhatsApp className="h-4 w-4" />
           Commander
-          <IconArrow className="h-4 w-4 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
-        </Link>
+        </a>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import Adresse, Favori, LignePanier, Panier, Utilisateur
+from .models import Adresse, LignePanier, Panier, Utilisateur
 
 
 class AdresseEnLigne(admin.TabularInline):
@@ -45,9 +45,3 @@ class LigneEnLigne(admin.TabularInline):
 class PanierAdmin(admin.ModelAdmin):
     list_display = ["__str__", "modifie_le"]
     inlines = [LigneEnLigne]
-
-
-@admin.register(Favori)
-class FavoriAdmin(admin.ModelAdmin):
-    list_display = ["cliente", "produit", "ajoute_le"]
-    search_fields = ["cliente__nom", "produit__nom"]

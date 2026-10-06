@@ -263,8 +263,19 @@ const FenetreChoix = ({
   );
 };
 
-export function ProductForm({ product }: { product?: AdminProduct }) {
+export function ProductForm({
+  product,
+  onSaved,
+  onClose,
+}: {
+  product?: AdminProduct;
+  /** Dans une fenêtre : appelé après l'enregistrement, au lieu de retourner à la liste. */
+  onSaved?: () => void;
+  /** Dans une fenêtre : ce que fait « Retour », au lieu de naviguer. */
+  onClose?: () => void;
+}) {
   const router = useRouter();
+  const enFenetre = Boolean(onClose);
   const {
     library,
     createProduct,
@@ -594,9 +605,12 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
       updatedAt: maintenant,
     };
 
-    if (product) saveProduct(fiche);
-    else createProduct(fiche);
-
+    const ecriture = product ? saveProduct(fiche) : createProduct(fiche);
+    if (onSaved) {
+      /* Dans une fenêtre, on reste : la gérante ferme quand elle a fini. */
+      void ecriture.then(onSaved);
+      return;
+    }
     window.setTimeout(() => router.push("/admin/produits"), 900);
   };
 
@@ -606,11 +620,11 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
         <div className="min-w-0">
           <button
             type="button"
-            onClick={() => router.push("/admin/produits")}
+            onClick={() => (onClose ? onClose() : router.push("/admin/produits"))}
             className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-accent"
           >
             <IconArrowLeft className="h-3.5 w-3.5" />
-            Retour aux produits
+            {enFenetre ? "Fermer" : "Retour aux produits"}
           </button>
           <h1 className="mt-2 text-[clamp(1.6rem,3vw,1.9rem)] font-extrabold tracking-[-.03em]">
             {product ? product.name : "Nouveau produit"}

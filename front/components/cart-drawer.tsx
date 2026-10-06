@@ -4,13 +4,11 @@ import Link from "next/link";
 import { formatXOF, waLink } from "@/lib/format";
 import { useCart } from "./cart-context";
 import { useReglages } from "./reglages-context";
-import { useAuth } from "./auth-context";
 import { messageCommande, useOrigine } from "@/lib/whatsapp";
 
 export function CartDrawer() {
   const { drawerOpen, closeDrawer, lignes, subtotal, complet, bump, erreur } = useCart();
   const reglages = useReglages();
-  const { account, defaultAddress } = useAuth();
   const origine = useOrigine();
 
   if (!drawerOpen) return null;
@@ -23,7 +21,6 @@ export function CartDrawer() {
       prixUnitaire: l.prix_unitaire,
       lien: origine ? `${origine}/p/${l.slug}` : undefined,
     })),
-    { compte: account, adresse: defaultAddress },
   );
 
   return (
@@ -88,24 +85,19 @@ export function CartDrawer() {
             <span>Total</span>
             <span className="tabular-nums">{formatXOF(subtotal)}</span>
           </div>
-          <p className="mt-1.5 text-[12.5px] text-muted">Livraison offerte à Dakar dès {formatXOF(reglages.franco_dakar)}.</p>
           {!complet && (
             <p className="mt-2 text-[12.5px] font-semibold text-accent-deep">
               Un article n&apos;est plus disponible dans cette quantité : ajustez avant de commander.
             </p>
           )}
-          <Link
-            href="/commande"
-            onClick={closeDrawer}
-            className="mt-4 block rounded-full bg-accent py-4 text-center text-[15px] font-bold text-white transition-transform hover:-translate-y-0.5"
-          >
-            Commander
-          </Link>
+          {/* Le tunnel de commande (`/commande`) n'est pas encore en service :
+              son bouton est retiré pour l'instant, la commande passe par
+              WhatsApp. Le remettre ici quand le tunnel sera prêt. */}
           <a
             href={waLink(message, reglages.telephone)}
             target="_blank"
             rel="noreferrer"
-            className="mt-2.5 block rounded-full border-[1.5px] border-[#e5d9de] py-3.5 text-center text-[14.5px] font-bold"
+            className="mt-4 block rounded-full bg-accent py-4 text-center text-[15px] font-bold text-white transition-transform hover:-translate-y-0.5"
           >
             Commander sur WhatsApp
           </a>

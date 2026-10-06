@@ -11,7 +11,7 @@ import { REGLAGES_DEFAUT, type Reglages } from "@/lib/reglages";
  * refaire l'appel chacun de leur côté.
  *
  * Pas de `hydrated` ni de lecture différée, contrairement au panier ou aux
- * favoris : la valeur arrive déjà remplie du serveur, les deux rendus sont
+ * panier : la valeur arrive déjà remplie du serveur, les deux rendus sont
  * identiques par construction.
  */
 const ReglagesContext = createContext<Reglages>(REGLAGES_DEFAUT);

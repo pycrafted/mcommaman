@@ -33,8 +33,8 @@ Quatre applications, découpées par domaine métier et non par couche technique
 
 | Application | Ce qu'elle porte |
 |---|---|
-| `clientele` | Utilisateurs (clientes **et** équipe), adresses, favoris, panier |
-| `catalogue` | Rayons, tailles, coloris, matières, photothèque, produits, variantes, mouvements de stock |
+| `clientele` | Utilisateurs (clientes **et** équipe), adresses, panier |
+| `catalogue` | Rayons, tailles, coloris, matières, photothèque, produits, variantes, mouvements de stock, alertes de stock |
 | `ventes` | Commandes, lignes, paiements, campagnes de remise |
 | `vitrine` | Réglages de la boutique, bandeau d'accueil, journal d'activité |
 
@@ -92,8 +92,8 @@ dans l'un n'expose jamais les autres.
 
 | Préfixe | Qui y accède | Ce qu'on y trouve |
 |---|---|---|
-| `/api/compte/` | tout le monde, puis la personne connectée | inscription, connexion, déconnexion, profil, mot de passe, carnet d'adresses, favoris, panier |
-| `/api/catalogue/`, `/api/vitrine/` | tout le monde, en lecture seule | produits publiés, rayons visibles, référentiels, réglages, bandeau |
+| `/api/compte/` | tout le monde, puis la personne connectée | inscription, connexion, déconnexion, profil, mot de passe, carnet d'adresses, panier |
+| `/api/catalogue/`, `/api/vitrine/` | tout le monde, en lecture seule (sauf l'alerte de stock, en écriture, bornée à 10/h) | produits publiés, rayons visibles, référentiels, réglages, bandeau, « prévenez-moi du retour » d'une pièce épuisée |
 | `/api/gestion/` | l'équipe seule | fiches (brouillons compris), variantes et stock, photothèque, rayons, réglages, journal, commandes, campagnes |
 | `/api/commandes/`, `/api/devis/` | tout le monde | chiffrage d'un panier, passage de commande, suivi |
 
@@ -160,13 +160,6 @@ remet le stock. Sur Dakar, le paiement à la livraison suffit à ouvrir.
 
 Une commande passée sans compte se suit avec sa référence **et** le téléphone :
 la référence seule circule sur un ticket, elle ne prouve rien.
-
-## Favoris
-
-Les favoris d'une visiteuse non connectée restent dans son navigateur : lui
-demander un compte pour cliquer sur un cœur ferait perdre le geste. Ils
-remontent à la connexion par `POST /api/compte/favoris/fusionner/`, qui ajoute
-sans jamais effacer.
 
 ## Le panier
 

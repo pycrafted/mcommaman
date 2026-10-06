@@ -170,22 +170,25 @@ export function Hero({
           {/* Les trois façons de joindre la boutique, puis le magasin : à même le
               bandeau, sans légende. Chaque pastille arrive avec un temps de
               retard sur la précédente et remue quand on la touche. */}
+          {/* L'entrée et le balancement au survol sont sur deux éléments
+              différents : un survol qui remplaçait l'animation d'entrée la
+              faisait rejouer depuis son délai, et la pastille disparaissait. */}
           <div id="contact" className="mt-9 flex flex-wrap gap-2.5 scroll-mt-24">
             {contacts.map((c, i) => (
+              <span key={c.canal} className="anim-hero inline-flex" style={{ animationDelay: `${900 + i * 120}ms` }}>
               <a
-                key={c.canal}
                 href={c.href}
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`${c.canal} : ${c.valeur}`}
-                className="anim-hero wobble flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-1.5 pr-4 text-[13.5px] font-semibold text-ink shadow-[0_10px_30px_-14px_rgba(36,26,32,.45)] transition-transform duration-400 ease-soft hover:-translate-y-1"
-                style={{ animationDelay: `${900 + i * 120}ms` }}
+                className="wobble flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-1.5 pr-4 text-[13.5px] font-semibold text-ink shadow-[0_10px_30px_-14px_rgba(36,26,32,.45)] transition-transform duration-400 ease-soft hover:-translate-y-1"
               >
                 <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${c.pastille}`}>
                   <c.Icone className="h-4 w-4" />
                 </span>
                 {c.valeur}
               </a>
+              </span>
             ))}
           </div>
 

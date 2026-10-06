@@ -6,6 +6,7 @@ back-office de la vitrine. Ici on veut voir les données brutes et corriger vite
 from django.contrib import admin
 
 from .models import (
+    AlerteStock,
     Coloris,
     Matiere,
     Media,
@@ -91,3 +92,11 @@ class MouvementStockAdmin(admin.ModelAdmin):
     list_filter = ["motif", "date"]
     search_fields = ["reference", "variante__sku"]
     readonly_fields = ["date"]
+
+
+@admin.register(AlerteStock)
+class AlerteStockAdmin(admin.ModelAdmin):
+    list_display = ["email", "produit", "cree_le", "prevenue_le"]
+    list_filter = ["prevenue_le"]
+    search_fields = ["email", "produit__nom"]
+    autocomplete_fields = ["produit"]

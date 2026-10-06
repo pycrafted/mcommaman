@@ -17,12 +17,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import ROLES_EQUIPE, Adresse, Favori
+from .models import ROLES_EQUIPE, Adresse
 from .permissions import EstEquipe, EstProprietaire
 from .serializers import (
     AdresseSerializer,
     DemandeReinitialisationSerializer,
-    FavoriSerializer,
     ChangementMotDePasseSerializer,
     ConnexionSerializer,
     InscriptionSerializer,
@@ -279,61 +278,6 @@ class AdresseViewSet(viewsets.ModelViewSet):
         if sauf is not None:
             selection = selection.exclude(pk=sauf)
         selection.update(par_defaut=False)
-
-
-class FavoriViewSet(viewsets.ModelViewSet):
-    """
-    Les articles mis de côté.
-
-    Comme le panier, les favoris d'une visiteuse non connectée restent dans son
-    navigateur : lui demander un compte pour cliquer sur un cœur ferait perdre
-    le geste. Ils remontent ici à la connexion.
-    """
-
-    serializer_class = FavoriSerializer
-    permission_classes = [IsAuthenticated, EstProprietaire]
-    http_method_names = ["get", "post", "delete", "head", "options"]
-
-    def get_queryset(self):
-        return (
-            Favori.objects.filter(cliente=self.request.user)
-            .select_related("produit")
-            .prefetch_related("produit__photos__media", "produit__variantes")
-        )
-
-    @action(detail=False, methods=["delete"], url_path=r"produit/(?P<produit_id>[^/.]+)")
-    def retirer_par_produit(self, request, produit_id=None):
-        """
-        Retire par identifiant de produit.
-
-        La vitrine connaît le produit, pas la ligne de favori : lui imposer de
-        chercher l'identifiant du favori d'abord ferait deux appels au lieu d'un.
-        """
-        supprimes, _ = Favori.objects.filter(cliente=request.user, produit_id=produit_id).delete()
-        if not supprimes:
-            return Response({"detail": "Cet article n'est pas dans vos favoris."},
-                            status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=False, methods=["post"])
-    def fusionner(self, request):
-        """
-        Reprend les favoris gardés dans le navigateur avant la connexion.
-
-        Rien n'est effacé : on ajoute ce qui manque. Une cliente qui se
-        reconnecte sur un autre appareil ne doit pas perdre ce qu'elle avait.
-        """
-        identifiants = request.data.get("produits", [])
-        if not isinstance(identifiants, list):
-            return Response({"produits": ["Une liste d'identifiants est attendue."]},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        from catalogue.models import Produit
-        publies = Produit.objects.filter(id__in=identifiants, statut=Produit.Statut.PUBLIE)
-        for produit in publies:
-            Favori.objects.get_or_create(cliente=request.user, produit=produit)
-
-        return Response(self.get_serializer(self.get_queryset(), many=True).data)
 
 
 class ClienteGestionViewSet(viewsets.ReadOnlyModelViewSet):

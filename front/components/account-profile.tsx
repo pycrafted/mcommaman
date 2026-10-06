@@ -220,14 +220,6 @@ export function AccountProfile() {
                     </li>
                   ))}
                 </ul>
-
-                <Link
-                  href="/commandes"
-                  className="group mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-accent"
-                >
-                  Voir les {orders.length} commande{orders.length > 1 ? "s" : ""} et leur suivi
-                  <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
-                </Link>
               </>
             )}
           </SectionCard>

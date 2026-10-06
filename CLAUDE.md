@@ -52,7 +52,7 @@ La maquette est livrée en export sans crochets dans les noms de dossier : `app/
 
 Pas de route API, pas de base, pas de session serveur. **Tout l'état persiste dans `localStorage`**, exposé par des contextes React. Les données de départ sont des tableaux statiques (`lib/products.ts` pour le catalogue, `lib/admin/seed.ts` pour le back-office).
 
-Clés de stockage, une par domaine : `mcm-cart-v1`, `mcm-favorites-v1`, `mcm-orders-v1`, `mcm-reviews-v1`, `mcm-admin-state-v1`, `mcm-admin-session`.
+Clés de stockage, une par domaine : `mcm-cart-v1`, `mcm-orders-v1`, `mcm-reviews-v1`, `mcm-admin-state-v1`, `mcm-admin-session`.
 
 ### Deux arbres de providers
 

@@ -6,9 +6,8 @@ import { initiales } from "@/lib/format";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
 import { useOrders } from "./orders-context";
-import { useFavorites } from "./favorites-context";
 import { AccountNav } from "./account-nav";
-import { IconBag, IconHeart, IconLogout, IconPackage, IconPin } from "./icons";
+import { IconBag, IconLogout, IconPin } from "./icons";
 
 /**
  * L'en-tête de l'espace client, le même sur les quatre pages.
@@ -35,11 +34,10 @@ export function AccountHeader({
   const { account, logout } = useAuth();
   const { count, openDrawer } = useCart();
   const { orders } = useOrders();
-  const { count: favoris } = useFavorites();
 
-  /* Personne d'identifié : rien à saluer. « Mes commandes » et « Mes favoris »
-     s'ouvrent aussi sans compte, sur ce que garde le navigateur — elles gardent
-     alors leur seul titre, comme avant. */
+  /* Personne d'identifié : rien à saluer. « Mes commandes » s'ouvre aussi
+     sans compte, sur ce que garde le navigateur — elle garde alors son seul
+     titre, comme avant. */
   if (!account) return null;
 
   const prenom = account.name.split(" ")[0];
@@ -53,24 +51,12 @@ export function AccountHeader({
 
   const chiffres = [
     {
-      valeur: String(orders.length),
-      label: orders.length > 1 ? "Commandes passées" : "Commande passée",
-      href: "/commandes",
-      Icone: IconPackage,
-    },
-    {
       valeur: String(count),
       label: count > 1 ? "Articles au panier" : "Article au panier",
       /* Le panier s'ouvre dans son panneau : quitter l'espace client pour la
          page du tunnel faisait disparaître tout le décor d'un coup. */
       href: null,
       Icone: IconBag,
-    },
-    {
-      valeur: String(favoris),
-      label: favoris > 1 ? "Favoris" : "Favori",
-      href: "/favoris",
-      Icone: IconHeart,
     },
     {
       valeur: String(account.addresses.length),

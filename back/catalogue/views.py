@@ -12,11 +12,15 @@ from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 
 from clientele.permissions import EstEquipe
 
 from .models import (
+    AlerteStock,
     Coloris,
     Matiere,
     Media,
@@ -79,6 +83,22 @@ def _dans_le_rayon(selection, slug: str):
     return selection.filter(rayon__in=rayons)
 
 
+class AlerteStockThrottle(ScopedRateThrottle):
+    """Le débit des alertes de stock : la portée vit ici, pas sur la vue entière."""
+
+    scope = "alerte_stock"
+
+    def get_scope(self, request, view):  # pragma: no cover - lecture directe
+        return self.scope
+
+    def allow_request(self, request, view):
+        # ScopedRateThrottle lit la portée sur la vue ; on la fixe nous-mêmes.
+        self.scope = "alerte_stock"
+        self.rate = self.get_rate()
+        self.num_requests, self.duration = self.parse_rate(self.rate)
+        return super(ScopedRateThrottle, self).allow_request(request, view)
+
+
 class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Le catalogue public.
@@ -130,8 +150,7 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         selection = annoter_prix_effectif(selection, self.get_serializer_context()["campagnes"])
         params = self.request.query_params
 
-        # Une poignée de fiches désignées par leur identifiant : ce que la page
-        # des favoris demande pour dessiner ses cartes.
+        # Une poignée de fiches désignées par leur identifiant.
         voulus = [int(x) for x in _liste(params.get("ids", "")) if x.isdigit()][:100]
         if voulus:
             return selection.filter(pk__in=voulus)
@@ -270,6 +289,26 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(
             ProduitCarteSerializer(voisins, many=True, context=self.get_serializer_context()).data
         )
+
+    @action(detail=True, methods=["post"], url_path="alerte-stock",
+            throttle_classes=[AlerteStockThrottle])
+    def alerte_stock(self, request, slug=None):
+        """
+        « Prévenez-moi du retour » : un courriel posé sur une pièce épuisée.
+
+        Pas de compte demandé. Une adresse déjà inscrite sur cette pièce est
+        acceptée sans erreur : la cliente veut être prévenue, elle l'est déjà.
+        """
+        produit = self.get_object()
+        email = str(request.data.get("email", "")).strip().lower()
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response({"email": ["Entrez une adresse e-mail valide."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        AlerteStock.objects.get_or_create(produit=produit, email=email)
+        return Response({"detail": "Vous serez prévenue dès le retour en stock."},
+                        status=status.HTTP_201_CREATED)
 
 
 class RayonPublicViewSet(viewsets.ReadOnlyModelViewSet):

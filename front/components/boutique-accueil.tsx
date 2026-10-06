@@ -309,6 +309,14 @@ export function BoutiqueAccueil({
   /* Le numéro de la sélection affichée : la grille le prend pour clé, et
      rejoue sa cascade à chaque nouvelle sélection. */
   const [generation, setGeneration] = useState(0);
+  /* Une pièce modifiée ou créée depuis une carte ou le dock : la grille se
+     relit (événement émis par `components/edition-piece.tsx`). */
+  const [rafraichir, setRafraichir] = useState(0);
+  useEffect(() => {
+    const relire = () => setRafraichir((n) => n + 1);
+    window.addEventListener("mcm:catalogue-modifie", relire);
+    return () => window.removeEventListener("mcm:catalogue-modifie", relire);
+  }, []);
 
   /* À chaque changement d'état (sauf le premier rendu, déjà servi), la
      sélection et ses facettes sont relues ensemble. Une réponse en retard sur
@@ -340,7 +348,7 @@ export function BoutiqueAccueil({
       setFacettes(f);
       setGeneration(numero);
     });
-  }, [etat]);
+  }, [etat, rafraichir]);
 
   const categorie = categories.find((c) => c.slug === etat.categorie) ?? null;
   /* Les sous-catégories n'apparaissent qu'une fois une catégorie choisie :

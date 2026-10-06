@@ -6,7 +6,6 @@ from rest_framework.routers import DefaultRouter
 from .panier import FusionPanierView, LignePanierView, PanierView
 from .views import (
     AdresseViewSet,
-    FavoriViewSet,
     ConnexionView,
     DeconnexionView,
     InscriptionView,
@@ -19,7 +18,6 @@ from .views import (
 
 routeur = DefaultRouter()
 routeur.register("adresses", AdresseViewSet, basename="adresse")
-routeur.register("favoris", FavoriViewSet, basename="favori")
 
 urlpatterns = [
     path("csrf/", JetonCsrfView.as_view(), name="csrf"),
