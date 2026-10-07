@@ -1,0 +1,60 @@
+MAQUETTE REDESIGN M COMME MAMAN, BRANCHÉE SUR back/
+====================================================
+
+Deux versions, mêmes données :
+  index.html         héros arrondi avec les deux bannières
+  plein-ecran.html   héros bord à bord, plein écran
+
+Lancer
+------
+Double-cliquer sur lancer-maquette.bat. Il démarre PostgreSQL (docker compose),
+le serveur Django (port 8000) et un petit serveur de fichiers pour la maquette
+(port 3200), puis ouvre les deux versions dans le navigateur.
+
+La maquette est servie par serveur-maquette.py (port 3200), qui relaie aussi
+/api/ et /media/ vers Django (port 8000) : même adresse pour tout, donc ni
+CORS ni cookie à régler, et rien à modifier dans le serveur.
+
+À la main :
+  ..\back\.venv\Scripts\python.exe serveur-maquette.py
+
+Première fois sur une base vide :
+  cd ..\back
+  .venv\Scripts\python.exe manage.py migrate
+  .venv\Scripts\python.exe manage.py peupler
+
+Ce qui vient du serveur
+-----------------------
+Vitrine : catégories et rayons, produits, prix du jour, ruptures, fiches avec
+tailles et variantes, avis (résumé), réglages (frais, franco, téléphone,
+bandeau), devis du panier (POST /api/devis/), passage de commande
+(POST /api/commandes/), connexion et inscription cliente, suivi des commandes.
+
+Back-office (#admin) : connexion équipe (/api/gestion/connexion/), tableau de
+bord, commandes (avancer / annuler en glissant les cartes), produits (publier /
+repasser en brouillon), clientes, catégories, promotions, tailles, coloris,
+matières, photothèque, réglages (enregistrés par PATCH), statistiques calculées
+à partir des commandes.
+
+Restent en démonstration : les scènes animées du héros, les stories vidéo,
+le formulaire « nouveau produit » (aperçu seulement), les photos quand l'image
+du serveur pointe vers l'ancien CDN (la maquette retombe sur une photo locale
+ou sur un pictogramme).
+
+Ce dossier n'est ni commité ni poussé. git le voit comme non suivi : le
+supprimer suffit à tout retirer.
+
+
+BACK-OFFICE BRANCHÉ SUR LE SERVEUR (#admin)
+-------------------------------------------
+Connexion avec un compte équipe de la base. Tout part à /api/gestion/ :
+- Produits : créer, modifier, photos (envoi ou photothèque), tailles et stock,
+  ajustement de stock tracé, publier / retirer / dupliquer / archiver / supprimer.
+  La boutique n'affiche que les produits PUBLIÉS : un brouillon n'y apparaît pas.
+- Commandes : avancer étape par étape, annuler (stock remis), rétablir,
+  saisir une vente faite sur WhatsApp ou en boutique.
+- Catégories, promotions, tailles / coloris / matières, avis, réglages.
+- Cloche : nouvelles commandes relues toutes les 30 s.
+
+Le code du back-office est dans pont-gestion.js ; après modification :
+  python assembler.py pont-gestion.js index.html plein-ecran.html
