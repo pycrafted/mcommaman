@@ -213,7 +213,19 @@ export function ParallaxFond({
       raf = requestAnimationFrame(placer);
     };
 
-    /* Hors champ, on cesse de calculer. */
+    /* Hors champ, on cesse de calculer. Sans observateur (vieux navigateurs),
+       on calcule tout le temps. */
+    if (typeof IntersectionObserver === "undefined") {
+      visible = true;
+      placer();
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll, { passive: true });
+      return () => {
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onScroll);
+        if (raf) cancelAnimationFrame(raf);
+      };
+    }
     const io = new IntersectionObserver(
       ([entry]) => {
         visible = entry.isIntersecting;
@@ -268,7 +280,7 @@ export function Marquee({
             {items.map((item, i) => (
               <span key={i} className="flex items-center gap-3 whitespace-nowrap px-6">
                 {item}
-                <IconHeartFull className="h-2.5 w-2.5 shrink-0 text-rose/70" />
+                <IconHeartFull className="h-2.5 w-2.5 shrink-0 text-accent/70" />
               </span>
             ))}
           </div>
@@ -456,6 +468,11 @@ export function Carousel({
     const el = railRef.current;
     if (!el) return;
     measure();
+    /* Safari < 13.1 n'a pas `ResizeObserver` : on se rabat sur le redimensionnement. */
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     if (passRef.current) ro.observe(passRef.current);
@@ -696,7 +713,7 @@ export function ScrollProgress() {
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-transparent">
-      <div ref={ref} className="progress h-full bg-linear-to-r from-rose to-gold" />
+      <div ref={ref} className="progress h-full bg-linear-to-r from-accent to-gold" />
     </div>
   );
 }

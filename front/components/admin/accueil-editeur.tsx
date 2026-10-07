@@ -289,7 +289,7 @@ export function AccueilEditeur() {
             {brouillon.hero_accent && (
               <>
                 {"\n"}
-                <span className="bg-linear-to-r from-rose to-gold bg-clip-text text-transparent">
+                <span className="bg-linear-to-r from-accent to-gold bg-clip-text text-transparent">
                   {brouillon.hero_accent}
                 </span>
               </>

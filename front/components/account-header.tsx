@@ -6,9 +6,8 @@ import { initiales } from "@/lib/format";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
 import { useOrders } from "./orders-context";
-import { useFavorites } from "./favorites-context";
 import { AccountNav } from "./account-nav";
-import { IconBag, IconHeart, IconLogout, IconPackage, IconPin } from "./icons";
+import { IconBag, IconLogout, IconPin } from "./icons";
 
 /**
  * L'en-tête de l'espace client, le même sur les quatre pages.
@@ -35,11 +34,10 @@ export function AccountHeader({
   const { account, logout } = useAuth();
   const { count, openDrawer } = useCart();
   const { orders } = useOrders();
-  const { count: favoris } = useFavorites();
 
-  /* Personne d'identifié : rien à saluer. « Mes commandes » et « Mes favoris »
-     s'ouvrent aussi sans compte, sur ce que garde le navigateur — elles gardent
-     alors leur seul titre, comme avant. */
+  /* Personne d'identifié : rien à saluer. « Mes commandes » s'ouvre aussi
+     sans compte, sur ce que garde le navigateur — elle garde alors son seul
+     titre, comme avant. */
   if (!account) return null;
 
   const prenom = account.name.split(" ")[0];
@@ -53,24 +51,12 @@ export function AccountHeader({
 
   const chiffres = [
     {
-      valeur: String(orders.length),
-      label: orders.length > 1 ? "Commandes passées" : "Commande passée",
-      href: "/commandes",
-      Icone: IconPackage,
-    },
-    {
       valeur: String(count),
       label: count > 1 ? "Articles au panier" : "Article au panier",
       /* Le panier s'ouvre dans son panneau : quitter l'espace client pour la
          page du tunnel faisait disparaître tout le décor d'un coup. */
       href: null,
       Icone: IconBag,
-    },
-    {
-      valeur: String(favoris),
-      label: favoris > 1 ? "Favoris" : "Favori",
-      href: "/favoris",
-      Icone: IconHeart,
     },
     {
       valeur: String(account.addresses.length),
@@ -85,13 +71,13 @@ export function AccountHeader({
       {/* ------------------------------------------------------ en-tête sombre */}
       <section className="noise anim-fade-up relative overflow-hidden rounded-[26px] bg-ink px-6 py-8 text-white sm:px-9 md:rounded-[30px]">
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="aurora absolute -left-16 -top-10 h-72 w-72 rounded-full bg-rose/40 blur-[90px]" />
+          <div className="aurora absolute -left-16 -top-10 h-72 w-72 rounded-full bg-accent/40 blur-[90px]" />
           <div className="aurora absolute -right-12 bottom-0 h-64 w-64 rounded-full bg-gold/25 blur-[90px] [animation-delay:-11s]" />
         </div>
 
         <div className="relative">
           <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-rose text-base font-extrabold sm:h-16 sm:w-16 sm:text-lg">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-accent text-base font-extrabold sm:h-16 sm:w-16 sm:text-lg">
               {initiales(account.name)}
             </span>
             <div className="min-w-0 flex-1">

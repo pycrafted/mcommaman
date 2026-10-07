@@ -23,7 +23,7 @@ from catalogue.models import (
     Coloris, Matiere, Media, Produit, PhotoProduit, Rayon, Taille, Univers, Variante,
 )
 from clientele.models import Adresse
-from ventes.models import Avis, Campagne, Commande, LigneCommande
+from ventes.models import Campagne, Commande, LigneCommande
 from vitrine.models import Bandeau, EntreeJournal, Reglages
 
 Utilisateur = get_user_model()
@@ -32,7 +32,9 @@ Utilisateur = get_user_model()
 # d'elle, pour que le jeu ne vieillisse pas d'un jour à chaque exécution.
 REFERENCE = timezone.datetime(2026, 8, 15, 10, 0, tzinfo=timezone.get_current_timezone())
 
-CDN = "https://mcommaman.com/cdn/shop/files/"
+# Les photos de démonstration sont livrées avec la vitrine (`front/public/images/
+# products/`) : la boutique s'affiche sans dépendre d'un serveur d'images.
+PHOTOS = "/images/products/"
 
 # Deux catégories racines, et leurs sous-catégories. Le quatrième champ est la
 # parente : vide pour une racine.
@@ -70,40 +72,40 @@ MATIERES = [
 # Les douze fiches de la vitrine, mot pour mot.
 PRODUITS = [
     ("robe-chasuble-rose-plumetis", "Robe chasuble rose à volant plumetis", "RBP-0040", 12000, None,
-     "Robes & jupes", "fille", "2-10", "Ensemble_enfant-4.jpg?v=1785880792&width=800",
+     "Robes & jupes", "fille", "2-10", "Ensemble_enfant-4-retouche.png",
      "Chasuble en satin rose, rosette froncée à l'épaule, bas de jupe en plumetis duveteux. Doublure coton, fermeture pression au dos."),
     ("babies-vernies-bride", "Babies vernies à bride", "CHS-2210", 3000, None,
-     "Chaussures", "fille", "2-10", "chass1.png?v=1784826770&width=800",
+     "Chaussures", "fille", "2-10", "chass1.png",
      "Vernis rose, nœud plat sur le dessus, bride réglable par pression. Semelle souple antidérapante, pointures 20 à 30."),
     ("ensemble-pyjama-illustration", "Ensemble pyjama à illustration", "PYJ-1380", 12000, 14000,
-     "Ensembles", "fille", "2-10", "Ensemble_enfant-138.jpg?v=1785881597&width=800",
+     "Ensembles", "fille", "2-10", "Ensemble_enfant-138-retouche.png",
      "Haut écru à manches longues, col rouge côtelé et illustration imprimée sur la poitrine. Bas assorti à taille élastique. Jersey de coton."),
     ("ensemble-chemise-bermuda-safari", "Ensemble chemise et bermuda safari", "SAF-0300", 9000, None,
-     "Ensembles", "garcon", "11-14", "Ensemble_enfant-30.jpg?v=1785526705&width=800",
+     "Ensembles", "garcon", "11-14", "Ensemble_enfant-30-retouche.png",
      "Popeline de coton beige, chemise à manches courtes et deux poches poitrine, bermuda assorti à taille ajustable."),
     ("tshirt-raglan-rose-gris", "T-shirt raglan rose et gris", "TSH-0520", 5000, 6500,
-     "T-shirts & hauts", "fille", "2-10", "Ensemble_enfant-52.jpg?v=1785881224&width=800",
+     "T-shirts & hauts", "fille", "2-10", "Ensemble_enfant-52-retouche.png",
      "Jersey de coton rose, manches raglan grises, col rond marine côtelé. Coupe droite."),
     ("ensemble-pyjama-rouge-vichy", "Ensemble pyjama rouge et vichy", "PYJ-0190", 8500, None,
-     "Ensembles", "mixte", "2-10", "Ensembleenfant-19.jpg?v=1785860514&width=800",
+     "Ensembles", "mixte", "2-10", "Ensembleenfant-19-retouche.png",
      "Haut rouge uni à manches longues, pantalon vichy rouge et blanc. Taille élastiquée, coton doux."),
     ("ensemble-pyjama-ecru-motif", "Ensemble pyjama écru à motif", "PYJ-0150", 7500, None,
-     "Ensembles", "mixte", "2-10", "Ensembleenfant-15.jpg?v=1785857761&width=800",
+     "Ensembles", "mixte", "2-10", "Ensembleenfant-15-retouche.png",
      "Haut écru à manches longues avec motif appliqué, bas vert imprimé assorti. Coton doux, poignets côtelés."),
     ("robe-fete-ecrue-plumetis", "Robe de fête écrue à jupe plumetis", "RBF-0110", 11000, None,
-     "Robes & jupes", "fille", "2-10", "Ensemble_enfant-11.jpg?v=1785880838&width=800",
+     "Robes & jupes", "fille", "2-10", "Ensemble_enfant-11-retouche.png",
      "Robe sans manches en satin écru, jupe en plumetis, fermeture éclair invisible au dos. Doublure intégrale."),
     ("ensemble-pyjama-avions", "Ensemble pyjama imprimé avions", "PYJ-0570", 9500, None,
-     "Ensembles", "garcon", "2-10", "Ensemble_enfant-57.jpg?v=1785881629&width=800",
+     "Ensembles", "garcon", "2-10", "Ensemble_enfant-57-retouche.png",
      "Haut écru imprimé avions, bas bleu uni assorti. Poignets et chevilles côtelés, coton respirant."),
     ("jean-droit-denim", "Jean droit en denim", "JEA-0670", 13000, None,
-     "Bas & jeans", "mixte", "11-14", "Ensemble_enfant-67.jpg?v=1785881797&width=800",
+     "Bas & jeans", "mixte", "11-14", "Ensemble_enfant-67-retouche.png",
      "Denim bleu moyen, coupe droite cinq poches, taille réglable par bouton intérieur."),
     ("pantalon-rose-elastique", "Pantalon rose à taille élastiquée", "PAN-1870", 7000, None,
-     "Bas & jeans", "fille", "2-10", "Ensemble_enfant-187.jpg?v=1785881825&width=800",
+     "Bas & jeans", "fille", "2-10", "Ensemble_enfant-187-retouche.png",
      "Coton stretch rose, taille entièrement élastiquée, coupe droite légèrement fuselée."),
     ("robe-ete-fleurie-bloomer", "Robe d'été fleurie et bloomer", "RBE-0070", 6000, None,
-     "Robes & jupes", "fille", "2-10", "p7eexgrv.png?v=1784397830&width=800",
+     "Robes & jupes", "fille", "2-10", "p7eexgrv.png",
      "Robe à bretelles croisées imprimée fleurs, bloomer assorti. Coton léger, doublure jersey."),
 ]
 
@@ -111,16 +113,16 @@ PRODUITS = [
 # habiller leurs enfants et repartent avec de quoi se coudre quelque chose.
 PRODUITS_MAMAN = [
     ("coupon-bazin-riche-blanc", "Coupon bazin riche blanc", "TIS-0010", 18000,
-     "Tissus", "Ensemble_enfant-121.jpg?width=800",
+     "Tissus", "tissu-1.jpg",
      "Bazin riche teinté à la main, vendu au coupon de cinq mètres. Tombé lourd, éclat qui tient au lavage."),
     ("coupon-wax-fleuri", "Coupon wax fleuri", "TIS-0020", 12000,
-     "Tissus", "Ensemble_enfant-26.jpg?width=800",
+     "Tissus", "tissu-2.jpg",
      "Wax imprimé fleurs, coupon de six yards. Coton épais, couleurs franches qui ne passent pas."),
     ("voile-brode-ecru", "Voile brodé écru", "VOI-0010", 9000,
-     "Voiles", "Ensembleenfant-153.jpg?width=800",
+     "Voiles", "tissu-3.jpg",
      "Voile léger brodé main sur les bords, deux mètres. Se porte sur l'épaule ou sur la tête."),
     ("foulard-soie-uni", "Foulard en soie uni", "VOI-0020", 6500,
-     "Voiles", "Ensembleenfant-190.jpg?width=800",
+     "Voiles", "tissu-4.jpg",
      "Soie unie, ourlet roulotté à la main. Un carré qui se noue au cou comme dans les cheveux."),
 ]
 
@@ -162,7 +164,6 @@ class Command(BaseCommand):
         commandes = self._commandes(produits, clientes, alea)
         self._campagnes()
         self._bandeau(produits)
-        self._avis(commandes, alea)
         self._journal(gerante)
 
         self.stdout.write(self.style.SUCCESS(
@@ -176,7 +177,7 @@ class Command(BaseCommand):
 
     def _vider(self):
         self.stdout.write(self.style.WARNING("Effacement des données métier…"))
-        for modele in (Avis, LigneCommande, Commande, Campagne, Bandeau, EntreeJournal,
+        for modele in (LigneCommande, Commande, Campagne, Bandeau, EntreeJournal,
                        Variante, PhotoProduit, Produit, Media, Taille, Coloris,
                        Matiere, Adresse):
             modele.objects.all().delete()
@@ -224,7 +225,7 @@ class Command(BaseCommand):
         produits = []
 
         for index, (slug, nom, sku, prix, prix_barre, rayon, genre, age, fichier, description) in enumerate(PRODUITS):
-            media, _ = Media.objects.get_or_create(url=CDN + fichier, defaults={"nom": nom})
+            media, _ = Media.objects.get_or_create(url=PHOTOS + fichier, defaults={"nom": nom})
             # La dernière fiche reste en brouillon : le back-office doit avoir de
             # quoi montrer la différence.
             statut = Produit.Statut.BROUILLON if index == len(PRODUITS) - 1 else Produit.Statut.PUBLIE
@@ -260,7 +261,7 @@ class Command(BaseCommand):
         # Le Coin Maman : ni âge ni genre, une seule taille, une seule variante.
         taille_unique = tailles["TU"]
         for slug, nom, sku, prix, rayon, fichier, description in PRODUITS_MAMAN:
-            media, _ = Media.objects.get_or_create(url=CDN + fichier, defaults={"nom": nom})
+            media, _ = Media.objects.get_or_create(url=PHOTOS + fichier, defaults={"nom": nom})
             produit, _ = Produit.objects.update_or_create(
                 slug=slug,
                 defaults={
@@ -405,7 +406,7 @@ class Command(BaseCommand):
                       "note": "Offre de rentrée sur la sélection signalée en boutique."},
         )
         Campagne.objects.update_or_create(
-            libelle="Bienvenue — première commande",
+            libelle="Bienvenue, première commande",
             defaults={"type": Campagne.Type.MONTANT, "valeur": 2000,
                       "date_effet": date(2026, 8, 1), "duree_jours": 120,
                       "portee": Campagne.Portee.COMMANDE,
@@ -417,6 +418,8 @@ class Command(BaseCommand):
     def _bandeau(self, produits):
         par_slug = {p.slug: p for p in produits}
         photos = [
+            ("/images/hero/fille-ecole-1600.jpg", "Fille en haut et jean rose, sac à dos et gourde, devant son école à Dakar",
+             "50% 40%", "La rentrée", "tshirt-raglan-rose-gris"),
             ("/images/hero/fille-cour.webp", "Fillette en t-shirt gris et pantalon écru dans une cour à Dakar",
              "52% 42%", "Tous les jours", "tshirt-raglan-rose-gris"),
             ("/images/hero/robe-rouge.webp", "Fillette en robe de fête rouge à jupe de tulle",
@@ -433,30 +436,6 @@ class Command(BaseCommand):
             )
         self.stdout.write("  3 photos de bandeau")
 
-    def _avis(self, commandes, alea):
-        """Seules les commandes livrées donnent droit à un avis — comme en vrai."""
-        livrees = [c for c in commandes if c.statut == Commande.Statut.LIVREE][:40]
-        textes = [
-            "Commandé le matin, livré le lendemain. La taille correspond bien à l'âge, le tissu ne gratte pas.",
-            "La jupe en plumetis fait vraiment son effet. Ma fille l'a portée pour la Tabaski.",
-            "Très jolies et solides. J'aurais aimé une pointure de plus en stock.",
-            "La taille réglable à l'intérieur change tout pour un enfant qui pousse.",
-            "Reçue en une journée, emballage soigné. Je recommande.",
-        ]
-        poses = 0
-        for commande in livrees:
-            if alea.random() > 0.45:
-                continue
-            ligne = commande.lignes.first()
-            if not ligne or not ligne.variante:
-                continue
-            _, cree = Avis.objects.get_or_create(
-                auteur=commande.cliente, commande=commande, produit=ligne.variante.produit,
-                defaults={"note": alea.choice([4, 5, 5, 5]), "commentaire": alea.choice(textes),
-                          "etat": Avis.Etat.PUBLIE, "modere_le": commande.creee_le + timedelta(days=2)},
-            )
-            poses += 1 if cree else 0
-        self.stdout.write(f"  {poses} avis")
 
     def _journal(self, gerante):
         entrees = [

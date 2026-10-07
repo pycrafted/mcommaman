@@ -7,16 +7,20 @@ permission expose un champ de gestion à la boutique.
 """
 
 from django.db import transaction
-from django.db.models import Count, Exists, F, Max, Min, OuterRef, Prefetch, Q, Subquery, Sum
+from django.db.models import Case, Count, Exists, F, IntegerField, Max, Min, OuterRef, Prefetch, Q, Subquery, Sum, When
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 
 from clientele.permissions import EstEquipe
 
 from .models import (
+    AlerteStock,
     Coloris,
     Matiere,
     Media,
@@ -49,6 +53,9 @@ TRIS = {
     "prix-croissant": "prix_effectif",
     "prix-decroissant": "-prix_effectif",
     "nom": "nom",
+    # Les pièces en promotion d'abord, puis les nouveautés : l'annotation est
+    # posée dans `get_queryset`, où le prix du jour est connu.
+    "promotion": "-en_promotion",
 }
 
 
@@ -74,6 +81,22 @@ def _dans_le_rayon(selection, slug: str):
     """Les articles d'une catégorie et de ses sous-catégories, sans doublon."""
     rayons = Rayon.objects.filter(Q(slug=slug) | Q(parents__slug=slug)).values("pk")
     return selection.filter(rayon__in=rayons)
+
+
+class AlerteStockThrottle(ScopedRateThrottle):
+    """Le débit des alertes de stock : la portée vit ici, pas sur la vue entière."""
+
+    scope = "alerte_stock"
+
+    def get_scope(self, request, view):  # pragma: no cover - lecture directe
+        return self.scope
+
+    def allow_request(self, request, view):
+        # ScopedRateThrottle lit la portée sur la vue ; on la fixe nous-mêmes.
+        self.scope = "alerte_stock"
+        self.rate = self.get_rate()
+        self.num_requests, self.duration = self.parse_rate(self.rate)
+        return super(ScopedRateThrottle, self).allow_request(request, view)
 
 
 class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
@@ -127,15 +150,23 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         selection = annoter_prix_effectif(selection, self.get_serializer_context()["campagnes"])
         params = self.request.query_params
 
-        # Une poignée de fiches désignées par leur identifiant : ce que la page
-        # des favoris demande pour dessiner ses cartes.
+        # Une poignée de fiches désignées par leur identifiant.
         voulus = [int(x) for x in _liste(params.get("ids", "")) if x.isdigit()][:100]
         if voulus:
             return selection.filter(pk__in=voulus)
 
-        return self.filtrer(selection, params).order_by(
-            TRIS.get(params.get("tri", ""), "-cree_le"), "-pk"
-        )
+        selection = self.filtrer(selection, params)
+        if params.get("tri") == "promotion":
+            selection = selection.annotate(
+                en_promotion=Case(
+                    When(Q(prix_effectif__lt=F("prix")) | Q(prix_barre__gt=F("prix")), then=1),
+                    default=0,
+                    output_field=IntegerField(),
+                )
+            ).order_by("-en_promotion", "-cree_le", "-pk")
+        else:
+            selection = selection.order_by(TRIS.get(params.get("tri", ""), "-cree_le"), "-pk")
+        return selection
 
     @staticmethod
     def filtrer(selection, params, sans=()):
@@ -159,6 +190,13 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
             selection = selection.filter(
                 Exists(Variante.objects.filter(
                     produit=OuterRef("pk"), stock__gt=0, taille__valeur__in=tailles
+                ))
+            )
+        # Un coloris ne compte que s'il est encore en stock, comme une taille.
+        if "coloris" not in sans and (coloris := _liste(params.get("coloris", ""))):
+            selection = selection.filter(
+                Exists(Variante.objects.filter(
+                    produit=OuterRef("pk"), stock__gt=0, coloris__nom__in=coloris
                 ))
             )
         # Le prix filtré est celui du jour, remise comprise.
@@ -199,6 +237,7 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         selection = self.filtrer(base, params)
         pour_sous = self.filtrer(base, params, sans=("sous",))
         pour_tailles = self.filtrer(base, params, sans=("taille",))
+        pour_coloris = self.filtrer(base, params, sans=("coloris",))
         pour_prix = self.filtrer(base, params, sans=("prix",))
 
         bornes = pour_prix.aggregate(minimum=Min("prix_effectif"), maximum=Max("prix_effectif"))
@@ -213,6 +252,14 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
             .annotate(nombre=Count("produit", distinct=True))
             .order_by("taille__ordre", "taille__valeur")
         )
+        coloris = (
+            Variante.objects.filter(
+                stock__gt=0, coloris__isnull=False, produit__in=pour_coloris.values("pk")
+            )
+            .values("coloris__nom", "coloris__hexa")
+            .annotate(nombre=Count("produit", distinct=True))
+            .order_by("coloris__nom")
+        )
         return Response({
             "total": selection.count(),
             "prix_min": bornes["minimum"] or 0,
@@ -220,6 +267,10 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
             "sous_categories": {ligne["rayon__slug"]: ligne["nombre"] for ligne in sous},
             "tailles": [
                 {"valeur": ligne["taille__valeur"], "nombre": ligne["nombre"]} for ligne in tailles
+            ],
+            "coloris": [
+                {"nom": ligne["coloris__nom"], "hexa": ligne["coloris__hexa"], "nombre": ligne["nombre"]}
+                for ligne in coloris
             ],
         })
 
@@ -238,6 +289,26 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(
             ProduitCarteSerializer(voisins, many=True, context=self.get_serializer_context()).data
         )
+
+    @action(detail=True, methods=["post"], url_path="alerte-stock",
+            throttle_classes=[AlerteStockThrottle])
+    def alerte_stock(self, request, slug=None):
+        """
+        « Prévenez-moi du retour » : un courriel posé sur une pièce épuisée.
+
+        Pas de compte demandé. Une adresse déjà inscrite sur cette pièce est
+        acceptée sans erreur : la cliente veut être prévenue, elle l'est déjà.
+        """
+        produit = self.get_object()
+        email = str(request.data.get("email", "")).strip().lower()
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response({"email": ["Entrez une adresse e-mail valide."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        AlerteStock.objects.get_or_create(produit=produit, email=email)
+        return Response({"detail": "Vous serez prévenue dès le retour en stock."},
+                        status=status.HTTP_201_CREATED)
 
 
 class RayonPublicViewSet(viewsets.ReadOnlyModelViewSet):

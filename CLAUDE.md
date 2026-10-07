@@ -52,7 +52,7 @@ La maquette est livrée en export sans crochets dans les noms de dossier : `app/
 
 Pas de route API, pas de base, pas de session serveur. **Tout l'état persiste dans `localStorage`**, exposé par des contextes React. Les données de départ sont des tableaux statiques (`lib/products.ts` pour le catalogue, `lib/admin/seed.ts` pour le back-office).
 
-Clés de stockage, une par domaine : `mcm-cart-v1`, `mcm-favorites-v1`, `mcm-orders-v1`, `mcm-reviews-v1`, `mcm-admin-state-v1`, `mcm-admin-session`.
+Clés de stockage, une par domaine : `mcm-cart-v1`, `mcm-orders-v1`, `mcm-reviews-v1`, `mcm-admin-state-v1`, `mcm-admin-session`.
 
 ### Deux arbres de providers
 
@@ -98,7 +98,7 @@ Les constantes commerciales vivent dans `lib/`, une source par sujet : `shipping
 
 - **Aucune dépendance hors Next/React/Tailwind.** Les animations sont écrites à la main : keyframes dans `app/globals.css`, primitives dans `components/motion.tsx` (`Carousel`, `Parallax`, `Magnetic`, `CountUp`, `SplitText`, `Marquee`, `GlowCard`) et `components/reveal.tsx`. Ne pas introduire de bibliothèque d'animation pour ajouter un effet.
 - Deux règles tenues partout, expliquées dans le README : `animation-fill-mode: backwards` jamais `forwards` (sinon les `hover:` des cartes sont neutralisés), et un bloc `prefers-reduced-motion` que les hooks JS testent aussi avant de poser le moindre écouteur.
-- **Plus rien n'est écrit en dur dans la vitrine.** Catalogue, rayons, tailles, coloris, frais de livraison, coordonnées, bandeau d'accueil, campagnes, commandes et avis viennent tous de `back`. `lib/products.ts` ne garde que le type `Product` et les deux vidéos du bandeau ; le tableau `README.md` § « Ce que la vitrine lit sur le serveur » liste chaque route.
+- **Plus rien n'est écrit en dur dans la vitrine.** Catalogue, rayons, tailles, coloris, frais de livraison, coordonnées, bandeau d'accueil, campagnes et commandes viennent tous de `back`. `lib/products.ts` ne garde que le type `Product` et les deux vidéos du bandeau ; le tableau `README.md` § « Ce que la vitrine lit sur le serveur » liste chaque route.
 - Les réglages de la boutique sont lus **une seule fois**, par `app/layout.tsx`, et posés dans `components/reglages-context.tsx` (`useReglages()`). Ne pas refaire l'appel ailleurs.
 - `components/header.tsx` est un composant **serveur** qui va chercher rayons et décompte ; l'affichage est dans `header-barre.tsx` (client). Même découpage à reprendre si un autre composant partagé a besoin de données serveur.
 - **Aucun montant ne se calcule dans le navigateur.** Le tunnel demande `POST /api/devis/` à chaque changement de panier ou de zone, et la commande part sans le moindre prix : `ventes/tarification.py` refait tout. Il n'y a pas de code de réduction : les campagnes s'appliquent d'elles-mêmes, côté serveur.

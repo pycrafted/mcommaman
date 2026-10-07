@@ -11,9 +11,9 @@ Le basculement se fait dans `settings.STORAGES` :
     — R2 dès que les cinq variables CLOUDFLARE_R2_* sont renseignées ;
     — le disque local sinon, en développement.
 
-R2 ne transforme rien : il rend le fichier tel qu'il a été envoyé. La
-photothèque n'en demande pas plus — `next/image` fabrique les vignettes côté
-vitrine, à partir de l'original.
+R2 ne transforme rien : il rend le fichier tel qu'il a été envoyé. C'est
+pourquoi la photothèque y range, à côté de l'original, trois variantes web
+réduites — voir `catalogue/imaging.py`.
 """
 
 from django.conf import settings

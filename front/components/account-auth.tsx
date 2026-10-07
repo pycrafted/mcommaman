@@ -72,7 +72,7 @@ export function LoginForm() {
           Pas encore de compte ?{" "}
           <Link
             href={lienAvecSuite("/compte/inscription", suite)}
-            className="font-bold text-rose underline underline-offset-4"
+            className="font-bold text-accent underline underline-offset-4"
           >
             Créer un compte
           </Link>
@@ -103,7 +103,7 @@ export function LoginForm() {
           <p className="mt-2 text-right text-[12px]">
             <Link
               href="/compte/mot-de-passe-oublie"
-              className="font-semibold text-rose underline underline-offset-4"
+              className="font-semibold text-accent underline underline-offset-4"
             >
               Mot de passe oublié ?
             </Link>
@@ -121,8 +121,8 @@ export function LoginForm() {
         </div>
 
         <Link
-          href="/boutique"
-          className="rounded-full border-[1.5px] border-[#e5d9de] bg-white px-8 py-3.5 text-center text-sm font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
+          href="/"
+          className="rounded-full border-[1.5px] border-[#e5d9de] bg-white px-8 py-3.5 text-center text-sm font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
         >
           Continuer sans compte
         </Link>
@@ -202,7 +202,7 @@ export function SignupForm() {
           Vous avez déjà un compte ?{" "}
           <Link
             href={lienAvecSuite("/compte/connexion", suite)}
-            className="font-bold text-rose underline underline-offset-4"
+            className="font-bold text-accent underline underline-offset-4"
           >
             Se connecter
           </Link>
@@ -213,7 +213,7 @@ export function SignupForm() {
         {erreur && <Alert>{erreur}</Alert>}
 
         <div className="flex flex-col gap-4">
-          <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Vous</span>
+          <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Vous</span>
 
           <TextField
             label="Nom et prénom"
@@ -266,7 +266,7 @@ export function SignupForm() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <span className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Sécurité</span>
+          <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Sécurité</span>
 
           <div>
             <PasswordField
@@ -308,13 +308,13 @@ export function SignupForm() {
           {/* Les liens vivent hors de la case : un lien dans un `<label>` se
               disputerait le clic avec la case elle-même. */}
           <p className="pl-8 text-[11.5px] text-muted">
-            <Link href="/infos/cgv" className="font-semibold text-rose underline underline-offset-2">
+            <Link href="/infos/cgv" className="font-semibold text-accent underline underline-offset-2">
               Lire les CGV
             </Link>
             {" · "}
             <Link
               href="/infos/confidentialite"
-              className="font-semibold text-rose underline underline-offset-2"
+              className="font-semibold text-accent underline underline-offset-2"
             >
               Politique de confidentialité
             </Link>

@@ -33,10 +33,10 @@ export const REGLAGES_DEFAUT: Reglages = {
   accepte_commandes: true,
   affiche_bandeau_promo: true,
   texte_bandeau_promo:
-    "Livraison offerte à Dakar dès 25 000 F — Retours gratuits sous 14 jours",
+    "Livraison offerte à Dakar dès 25 000 F · Retours gratuits sous 14 jours",
   hero_pastille: "Nouvelle collection · 2026",
-  hero_titre: "Des looks\nqui suivent",
-  hero_accent: "leurs aventures.",
+  hero_titre: "Bienvenue chez\nM comme Maman,",
+  hero_accent: "le coin des enfants et des mamans.",
   hero_chapo:
     "Des pièces joyeuses, faciles à vivre et choisies avec le regard exigeant d’une maman.",
   hero_sceau: "LIVRAISON 24 H · DAKAR ·",

@@ -159,7 +159,7 @@ export default function Page() {
       <PageHeader
         eyebrow="Comptes et accès"
         title="Utilisateurs"
-        sub="L'équipe, qui entre dans le back-office, et la clientèle, qui achète. Un compte ne se supprime pas — il se ferme, pour que son nom reste lisible sur ce qu'il a fait."
+        sub="L'équipe, qui entre dans le back-office, et la clientèle, qui achète. Un compte ne se supprime pas, il se ferme, pour que son nom reste lisible sur ce qu'il a fait."
       />
 
       {/* La bascule entre les deux mondes. Elle porte le compte de chaque côté :
@@ -239,7 +239,7 @@ export default function Page() {
                 <span className="mt-0.5 block truncate text-[11.5px] text-muted">{m.email}</span>
               </span>,
               <span key="t" className="truncate text-[13px] tabular-nums">
-                {m.phone || "—"}
+                {m.phone || "-"}
               </span>,
               <span key="d" className="text-[12.5px] text-muted">
                 {dateLongue(m.createdAt)}

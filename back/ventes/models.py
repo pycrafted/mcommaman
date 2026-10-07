@@ -1,5 +1,5 @@
 """
-Ventes : commandes, paiements, campagnes de remise, avis.
+Ventes : commandes, paiements, campagnes de remise.
 
 Le front portait deux notions de commande qui ne se ressemblaient pas — cinq
 statuts côté vitrine, six côté back-office, la remise d'un côté seulement. Elles
@@ -274,58 +274,3 @@ class Campagne(models.Model):
     def en_cours(self) -> bool:
         aujourdhui = timezone.localdate()
         return self.active and self.date_effet <= aujourdhui <= self.date_fin
-
-
-class Avis(models.Model):
-    """
-    Un avis sur un article ou sur la boutique.
-
-    Le droit d'écrire vient d'une commande **livrée** contenant l'article : sans
-    cette contrainte, n'importe qui note n'importe quoi. La modération est
-    explicite — un avis n'apparaît pas tant qu'il n'est pas approuvé.
-    """
-
-    class Etat(models.TextChoices):
-        EN_ATTENTE = "en_attente", "En attente de modération"
-        PUBLIE = "publie", "Publié"
-        REFUSE = "refuse", "Refusé"
-
-    auteur = models.ForeignKey(
-        "clientele.Utilisateur", on_delete=models.CASCADE, related_name="avis"
-    )
-    commande = models.ForeignKey(
-        Commande, on_delete=models.CASCADE, related_name="avis",
-        help_text="La commande livrée qui donne le droit d'écrire cet avis",
-    )
-    # Vide : l'avis porte sur la boutique dans son ensemble.
-    produit = models.ForeignKey(
-        "catalogue.Produit",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="avis",
-    )
-
-    note = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
-    commentaire = models.TextField(blank=True)
-    etat = models.CharField(max_length=12, choices=Etat.choices, default=Etat.EN_ATTENTE)
-
-    ecrit_le = models.DateTimeField(auto_now_add=True)
-    modere_le = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        verbose_name = "avis"
-        verbose_name_plural = "avis"
-        ordering = ["-ecrit_le"]
-        constraints = [
-            models.CheckConstraint(condition=models.Q(note__lte=5), name="note_sur_cinq"),
-            # Un seul avis par produit et par commande : on ne note pas deux fois
-            # le même achat.
-            models.UniqueConstraint(
-                fields=["auteur", "commande", "produit"], name="avis_unique_par_achat"
-            ),
-        ]
-
-    def __str__(self):
-        cible = self.produit.nom if self.produit else "la boutique"
-        return f"{self.note}/5 sur {cible} par {self.auteur.nom}"

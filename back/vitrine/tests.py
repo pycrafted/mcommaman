@@ -72,7 +72,7 @@ class BandeauAccueilTest(APITestCase):
 
     def test_les_textes_par_defaut_sont_publics(self):
         donnees = self.client.get(reverse("reglages-public")).data
-        self.assertEqual(donnees["hero_accent"], "leurs aventures.")
+        self.assertEqual(donnees["hero_accent"], "le coin des enfants et des mamans.")
         self.assertNotIn("STOCK", donnees["hero_sceau"])
         self.assertEqual(donnees["hero_produits"], [])
 

@@ -152,7 +152,7 @@ export default function Page() {
           <div
             role={notification.ok ? "status" : "alert"}
             className={`flex items-start gap-3 rounded-xl border bg-white px-4 py-3.5 shadow-[0_14px_40px_rgba(38,25,31,.18)] ${
-              notification.ok ? "border-[#b9dfc8] text-[#256b46]" : "border-rose/35 text-rose-deep"
+              notification.ok ? "border-[#b9dfc8] text-[#256b46]" : "border-accent/35 text-accent-deep"
             }`}
           >
             <span className="min-w-0 flex-1 text-[13px] font-semibold leading-relaxed">
@@ -199,13 +199,13 @@ export default function Page() {
                 <span className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">
                   Adresse électronique
                 </span>
-                <p className="mt-1 text-[13.5px] font-bold">{moi?.email ?? "—"}</p>
+                <p className="mt-1 text-[13.5px] font-bold">{moi?.email ?? "-"}</p>
               </div>
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-[.14em] text-muted">
                   Rôle
                 </span>
-                <p className="mt-1 text-[13.5px] font-bold">{moi ? ROLES[moi.role] : "—"}</p>
+                <p className="mt-1 text-[13.5px] font-bold">{moi ? ROLES[moi.role] : "-"}</p>
               </div>
             </div>
 

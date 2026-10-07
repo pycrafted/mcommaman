@@ -59,7 +59,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
       <div className={`${SHELL} pb-22 pt-10`}>
         <div className="mx-auto max-w-xl rounded-3xl border border-line bg-white px-8 py-14 text-center">
           <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-mist">
-            <IconPackage className="h-7 w-7 text-rose" />
+            <IconPackage className="h-7 w-7 text-accent" />
           </span>
           <h1 className="text-xl font-extrabold tracking-tight">Suivre cette commande</h1>
           <p className="mx-auto mt-3 max-w-[46ch] text-[14px] leading-relaxed text-muted text-pretty">
@@ -86,18 +86,18 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
               inputMode="tel"
               placeholder="77 123 45 67"
               aria-label="Téléphone de la commande"
-              className="w-full min-w-0 rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-rose"
+              className="w-full min-w-0 rounded-2xl border-[1.5px] border-[#ece3e7] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-accent"
             />
             <button
               type="submit"
               disabled={telephone.trim().length < 6 || recherche}
-              className="shrink-0 rounded-2xl bg-rose px-5 text-[13.5px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
+              className="shrink-0 rounded-2xl bg-accent px-5 text-[13.5px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
             >
               {recherche ? "…" : "Suivre"}
             </button>
           </form>
           {erreurSuivi && (
-            <p className="mt-2.5 text-[12.5px] font-semibold text-rose-deep">{erreurSuivi}</p>
+            <p className="mt-2.5 text-[12.5px] font-semibold text-accent-deep">{erreurSuivi}</p>
           )}
 
           <Link
@@ -156,7 +156,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
 
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[.16em] text-rose tabular-nums">
+          <p className="text-[11px] font-bold uppercase tracking-[.16em] text-accent tabular-nums">
             Commande {commande.ref}
           </p>
           <h1 className="mt-3 text-[clamp(2rem,4.6vw,2.9rem)] font-extrabold leading-[1.05] tracking-[-.035em]">
@@ -193,7 +193,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/p/${ligne.slug}`}
-                    className="line-clamp-1 text-[14px] font-bold transition-colors hover:text-rose"
+                    className="line-clamp-1 text-[14px] font-bold transition-colors hover:text-accent"
                   >
                     {ligne.name}
                   </Link>
@@ -268,26 +268,13 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
           </section>
 
           <div className="flex flex-col gap-2">
-            {/* La réception n'est plus déclarée par la cliente : c'est la
-                boutique qui fait avancer le suivi depuis son back-office, et
-                c'est le passage en « Livrée » qui ouvre le droit à l'avis. */}
-            {/* L'avis se dépose sur la fiche de la pièce reçue. */}
-            {commande.status === "livree" && commande.lines.length > 0 && (
-              <Link
-                href={`/p/${commande.lines[0].slug}#avis`}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
-              >
-                Donner mon avis
-              </Link>
-            )}
-
             <button
               type="button"
               onClick={recommander}
               className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-[13.5px] font-bold transition-all duration-400 ease-soft ${
                 recommandee
                   ? "bg-[#eaf6ef] text-[#2e7d52]"
-                  : "bg-rose text-white hover:-translate-y-0.5"
+                  : "bg-accent text-white hover:-translate-y-0.5"
               }`}
             >
               {recommandee ? (
@@ -306,7 +293,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
               <button
                 type="button"
                 onClick={() => setConfirmeAnnulation(true)}
-                className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-rose-deep hover:text-rose-deep"
+                className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-[13.5px] font-semibold text-muted transition-colors duration-300 hover:border-accent-deep hover:text-accent-deep"
               >
                 Annuler la commande
               </button>
@@ -357,7 +344,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
               )}
               target="_blank"
               rel="noreferrer"
-              className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-center text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
+              className="w-full rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3.5 text-center text-[13.5px] font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
             >
               Suivre sur WhatsApp
             </a>
@@ -366,7 +353,7 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
                 le serveur le dit, on le répète ici plutôt que de laisser le
                 bouton retomber sans rien expliquer. */}
             {refus && (
-              <p className="text-center text-[12.5px] font-semibold text-rose-deep">{refus}</p>
+              <p className="text-center text-[12.5px] font-semibold text-accent-deep">{refus}</p>
             )}
           </div>
         </aside>

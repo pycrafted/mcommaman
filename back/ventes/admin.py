@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Avis, Campagne, Commande, LigneCommande, Paiement
+from .models import Campagne, Commande, LigneCommande, Paiement
 
 
 class LigneEnLigne(admin.TabularInline):
@@ -35,23 +35,3 @@ class CampagneAdmin(admin.ModelAdmin):
     list_display = ["libelle", "type", "valeur", "date_effet", "duree_jours", "portee", "active"]
     list_filter = ["type", "portee", "active"]
     search_fields = ["libelle"]
-
-
-@admin.register(Avis)
-class AvisAdmin(admin.ModelAdmin):
-    list_display = ["__str__", "note", "etat", "ecrit_le"]
-    list_filter = ["etat", "note"]
-    search_fields = ["auteur__nom", "commentaire", "commande__reference"]
-    actions = ["publier", "refuser"]
-
-    @admin.action(description="Publier les avis choisis")
-    def publier(self, request, queryset):
-        from django.utils import timezone
-        n = queryset.update(etat=Avis.Etat.PUBLIE, modere_le=timezone.now())
-        self.message_user(request, f"{n} avis publié(s).")
-
-    @admin.action(description="Refuser les avis choisis")
-    def refuser(self, request, queryset):
-        from django.utils import timezone
-        n = queryset.update(etat=Avis.Etat.REFUSE, modere_le=timezone.now())
-        self.message_user(request, f"{n} avis refusé(s).")

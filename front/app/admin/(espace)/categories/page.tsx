@@ -247,7 +247,7 @@ export default function Page() {
       {categories.length === 0 ? (
         <EmptyState
           title="Aucune catégorie pour le moment"
-          hint="Commencez par une catégorie — « Enfants », « Coin maman » — puis rangez des sous-catégories à l'intérieur."
+          hint="Commencez par une catégorie (« Enfants », « Coin maman »), puis rangez des sous-catégories à l'intérieur."
         />
       ) : (
         <>
@@ -294,7 +294,7 @@ export default function Page() {
           {affichage === "liste" ? (
             <div className="overflow-x-auto rounded-2xl border border-line bg-white">
               <table className="w-full min-w-[820px] border-collapse text-left">
-                <thead className="bg-rose-soft/70 text-[11px] font-bold uppercase text-muted">
+                <thead className="bg-accent-soft/70 text-[11px] font-bold uppercase text-muted">
                   <tr>
                     <th className="px-5 py-3.5">Catégorie</th>
                     <th className="px-4 py-3.5">
@@ -379,7 +379,7 @@ export default function Page() {
               {categoriesPage.map((categorie) => {
                 const principale = categorie.parentSlugs.length === 0;
                 return (
-                  <article key={categorie.id} className="group overflow-hidden rounded-2xl border border-line bg-white transition hover:-translate-y-0.5 hover:border-rose/40">
+                  <article key={categorie.id} className="group overflow-hidden rounded-2xl border border-line bg-white transition hover:-translate-y-0.5 hover:border-accent/40">
                     <div className="relative aspect-[16/9] bg-stone">
                       <VisuelCategorie src={categorie.image} alt={categorie.label} className="h-full w-full" />
                       {!categorie.active && (
@@ -482,7 +482,7 @@ export default function Page() {
             <select
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              className="w-full rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-rose"
+              className="w-full rounded-xl border-[1.5px] border-[#ece3e7] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-accent"
             >
               {categories
                 .filter((c) => c.id !== suppression?.id)
@@ -619,7 +619,7 @@ function ChoixSousCategories({
                   >
                     <span
                       className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border-[1.5px] transition-colors ${
-                        on ? "border-rose bg-rose text-white" : "border-[#e5d9de] bg-white"
+                        on ? "border-accent bg-accent text-white" : "border-[#e5d9de] bg-white"
                       }`}
                     >
                       {on && <IconCheck className="h-3 w-3" />}
@@ -819,7 +819,7 @@ function EditeurRayon({
               type="button"
               onClick={() => fichierRef.current?.click()}
               disabled={envoiImage}
-              className="flex aspect-3/4 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-[#e0d3d9] text-muted transition-colors hover:border-rose hover:text-rose disabled:opacity-50"
+              className="flex aspect-3/4 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-[#e0d3d9] text-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
             >
               <IconPlus />
               <span className="text-[11px] font-semibold">
@@ -891,7 +891,7 @@ function EditeurRayon({
                   >
                     <span
                       className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border-[1.5px] ${
-                        on ? "border-rose bg-rose text-white" : "border-[#e5d9de] bg-white"
+                        on ? "border-accent bg-accent text-white" : "border-[#e5d9de] bg-white"
                       }`}
                     >
                       {on && <IconCheck className="h-3 w-3" />}

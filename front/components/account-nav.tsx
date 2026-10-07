@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconGrid, IconHeart, IconPackage, IconUser } from "./icons";
+import { IconGrid, IconUser } from "./icons";
 
-/* Les quatre pages de l'espace client, dans l'ordre où on les ouvre. */
+/* Les deux pages de l'espace client (« Mes commandes » reviendra avec le
+   paiement en ligne), dans l'ordre où on les ouvre. */
 const LIENS = [
   { href: "/compte", label: "Tableau de bord", Icone: IconGrid },
-  { href: "/commandes", label: "Mes commandes", Icone: IconPackage },
-  { href: "/favoris", label: "Mes favoris", Icone: IconHeart },
   { href: "/compte/profil", label: "Mon profil", Icone: IconUser },
 ];
 

@@ -67,7 +67,7 @@ function Repartition({
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone">
             <span
-              className="block h-full rounded-full bg-rose transition-[width] duration-700 ease-soft"
+              className="block h-full rounded-full bg-accent transition-[width] duration-700 ease-soft"
               style={{ width: `${(l.valeur / max) * 100}%` }}
             />
           </div>
@@ -178,7 +178,7 @@ export default function Page() {
       <PageHeader
         eyebrow="Analyse"
         title="Statistiques"
-        sub={`Comparaison automatique avec la période précédente de même durée — ${customers.length} clientes, ${orders.length} commandes.`}
+        sub={`Comparaison automatique avec la période précédente de même durée : ${customers.length} clientes, ${orders.length} commandes.`}
       >
         <Pills value={fenetre} onChange={setFenetre} options={[...FENETRES]} />
       </PageHeader>
@@ -227,7 +227,7 @@ export default function Page() {
           action={
             <Link
               href="/admin/produits"
-              className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-accent"
             >
               Le catalogue
               <IconArrowRight className="h-3.5 w-3.5" />
@@ -249,7 +249,7 @@ export default function Page() {
                   <span className="min-w-0 flex-1">
                     <Link
                       href={`/admin/produits/${p.id}`}
-                      className="line-clamp-1 text-[13px] font-bold transition-colors hover:text-rose"
+                      className="line-clamp-1 text-[13px] font-bold transition-colors hover:text-accent"
                     >
                       {p.name}
                     </Link>
@@ -257,7 +257,7 @@ export default function Page() {
                   </span>
                   <span
                     className={`shrink-0 text-[13px] font-extrabold tabular-nums ${
-                      p.stock <= 0 ? "text-rose-deep" : "text-[#8a6a12]"
+                      p.stock <= 0 ? "text-accent-deep" : "text-[#8a6a12]"
                     }`}
                   >
                     {p.stock}
@@ -287,7 +287,7 @@ export default function Page() {
             <h2 className="text-[15px] font-extrabold tracking-tight">Dernières commandes</h2>
             <Link
               href="/admin/commandes"
-              className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-accent"
             >
               Toutes les commandes
               <IconArrowRight className="h-3.5 w-3.5" />
@@ -306,7 +306,7 @@ export default function Page() {
                 <Link
                   key="ref"
                   href={`/admin/commandes#${o.ref}`}
-                  className="font-bold tabular-nums transition-colors hover:text-rose"
+                  className="font-bold tabular-nums transition-colors hover:text-accent"
                 >
                   {o.ref}
                 </Link>,
@@ -331,7 +331,7 @@ export default function Page() {
               <ul className="flex flex-col gap-3">
                 {meilleurs.map((m, i) => (
                   <li key={m.product.id} className="flex items-center gap-3">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-rose-soft text-[11.5px] font-extrabold text-rose-deep">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent-soft text-[11.5px] font-extrabold text-accent-deep">
                       {i + 1}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -364,7 +364,7 @@ export default function Page() {
                     <span className="min-w-0 flex-1">
                       <Link
                         href={`/admin/produits/${m.product.id}`}
-                        className="line-clamp-1 text-[13px] font-semibold transition-colors hover:text-rose"
+                        className="line-clamp-1 text-[13px] font-semibold transition-colors hover:text-accent"
                       >
                         {m.product.name}
                       </Link>

@@ -133,29 +133,6 @@ class Adresse(models.Model):
         return f"{self.libelle} — {self.ville}"
 
 
-class Favori(models.Model):
-    """Un article mis de côté. Le couple cliente/produit est unique."""
-
-    cliente = models.ForeignKey(
-        Utilisateur, on_delete=models.CASCADE, related_name="favoris"
-    )
-    produit = models.ForeignKey(
-        "catalogue.Produit", on_delete=models.CASCADE, related_name="favoris"
-    )
-    ajoute_le = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "favori"
-        verbose_name_plural = "favoris"
-        ordering = ["-ajoute_le"]
-        constraints = [
-            models.UniqueConstraint(fields=["cliente", "produit"], name="favori_unique")
-        ]
-
-    def __str__(self):
-        return f"{self.cliente.nom} ♥ {self.produit.nom}"
-
-
 class Panier(models.Model):
     """
     Le panier serveur.

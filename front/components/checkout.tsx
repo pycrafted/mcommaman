@@ -255,8 +255,8 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
   if (envoi) {
     return (
       <div className="mx-auto max-w-[1180px] px-5 py-32 text-center md:px-10">
-        <span className="mx-auto grid h-14 w-14 animate-pulse place-items-center rounded-full bg-rose-soft">
-          <IconCheck className="h-6 w-6 text-rose" />
+        <span className="mx-auto grid h-14 w-14 animate-pulse place-items-center rounded-full bg-accent-soft">
+          <IconCheck className="h-6 w-6 text-accent" />
         </span>
         <p className="mt-5 text-[15px] font-semibold">Enregistrement de votre commande…</p>
         <p className="mt-1.5 text-[13px] text-muted">
@@ -281,7 +281,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
             >
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
-                  step >= s.i ? "bg-rose text-white" : "bg-line text-[#9c8d93]"
+                  step >= s.i ? "bg-accent text-white" : "bg-line text-[#9c8d93]"
                 }`}
               >
                 {s.i}
@@ -306,7 +306,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                 <div className="rounded-[20px] border border-dashed border-[#e5d9de] p-14 text-center">
                   <div className="text-base font-bold">Votre panier est vide</div>
                   <Link
-                    href="/boutique"
+                    href="/"
                     className="mt-5 inline-block rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-white"
                   >
                     Voir le catalogue
@@ -331,7 +331,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                             {/* Une ligne devenue inservable se signale plutôt que
                                 de disparaître : la caisse la refuserait sans dire pourquoi. */}
                             {!l.disponible && (
-                              <div className="mt-1.5 text-[12.5px] font-semibold text-rose-deep">
+                              <div className="mt-1.5 text-[12.5px] font-semibold text-accent-deep">
                                 {l.stock_restant > 0
                                   ? `Il n'en reste que ${l.stock_restant}`
                                   : "Épuisé pour le moment"}
@@ -435,12 +435,12 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                           onClick={() => setAdresseChoisie(a.id)}
                           aria-pressed={on}
                           className={`flex gap-3 rounded-2xl border-[1.5px] px-4 py-3.5 text-left transition-colors ${
-                            on ? "border-rose bg-rose-soft" : "border-[#ece3e7] bg-white hover:border-rose/40"
+                            on ? "border-accent bg-accent-soft" : "border-[#ece3e7] bg-white hover:border-accent/40"
                           }`}
                         >
                           <span
                             className={`mt-0.5 h-4.5 w-4.5 shrink-0 rounded-full border-2 ${
-                              on ? "border-rose bg-rose shadow-[inset_0_0_0_3px_#fff]" : "border-[#d8cbd1]"
+                              on ? "border-accent bg-accent shadow-[inset_0_0_0_3px_#fff]" : "border-[#d8cbd1]"
                             }`}
                           />
                           <span className="min-w-0">
@@ -451,7 +451,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                               )}
                             </span>
                             <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">
-                              {a.address} — {a.city}
+                              {a.address}, {a.city}
                               <br />
                               {zoneLabel(a.zone)}
                             </span>
@@ -465,14 +465,14 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                       aria-pressed={adresseChoisie === "autre"}
                       className={`flex items-center gap-3 rounded-2xl border-[1.5px] border-dashed px-4 py-3.5 text-left transition-colors ${
                         adresseChoisie === "autre"
-                          ? "border-rose bg-rose-soft"
-                          : "border-[#e0d3d9] bg-white hover:border-rose/40"
+                          ? "border-accent bg-accent-soft"
+                          : "border-[#e0d3d9] bg-white hover:border-accent/40"
                       }`}
                     >
                       <span
                         className={`h-4.5 w-4.5 shrink-0 rounded-full border-2 ${
                           adresseChoisie === "autre"
-                            ? "border-rose bg-rose shadow-[inset_0_0_0_3px_#fff]"
+                            ? "border-accent bg-accent shadow-[inset_0_0_0_3px_#fff]"
                             : "border-[#d8cbd1]"
                         }`}
                       />
@@ -482,7 +482,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                 )}
 
                 {adresseDuCarnet && tente && (erreurs.ville || erreurs.repere) && (
-                  <p className="mb-4 rounded-2xl bg-rose-soft px-4 py-3 text-[13px] font-semibold text-rose-deep">
+                  <p className="mb-4 rounded-2xl bg-accent-soft px-4 py-3 text-[13px] font-semibold text-accent-deep">
                     Cette adresse est incomplète : choisissez « Une autre adresse » pour la préciser.
                   </p>
                 )}
@@ -529,7 +529,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                       key={zz.key}
                       onClick={() => setZone(i)}
                       className={`flex flex-col gap-1 rounded-2xl border-[1.5px] px-4.5 py-3.5 text-left transition-colors ${
-                        zone === i ? "border-rose bg-rose-soft" : "border-[#ece3e7] bg-white"
+                        zone === i ? "border-accent bg-accent-soft" : "border-[#ece3e7] bg-white"
                       }`}
                     >
                       <span className="text-sm font-bold">{zz.t}</span>
@@ -548,7 +548,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                             type="checkbox"
                             checked={garderAdresse}
                             onChange={(e) => setGarderAdresse(e.target.checked)}
-                            className="h-4.5 w-4.5 accent-rose"
+                            className="h-4.5 w-4.5 accent-accent"
                           />
                           Enregistrer cette adresse dans mon compte
                         </label>
@@ -592,14 +592,14 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                         indisponible
                           ? "cursor-not-allowed border-[#f2eaee] bg-white opacity-45"
                           : method === m.k
-                            ? "border-rose bg-rose-soft"
+                            ? "border-accent bg-accent-soft"
                             : "border-[#ece3e7] bg-white"
                       }`}
                     >
                       <span
                         className={`h-5 w-5 shrink-0 rounded-full border-2 ${
                           method === m.k
-                            ? "border-rose bg-rose shadow-[inset_0_0_0_3px_#fff]"
+                            ? "border-accent bg-accent shadow-[inset_0_0_0_3px_#fff]"
                             : "border-[#d8cbd1] bg-white"
                         }`}
                       />
@@ -622,7 +622,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
               </div>
 
               <p className="mt-5 flex gap-2.5 rounded-2xl bg-mist px-5 py-4 text-[12.5px] leading-relaxed text-muted">
-                <IconLock className="mt-0.5 h-4 w-4 shrink-0 text-rose" />
+                <IconLock className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                 Rien n&apos;est prélevé maintenant : la boutique vous appelle pour confirmer la
                 commande et convenir du règlement. Vos articles sont mis de côté dès maintenant.
               </p>
@@ -660,7 +660,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
           <button
             onClick={() => void valider()}
             disabled={lignes.length === 0 || !complet || caisseFermee}
-            className="mt-5 w-full rounded-full bg-rose py-4 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-transform hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
+            className="mt-5 w-full rounded-full bg-accent py-4 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(224,65,127,.65)] transition-transform hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40"
           >
             {cta}
           </button>
@@ -668,28 +668,28 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
           {/* Un bouton grisé sans explication laisse croire à une panne : on dit
               pourquoi il ne part pas. */}
           {caisseFermee ? (
-            <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
+            <p className="mt-3 text-center text-[12.5px] font-semibold text-accent-deep">
               La boutique ne prend pas de commande en ce moment. Votre panier vous attend.
             </p>
           ) : erreurCaisse ? (
-            <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
+            <p className="mt-3 text-center text-[12.5px] font-semibold text-accent-deep">
               {erreurCaisse}
             </p>
           ) : lignes.length === 0 ? (
-            <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
+            <p className="mt-3 text-center text-[12.5px] font-semibold text-accent-deep">
               Votre panier est vide, il n&apos;y a rien à commander.{" "}
-              <Link href="/boutique" className="underline underline-offset-2">
+              <Link href="/" className="underline underline-offset-2">
                 Voir la sélection
               </Link>
             </p>
           ) : !complet ? (
-            <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
+            <p className="mt-3 text-center text-[12.5px] font-semibold text-accent-deep">
               Un article de votre panier n&apos;est plus disponible dans cette quantité. Ajustez-la ou retirez-le pour continuer.
             </p>
           ) : (
             tente &&
             Object.keys(erreurs).length > 0 && (
-              <p className="mt-3 text-center text-[12.5px] font-semibold text-rose-deep">
+              <p className="mt-3 text-center text-[12.5px] font-semibold text-accent-deep">
                 Il manque {Object.keys(erreurs).length} information
                 {Object.keys(erreurs).length > 1 ? "s" : ""} à l&apos;étape Livraison.
               </p>

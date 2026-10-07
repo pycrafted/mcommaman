@@ -12,6 +12,7 @@ import {
 
 
 import { envoyer, televerser, type Page, type RayonApi } from "@/lib/api";
+import { reduirePourEnvoi } from "./reduire-image";
 import {
   depuisPromotion,
   depuisProduit,
@@ -188,8 +189,8 @@ interface AdminContextValue extends AdminState {
   /** Relit tout le back-office — après une écriture faite hors du store. */
   rafraichir: () => Promise<void>;
   /* Produits */
-  saveProduct: (product: AdminProduct) => void;
-  createProduct: (product: AdminProduct) => void;
+  saveProduct: (product: AdminProduct) => Promise<void>;
+  createProduct: (product: AdminProduct) => Promise<void>;
   deleteProduct: (id: string) => void;
   duplicateProduct: (id: string) => void;
   setProductStatus: (id: string, status: AdminProduct["status"]) => void;
@@ -640,7 +641,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const saveProduct = useCallback<AdminContextValue["saveProduct"]>(
     (produit) =>
-      void ecrire(async () => {
+      ecrire(async () => {
         const publier = produit.status === "publie";
         await envoyer(
           `/api/gestion/produits/${produit.id}/`,
@@ -656,7 +657,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const createProduct = useCallback<AdminContextValue["createProduct"]>(
     (produit) =>
-      void ecrire(async () => {
+      ecrire(async () => {
         const publier = produit.status === "publie";
         const cree = await envoyer<{ id: number }>(
           "/api/gestion/produits/",
@@ -918,13 +919,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    */
   const televerserMedia = useCallback<AdminContextValue["televerserMedia"]>(
     async (fichier, nom) => {
-      const forme = new FormData();
-      forme.append("fichier", fichier);
-      forme.append("nom", nom?.trim() || fichier.name);
-
       setEnCours(true);
       setErreur("");
       try {
+        // Nommée d'après l'original : la réduction change l'extension en .jpg.
+        const forme = new FormData();
+        forme.append("fichier", await reduirePourEnvoi(fichier));
+        forme.append("nom", nom?.trim() || fichier.name);
         const brut = await televerser<MediaApi>("/api/gestion/photheque/", forme);
         await relire();
         return versMedia(brut);

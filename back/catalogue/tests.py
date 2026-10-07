@@ -137,6 +137,30 @@ class CataloguePublicTest(APITestCase):
         self.assertEqual(prix, sorted(prix))
 
 
+class AlerteStockTest(APITestCase):
+    """Laisser son courriel sur une pièce épuisée, sans compte."""
+
+    def setUp(self):
+        self.produit = fabriquer_produit()
+        self.url = reverse("produit-public-alerte-stock", args=[self.produit.slug])
+
+    def test_une_adresse_valide_est_enregistree(self):
+        reponse = self.client.post(self.url, {"email": "Aminata@Test.sn"}, format="json")
+        self.assertEqual(reponse.status_code, 201)
+        self.assertEqual(self.produit.alertes_stock.get().email, "aminata@test.sn")
+
+    def test_la_meme_adresse_deux_fois_ne_cree_qu_une_alerte(self):
+        self.client.post(self.url, {"email": "a@test.sn"}, format="json")
+        reponse = self.client.post(self.url, {"email": "a@test.sn"}, format="json")
+        self.assertEqual(reponse.status_code, 201)
+        self.assertEqual(self.produit.alertes_stock.count(), 1)
+
+    def test_une_adresse_invalide_est_refusee(self):
+        reponse = self.client.post(self.url, {"email": "pas une adresse"}, format="json")
+        self.assertEqual(reponse.status_code, 400)
+        self.assertEqual(self.produit.alertes_stock.count(), 0)
+
+
 class PublicationTest(APITestCase):
     def setUp(self):
         self.gerante = Utilisateur.objects.create_user(
@@ -367,6 +391,26 @@ class ListePagineeTest(APITestCase):
     def test_le_tri_par_prix_suit_le_prix_du_jour(self):
         page = self.client.get(self.url, {"tri": "prix-decroissant", "page_size": 1}).data
         self.assertEqual(page["results"][0]["slug"], "jupe")
+
+    def test_le_filtre_par_coloris_ne_compte_que_le_stock(self):
+        """Chaque fiche fabriquée est écrue : 32 en tout, 31 chez les filles. Un coloris inconnu ne rend rien."""
+        reponse = self.client.get(reverse("produit-public-list"), {"coloris": "Écru"}).data
+        self.assertEqual(reponse["count"], 32)
+        rien = self.client.get(reverse("produit-public-list"), {"coloris": "Turquoise"}).data
+        self.assertEqual(rien["count"], 0)
+        facettes = self.client.get(reverse("produit-public-facettes"), {"rayon": "filles"}).data
+        self.assertEqual(facettes["coloris"], [{"nom": "Écru", "hexa": "#efe6da", "nombre": 31}])
+        # Un coloris coché ne se retire pas de sa propre facette.
+        avec = self.client.get(reverse("produit-public-facettes"), {"coloris": "Écru"}).data
+        self.assertEqual(avec["total"], 32)
+        self.assertEqual(avec["coloris"][0]["nombre"], 32)
+
+    def test_le_tri_par_promotion_met_les_remises_en_tete(self):
+        """La jupe est en campagne : elle passe devant, les autres suivent par nouveauté."""
+        reponse = self.client.get(reverse("produit-public-list"), {"tri": "promotion", "page_size": 3}).data
+        self.assertEqual(reponse["results"][0]["slug"], "jupe")
+        self.assertIsNotNone(reponse["results"][0]["promotion"])
+        self.assertIsNone(reponse["results"][1]["promotion"])
 
     def test_les_facettes_d_une_categorie(self):
         facettes = self.client.get(

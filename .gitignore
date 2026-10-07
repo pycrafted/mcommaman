@@ -27,3 +27,14 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+# Relevé du catalogue en ligne, pour le développement seulement : le site
+# déployé a son propre serveur et ses propres photos. On garde les photos de
+# démonstration livrées avec la vitrine, pas les 159 fiches relevées.
+back/catalogue/donnees/
+back/catalogue/management/commands/importer_boutique.py
+front/public/images/products/*
+!front/public/images/products/*-retouche.png
+!front/public/images/products/chass1.png
+!front/public/images/products/p7eexgrv.png
+!front/public/images/products/tissu-*.jpg

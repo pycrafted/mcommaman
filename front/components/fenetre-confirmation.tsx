@@ -74,7 +74,7 @@ export function FenetreConfirmation({
             autoFocus
             disabled={enCours}
             onClick={onConfirmer}
-            className="rounded-full bg-rose-deep px-6 py-3 text-[14px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
+            className="rounded-full bg-accent-deep px-6 py-3 text-[14px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
           >
             {enCours ? "Un instant…" : confirmer}
           </button>

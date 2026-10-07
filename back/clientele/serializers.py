@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate, get_user_model, password_validatio
 from django.core.exceptions import ValidationError as ErreurDjango
 from rest_framework import serializers
 
-from .models import Adresse, Favori
+from .models import Adresse
 
 Utilisateur = get_user_model()
 
@@ -270,40 +270,3 @@ class ChangementMotDePasseSerializer(serializers.Serializer):
         utilisateur.set_password(self.validated_data["nouveau"])
         utilisateur.save(update_fields=["password"])
         return utilisateur
-
-
-class FavoriSerializer(serializers.ModelSerializer):
-    """Un favori, avec de quoi dessiner la carte sans second appel."""
-
-    slug = serializers.CharField(source="produit.slug", read_only=True)
-    nom = serializers.CharField(source="produit.nom", read_only=True)
-    prix = serializers.IntegerField(source="produit.prix", read_only=True)
-    prix_barre = serializers.IntegerField(source="produit.prix_barre", read_only=True)
-    image = serializers.SerializerMethodField()
-    disponible = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Favori
-        fields = ["id", "produit", "slug", "nom", "prix", "prix_barre",
-                  "image", "disponible", "ajoute_le"]
-
-    def get_image(self, obj) -> str:
-        photo = obj.produit.photo_principale
-        return photo.media.url if photo else ""
-
-    def get_disponible(self, obj) -> bool:
-        return obj.produit.stock_total > 0
-
-    def validate_produit(self, produit):
-        # Mettre de côté un brouillon n'aurait pas de sens : la cliente ne peut
-        # pas l'avoir vu.
-        if produit.statut != produit.Statut.PUBLIE:
-            raise serializers.ValidationError("Cet article n'est pas en vente.")
-        return produit
-
-    def create(self, validated_data):
-        cliente = self.context["request"].user
-        # Deux clics sur le cœur ne doivent pas lever d'erreur : le second ne
-        # fait rien, et c'est exactement ce que la cliente attend.
-        favori, _ = Favori.objects.get_or_create(cliente=cliente, produit=validated_data["produit"])
-        return favori

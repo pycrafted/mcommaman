@@ -135,6 +135,8 @@ REST_FRAMEWORK = {
         # Une demande de réinitialisation envoie un courriel : sans limite,
         # on offre un moyen d'inonder une boîte qu'on ne possède pas.
         "oubli": "5/hour",
+        # Une alerte de stock est une écriture ouverte à tous : on la borne.
+        "alerte_stock": "10/hour",
     },
 }
 

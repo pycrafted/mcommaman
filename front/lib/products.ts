@@ -48,8 +48,6 @@ export type Product = {
   outOfStock?: boolean;
 };
 
-const cdn = (file: string) => `https://mcommaman.com/cdn/shop/files/${file}`;
-
 /* Le bandeau d'accueil.
    Ces deux séquences sont celles livrées avec le site. Elles ne servent que
    tant que le back-office n'a pas de photo active : dès qu'il en a une,
@@ -63,8 +61,8 @@ const cdn = (file: string) => `https://mcommaman.com/cdn/shop/files/${file}`;
 export const HERO_VIDEOS = [
   {
     src: "/videos/hero-1.mp4",
-    poster: "/images/hero/fille-cour.webp",
-    alt: "Enfants en tenues M comme Maman, filmés en boutique",
+    poster: "/images/hero/fille-ecole-1600.jpg",
+    alt: "Fille en haut et jean rose, sac à dos et gourde, devant son école à Dakar",
     pos: "50% 40%",
     tag: "Tous les jours",
   },
@@ -77,11 +75,3 @@ export const HERO_VIDEOS = [
   },
 ] as const;
 
-/** Les enfants déjà habillés par la boutique, en petit, sous les avis. */
-export const HERO_VIGNETTES = [
-  cdn("enf1.jpg?v=1784389757&width=160"),
-  cdn("enf2.jpg?width=160"),
-  cdn("Ensemble_enfant-138.jpg?v=1785881597&width=160"),
-];
-
-export const LOGO = cdn("logo_mcommaman.png?v=1785937900&width=360");

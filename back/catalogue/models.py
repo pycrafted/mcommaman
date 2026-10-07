@@ -5,6 +5,8 @@ Les prix sont des entiers en francs CFA. Le franc CFA n'a pas de centime : un
 décimal n'apporterait que des arrondis à surveiller.
 """
 
+import os
+
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
@@ -188,19 +190,36 @@ class Media(models.Model):
         if self.fichier:
             from django.conf import settings
 
+            from .imaging import est_variante, generer_variantes
+
+            # Variantes déjà faites pour ce fichier : l'adresse est bonne, on
+            # ne repasse pas par Pillow à chaque enregistrement.
+            racine = os.path.splitext(os.path.basename(self.fichier.name))[0]
+            if est_variante(self.url) and f"/{racine}-web-" in self.url:
+                return
+
+            # La boutique affiche la variante web, pas l'original : voir
+            # `imaging.py`. Une photo déjà légère est servie telle quelle.
+            adresse, dimensions = generer_variantes(self)
+            if adresse is None:
+                adresse = self.fichier.url
+            champs = ["url"]
+            if dimensions:
+                self.largeur, self.hauteur = dimensions
+                champs += ["largeur", "hauteur"]
+
             # Absolue, pas relative : la vitrine tourne sur un autre port et
             # `/media/...` la renverrait chez elle.
             #
-            # Selon le stockage, `fichier.url` est déjà absolue — Cloudflare R2
+            # Selon le stockage, l'adresse est déjà absolue — Cloudflare R2
             # rend `https://<domaine>/photheque/...` — ou relative, quand les
             # fichiers sont sur le disque et servis par Django. Préfixer une
             # adresse déjà complète donnerait une URL inutilisable, d'où le test.
-            adresse = self.fichier.url
             if not adresse.startswith(("http://", "https://")):
                 adresse = settings.URL_API.rstrip("/") + adresse
-            if self.url != adresse:
+            if self.url != adresse or len(champs) > 1:
                 self.url = adresse
-                super().save(update_fields=["url"])
+                super().save(update_fields=champs)
 
 
 class Produit(models.Model):
@@ -395,3 +414,31 @@ class MouvementStock(models.Model):
     def __str__(self):
         signe = "+" if self.quantite > 0 else ""
         return f"{signe}{self.quantite} — {self.variante} ({self.get_motif_display()})"
+
+
+class AlerteStock(models.Model):
+    """
+    Une cliente qui veut être prévenue du retour d'une pièce épuisée.
+
+    Un courriel et un produit, rien de plus : on n'exige pas de compte pour
+    laisser une adresse. Le couple est unique — la même adresse deux fois sur
+    la même pièce ne crée pas deux alertes. Le serveur n'envoie rien tout seul
+    pour l'instant : la liste se lit dans l'admin, et c'est l'équipe qui écrit
+    aux clientes au réassort.
+    """
+
+    produit = models.ForeignKey(Produit, on_delete=models.CASCADE, related_name="alertes_stock")
+    email = models.EmailField()
+    cree_le = models.DateTimeField(auto_now_add=True)
+    prevenue_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "alerte de stock"
+        verbose_name_plural = "alertes de stock"
+        ordering = ["-cree_le"]
+        constraints = [
+            models.UniqueConstraint(fields=["produit", "email"], name="alerte_stock_unique")
+        ]
+
+    def __str__(self):
+        return f"{self.email} attend {self.produit.nom}"

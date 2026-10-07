@@ -4,8 +4,6 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    AvisGestionViewSet,
-    AvisViewSet,
     CampagnePubliqueViewSet,
     CampagneViewSet,
     CommandeGestionViewSet,
@@ -17,13 +15,11 @@ from .views import (
 
 public = DefaultRouter()
 public.register("commandes", CommandeViewSet, basename="commande")
-public.register("avis", AvisViewSet, basename="avis")
 public.register("campagnes", CampagnePubliqueViewSet, basename="campagne-publique")
 
 gestion = DefaultRouter()
 gestion.register("commandes", CommandeGestionViewSet, basename="commande-gestion")
 gestion.register("campagnes", CampagneViewSet, basename="campagne")
-gestion.register("avis", AvisGestionViewSet, basename="avis-gestion")
 
 urlpatterns = [
     path("devis/", DevisView.as_view(), name="devis"),

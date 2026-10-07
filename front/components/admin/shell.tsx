@@ -288,7 +288,7 @@ function ClocheCommandes({
       >
         <IconBell className="h-[18px] w-[18px]" />
         {cloche.nonLues > 0 && (
-          <span className="anim-pop absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-ink">
+          <span className="anim-pop absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-accent px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-ink">
             {cloche.nonLues > 99 ? "99+" : cloche.nonLues}
           </span>
         )}
@@ -307,7 +307,7 @@ function ClocheCommandes({
               <Link
                 href="/admin/commandes"
                 onClick={() => setOuverte(false)}
-                className="text-[12px] font-semibold text-rose hover:underline"
+                className="text-[12px] font-semibold text-accent hover:underline"
               >
                 Toutes les commandes
               </Link>
@@ -327,11 +327,11 @@ function ClocheCommandes({
                       href={`/admin/commandes#${n.reference}`}
                       onClick={() => setOuverte(false)}
                       className={`flex gap-3 border-b border-line/70 px-4 py-3 transition-colors last:border-0 hover:bg-mist ${
-                        neuve ? "bg-rose-soft/60" : ""
+                        neuve ? "bg-accent-soft/60" : ""
                       }`}
                     >
                       <span
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${neuve ? "bg-rose" : "bg-transparent"}`}
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${neuve ? "bg-accent" : "bg-transparent"}`}
                       />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline justify-between gap-2">
@@ -432,7 +432,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <n.Icone className="h-[18px] w-[18px] shrink-0" />
           <span className="min-w-0 flex-1 truncate">{n.label}</span>
           {n.href === "/admin/commandes" && aPreparer > 0 && (
-            <span className="rounded-full bg-rose px-1.5 text-[10.5px] font-bold tabular-nums text-white">
+            <span className="rounded-full bg-accent px-1.5 text-[10.5px] font-bold tabular-nums text-white">
               {aPreparer}
             </span>
           )}
@@ -558,7 +558,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 et l'admin affichait « MM » quel que soit le compte. */}
             <span
               title={account?.name}
-              className="grid h-8 w-8 place-items-center rounded-full bg-rose text-[11px] font-extrabold text-white"
+              className="grid h-8 w-8 place-items-center rounded-full bg-accent text-[11px] font-extrabold text-white"
             >
               {account ? initiales(account.name) : ""}
             </span>
@@ -575,7 +575,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 role={notification.type === "error" ? "alert" : "status"}
                 className={`flex items-start gap-3 rounded-xl border bg-white px-4 py-3.5 shadow-[0_14px_40px_rgba(38,25,31,.18)] ${
                   notification.type === "error"
-                    ? "border-rose/35 text-rose-deep"
+                    ? "border-accent/35 text-accent-deep"
                     : notification.type === "warning"
                       ? "border-[#e8cf8d] text-[#765b13]"
                       : "border-[#b9dfc8] text-[#256b46]"

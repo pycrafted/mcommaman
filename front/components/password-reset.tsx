@@ -96,7 +96,7 @@ export function ChangePasswordForm() {
       footer={
         <span className="text-muted">
           Vous vous en souvenez&nbsp;?{" "}
-          <Link href="/compte/connexion" className="font-bold text-rose underline underline-offset-4">
+          <Link href="/compte/connexion" className="font-bold text-accent underline underline-offset-4">
             Retour à la connexion
           </Link>
         </span>
@@ -161,7 +161,7 @@ export function ChangePasswordForm() {
           <button
             type="button"
             onClick={() => setOubliOuvert(true)}
-            className="text-[13px] font-semibold text-rose underline underline-offset-4"
+            className="text-[13px] font-semibold text-accent underline underline-offset-4"
           >
             Je ne connais plus mon mot de passe actuel
           </button>
@@ -210,7 +210,7 @@ function ForgotByEmail({ onFermer }: { onFermer: () => void }) {
         </p>
         <p className="text-[12.5px] leading-relaxed text-muted">
           Rien n&apos;arrive&nbsp;? Regardez dans les indésirables, puis écrivez-nous&nbsp;:{" "}
-          <Link href="/#contact" className="font-semibold text-rose underline underline-offset-4">
+          <Link href="/#contact" className="font-semibold text-accent underline underline-offset-4">
             nous contacter
           </Link>
           .
@@ -308,7 +308,7 @@ export function ResetPasswordForm() {
       quote="Un lien, une fois, et c'est réglé."
       footer={
         <span className="text-muted">
-          <Link href="/compte/connexion" className="font-bold text-rose underline underline-offset-4">
+          <Link href="/compte/connexion" className="font-bold text-accent underline underline-offset-4">
             Retour à la connexion
           </Link>
         </span>
@@ -321,7 +321,7 @@ export function ResetPasswordForm() {
           </Alert>
           <Link
             href="/compte/mot-de-passe-oublie"
-            className="self-start text-[13px] font-semibold text-rose underline underline-offset-4"
+            className="self-start text-[13px] font-semibold text-accent underline underline-offset-4"
           >
             Changer mon mot de passe autrement
           </Link>

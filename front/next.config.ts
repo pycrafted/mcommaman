@@ -12,6 +12,12 @@ const api = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 const hoteMedias = process.env.NEXT_PUBLIC_MEDIA_HOST?.trim();
 
 const nextConfig: NextConfig = {
+  // La boutique vit sur l'accueil : l'ancienne adresse y renvoie, et Next
+  // reporte les paramètres (`?cat=…`) tout seul, donc une sélection partagée
+  // avant le changement arrive encore au bon endroit.
+  async redirects() {
+    return [{ source: "/boutique", destination: "/", permanent: true }];
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "mcommaman.com", pathname: "/cdn/**" },

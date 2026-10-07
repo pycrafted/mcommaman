@@ -4,13 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatXOF, waLink } from "@/lib/format";
-import { lireProduitsParIds } from "@/lib/catalogue";
-import { type Product } from "@/lib/products";
 import { zoneLabel } from "@/lib/livraison";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
 import { useOrders } from "./orders-context";
-import { useFavorites } from "./favorites-context";
 import { OrderStatusBadge } from "./order-status-badge";
 import { AccountHeader } from "./account-header";
 import { useReglages } from "./reglages-context";
@@ -32,7 +29,6 @@ export function AccountDashboard() {
   const { account, hydrated } = useAuth();
   const { lignes, count, subtotal, openDrawer } = useCart();
   const { orders } = useOrders();
-  const { ids: favorisIds, count: favoris } = useFavorites();
   const reglages = useReglages();
 
   /* `sortie` évite un aller-retour : après « Se déconnecter », le compte
@@ -43,20 +39,6 @@ export function AccountDashboard() {
   useEffect(() => {
     if (hydrated && !account && !sortie) router.replace("/compte/connexion?suite=/compte");
   }, [hydrated, account, sortie, router]);
-
-  /* Quatre pièces suffisent à reconnaître sa liste ; le reste est sur /favoris.
-     Les fiches viennent du serveur : un article dépublié n'en revient pas et
-     n'apparaît donc plus, sans que la page en souffre. */
-  const [envies, setEnvies] = useState<Product[]>([]);
-  useEffect(() => {
-    let vivant = true;
-    void lireProduitsParIds(favorisIds.slice(0, 4)).then((fiches) => {
-      if (vivant) setEnvies(fiches);
-    });
-    return () => {
-      vivant = false;
-    };
-  }, [favorisIds]);
 
   /* Avant l'hydratation on ne sait pas encore qui est là : on rend la même
      ossature que le serveur, en attente. */
@@ -87,18 +69,9 @@ export function AccountDashboard() {
           <section className="rounded-3xl border border-line bg-white p-6 sm:p-7">
             <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Suivi</p>
+                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Suivi</p>
                 <h2 className="mt-1 text-base font-extrabold tracking-tight">Dernière commande</h2>
               </div>
-              {orders.length > 0 && (
-                <Link
-                  href="/commandes"
-                  className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
-                >
-                  Toutes mes commandes
-                  <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
-                </Link>
-              )}
             </header>
 
             {derniere ? (
@@ -140,8 +113,8 @@ export function AccountDashboard() {
                   Vous n&apos;avez encore passé aucune commande.
                 </p>
                 <Link
-                  href="/boutique"
-                  className="mt-4 inline-block rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3 text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
+                  href="/"
+                  className="mt-4 inline-block rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3 text-[13.5px] font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
                 >
                   Découvrir la boutique
                 </Link>
@@ -153,14 +126,14 @@ export function AccountDashboard() {
           <section className="rounded-3xl border border-line bg-white p-6 sm:p-7">
             <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">En cours</p>
+                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">En cours</p>
                 <h2 className="mt-1 text-base font-extrabold tracking-tight">Mon panier</h2>
               </div>
               {lignes.length > 0 && (
                 <button
                   type="button"
                   onClick={openDrawer}
-                  className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
+                  className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-accent"
                 >
                   Voir le panier
                   <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
@@ -182,7 +155,7 @@ export function AccountDashboard() {
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/p/${l.slug}`}
-                          className="line-clamp-1 text-[13.5px] font-bold transition-colors hover:text-rose"
+                          className="line-clamp-1 text-[13.5px] font-bold transition-colors hover:text-accent"
                         >
                           {l.nom}
                         </Link>
@@ -213,7 +186,7 @@ export function AccountDashboard() {
                   </span>
                   <Link
                     href="/commande"
-                    className="shine rounded-full bg-rose px-6 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
+                    className="shine rounded-full bg-accent px-6 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
                   >
                     Finaliser ma commande
                   </Link>
@@ -223,7 +196,7 @@ export function AccountDashboard() {
               <div className="rounded-2xl border border-dashed border-line px-6 py-9 text-center">
                 <p className="text-[13.5px] text-muted">Votre panier est vide pour le moment.</p>
                 <Link
-                  href="/boutique"
+                  href="/"
                   className="mt-4 inline-block rounded-full bg-ink px-6 py-3 text-[13.5px] font-semibold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
                 >
                   Voir la sélection
@@ -232,75 +205,17 @@ export function AccountDashboard() {
             )}
           </section>
 
-          {/* ---------------------------------------------------- mes envies */}
-          <section className="rounded-3xl border border-line bg-white p-6 sm:p-7">
-            <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Sélection</p>
-                <h2 className="mt-1 text-base font-extrabold tracking-tight">Mes envies</h2>
-              </div>
-              {favoris > 0 && (
-                <Link
-                  href="/favoris"
-                  className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
-                >
-                  Tous mes favoris
-                  <IconArrow className="h-3.5 w-3.5 transition-transform duration-300 ease-soft group-hover:translate-x-1" />
-                </Link>
-              )}
-            </header>
-
-            {envies.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
-                  {envies.map((p) => (
-                    <Link key={p.id} href={`/p/${p.slug}`} className="group">
-                      <div className="aspect-3/4 overflow-hidden rounded-2xl bg-stone">
-                        <div
-                          className="h-full w-full bg-cover bg-center transition-transform duration-700 ease-soft group-hover:scale-105"
-                          style={{ backgroundImage: `url(${p.image})` }}
-                        />
-                      </div>
-                      <p className="mt-2 line-clamp-1 text-[12.5px] font-bold transition-colors group-hover:text-rose">
-                        {p.name}
-                      </p>
-                      <p className="mt-0.5 text-[12px] tabular-nums text-muted">
-                        {formatXOF(p.price)}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-
-                {favoris > envies.length && (
-                  <p className="mt-3.5 text-[12.5px] text-muted">
-                    et {favoris - envies.length} autre{favoris - envies.length > 1 ? "s" : ""} pièce
-                    {favoris - envies.length > 1 ? "s" : ""} mise
-                    {favoris - envies.length > 1 ? "s" : ""} de côté.
-                  </p>
-                )}
-              </>
-            ) : (
-              <div className="flex items-center gap-4 rounded-2xl bg-mist p-5">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-rose-soft">
-                  <IconHeart className="h-4 w-4 text-rose" />
-                </span>
-                <p className="text-[13.5px] leading-relaxed text-muted">
-                  Touchez le cœur sur un article pour le retrouver ici.
-                </p>
-              </div>
-            )}
-          </section>
 
           {/* -------------------------------------------- adresse par défaut */}
           <section className="rounded-3xl border border-line bg-white p-6 sm:p-7">
             <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Livraison</p>
+                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Livraison</p>
                 <h2 className="mt-1 text-base font-extrabold tracking-tight">Adresse par défaut</h2>
               </div>
               <Link
                 href="/compte/profil#adresses"
-                className="text-[12.5px] font-semibold text-muted transition-colors hover:text-rose"
+                className="text-[12.5px] font-semibold text-muted transition-colors hover:text-accent"
               >
                 Gérer mes adresses
               </Link>
@@ -308,13 +223,13 @@ export function AccountDashboard() {
 
             {parDefaut ? (
               <div className="flex gap-4 rounded-2xl bg-mist p-5">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-soft">
-                  <IconPin className="h-4 w-4 text-rose" />
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft">
+                  <IconPin className="h-4 w-4 text-accent" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-[13.5px] font-bold">{parDefaut.label}</p>
                   <p className="mt-1 text-[13px] leading-relaxed text-muted">
-                    {parDefaut.address} — {parDefaut.city} · {zoneLabel(parDefaut.zone)}
+                    {parDefaut.address}, {parDefaut.city} · {zoneLabel(parDefaut.zone)}
                   </p>
                   {parDefaut.notes && (
                     <p className="mt-1 text-[12px] italic text-muted">«&nbsp;{parDefaut.notes}&nbsp;»</p>
@@ -328,7 +243,7 @@ export function AccountDashboard() {
                 </p>
                 <Link
                   href="/compte/profil?adresse=nouvelle#adresses"
-                  className="mt-4 inline-block rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3 text-[13.5px] font-semibold transition-colors duration-300 hover:border-rose hover:text-rose"
+                  className="mt-4 inline-block rounded-full border-[1.5px] border-[#e5d9de] px-6 py-3 text-[13.5px] font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
                 >
                   Ajouter une adresse
                 </Link>
@@ -341,13 +256,13 @@ export function AccountDashboard() {
         <aside className="flex flex-col gap-5 lg:sticky lg:top-[104px]">
           <section className="rounded-3xl bg-mist p-6">
             <div className="flex items-center justify-between">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-rose-soft">
-                <IconUser className="h-5 w-5 text-rose" />
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-accent-soft">
+                <IconUser className="h-5 w-5 text-accent" />
               </span>
               <Link
                 href="/compte/profil"
                 aria-label="Modifier mon profil"
-                className="grid h-9 w-9 place-items-center rounded-full border-[1.5px] border-[#e5d9de] bg-white transition-colors duration-300 hover:border-rose hover:text-rose"
+                className="grid h-9 w-9 place-items-center rounded-full border-[1.5px] border-[#e5d9de] bg-white transition-colors duration-300 hover:border-accent hover:text-accent"
               >
                 <IconArrow className="h-4 w-4" />
               </Link>
@@ -375,7 +290,7 @@ export function AccountDashboard() {
           </section>
 
           <section className="rounded-3xl border border-line bg-white p-6">
-            <p className="text-[11px] font-bold uppercase tracking-[.16em] text-rose">Besoin d&apos;aide ?</p>
+            <p className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Besoin d&apos;aide ?</p>
             <h2 className="mt-2 text-base font-extrabold tracking-tight">Une question sur une commande ?</h2>
             <p className="mt-2 text-[13px] leading-relaxed text-muted">
               Du lundi au samedi, 9 h – 19 h. Une vraie personne répond.
@@ -384,7 +299,7 @@ export function AccountDashboard() {
               href={waLink("Bonjour, j'ai une question sur mon compte", reglages.telephone)}
               target="_blank"
               rel="noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-rose px-5 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-[13.5px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
             >
               <IconWhatsApp className="h-4 w-4" />
               Écrire sur WhatsApp
