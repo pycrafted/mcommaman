@@ -4,12 +4,13 @@ import Link from "next/link";
 import { formatXOF, waLink } from "@/lib/format";
 import { useCart } from "./cart-context";
 import { useReglages } from "./reglages-context";
-import { messageCommande, useOrigine } from "@/lib/whatsapp";
+import { messageCommande, useCliente, useOrigine } from "@/lib/whatsapp";
 
 export function CartDrawer() {
   const { drawerOpen, closeDrawer, lignes, subtotal, complet, bump, erreur } = useCart();
   const reglages = useReglages();
   const origine = useOrigine();
+  const cliente = useCliente();
 
   if (!drawerOpen) return null;
 
@@ -21,6 +22,7 @@ export function CartDrawer() {
       prixUnitaire: l.prix_unitaire,
       lien: origine ? `${origine}/p/${l.slug}` : undefined,
     })),
+    cliente,
   );
 
   return (

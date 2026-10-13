@@ -324,7 +324,6 @@ export function AuthShell({
   title,
   description,
   image,
-  quote,
   footer,
   children,
 }: {
@@ -332,7 +331,6 @@ export function AuthShell({
   title: string;
   description?: string;
   image: string;
-  quote: string;
   footer: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -369,13 +367,6 @@ export function AuthShell({
               sizes="(min-width:1024px) 520px, 0px"
               className="anim-zoom object-cover opacity-85"
             />
-            <div className="absolute inset-0 bg-linear-to-t from-ink/90 via-ink/25 to-transparent" />
-          </div>
-          <div className="absolute inset-x-0 bottom-0 p-8 text-white">
-            <p className="text-[19px] font-bold leading-snug tracking-[-.02em] text-balance">
-              «&nbsp;{quote}&nbsp;»
-            </p>
-            <p className="mt-3 text-[12.5px] text-white/60">M comme Maman · Dakar</p>
           </div>
         </div>
       </aside>

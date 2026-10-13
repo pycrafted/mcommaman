@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart-drawer";
 import { ProductDetail } from "@/components/product-detail";
 import { lireFiche, lireSimilaires } from "@/lib/catalogue";
@@ -58,7 +57,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       <main>
         <ProductDetail product={product} fiche={fiche.brut} similaires={similaires} />
       </main>
-      <Footer />
       <CartDrawer />
     </>
   );

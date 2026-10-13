@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { formatXOF, waLink } from "@/lib/format";
-import { messageCommande, useOrigine } from "@/lib/whatsapp";
+import { messageCommande, useCliente, useOrigine } from "@/lib/whatsapp";
 import { useCart } from "./cart-context";
 import { useReglages } from "./reglages-context";
 import { IconBag, IconWhatsApp } from "./icons";
@@ -24,6 +24,7 @@ export function BarrePanier() {
   const pathname = usePathname();
   const reglages = useReglages();
   const origine = useOrigine();
+  const cliente = useCliente();
 
   /* `hydrated` : le serveur ne connaît pas le panier, le premier rendu doit
      rester vide des deux côtés. */
@@ -68,6 +69,7 @@ export function BarrePanier() {
                 prixUnitaire: l.prix_unitaire,
                 lien: origine ? `${origine}/p/${l.slug}` : undefined,
               })),
+              cliente,
             ),
             reglages.telephone,
           )}

@@ -8,15 +8,15 @@ import type { Product } from "@/lib/products";
 import { srcSetWeb, variante as varianteWeb } from "@/lib/images";
 import { ProductCard } from "./product-card";
 import { useCart } from "./cart-context";
-import { IconBag, IconCheck } from "./icons";
+import { IconArrow, IconBag, IconCheck } from "./icons";
 
 /**
  * La fiche produit, reprise de la fiche de Golden Pousso.
  *
- * L'ossature : le rayon seul en tête de page, une grille 1,05 / 0,95, la
- * photo en 4/5 à gauche avec sa loupe et ses vues en surimpression, la
- * colonne d'achat à droite, « Dans le même esprit » en pied (nos cartes,
- * pas les siennes).
+ * L'ossature : le retour à la boutique seul en tête de page, une grille
+ * 1,05 / 0,95, la photo en 4/5 à gauche avec sa loupe et ses vues en
+ * surimpression, la colonne d'achat à droite, « Dans le même esprit » en
+ * pied (nos cartes, pas les siennes).
  *
  * La colonne dit, dans l'ordre : titre · prix · description · couleur ·
  * taille · quantité et panier · stock. La description est lue tôt, entre le
@@ -298,14 +298,15 @@ export function ProductDetail({
 
   return (
     <div className="mx-auto max-w-[1400px] px-5 pb-20 pt-6 md:px-8 md:pt-8 lg:px-10">
-      {/* Le rayon, seul fil d'Ariane : l'accueil est dans le dock, et le
-          dernier maillon répéterait le titre affiché deux lignes plus bas. */}
-      <nav aria-label="Rayon">
+      {/* Un seul lien en tête de page, et c'est le chemin du retour : le rayon
+          ne disait rien de plus que la fiche, et l'accueil est la boutique. */}
+      <nav aria-label="Retour">
         <Link
           href="/"
-          className="text-[11px] font-bold uppercase tracking-[.16em] text-accent transition-colors hover:text-ink"
+          className="group inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[.16em] text-accent transition-colors hover:text-ink"
         >
-          {product.category}
+          <IconArrow className="h-3.5 w-3.5 rotate-180 transition-transform duration-300 ease-back group-hover:-translate-x-0.5" />
+          Retour à la boutique
         </Link>
       </nav>
 

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart-drawer";
 import { LoginForm } from "@/components/account-auth";
 
@@ -22,7 +21,6 @@ export default function Page() {
           <LoginForm />
         </Suspense>
       </main>
-      <Footer />
       <CartDrawer />
     </>
   );

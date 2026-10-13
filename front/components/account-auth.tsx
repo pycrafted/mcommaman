@@ -64,9 +64,7 @@ export function LoginForm() {
     <AuthShell
       eyebrow="Espace client"
       title="Bon retour parmi nous"
-      description="Connectez-vous pour retrouver vos commandes et vos adresses de livraison."
       image="/images/portes/filles.webp"
-      quote="Ils grandissent vite. La boutique s'en souvient."
       footer={
         <span className="text-muted">
           Pas encore de compte ?{" "}
@@ -196,7 +194,6 @@ export function SignupForm() {
       title="Créer mon compte"
       description="Vos commandes et vos adresses, retrouvées à chaque visite."
       image="/images/portes/bebes.webp"
-      quote="Le vestiaire des petits, gardé au chaud pour vous."
       footer={
         <span className="text-muted">
           Vous avez déjà un compte ?{" "}

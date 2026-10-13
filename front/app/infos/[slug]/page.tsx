@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart-drawer";
 import { LEGAL_PAGES, legalBySlug } from "@/lib/legal";
 
@@ -64,7 +63,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           </article>
         </div>
       </main>
-      <Footer />
       <CartDrawer />
     </>
   );

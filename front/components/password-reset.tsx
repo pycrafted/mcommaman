@@ -92,7 +92,6 @@ export function ChangePasswordForm() {
       title="Changer mon mot de passe"
       
       image="/images/portes/filles.webp"
-      quote="Ça arrive à tout le monde."
       footer={
         <span className="text-muted">
           Vous vous en souvenez&nbsp;?{" "}
@@ -305,7 +304,6 @@ export function ResetPasswordForm() {
       title="Nouveau mot de passe"
       description="Choisissez-en un que vous n'utilisez pas ailleurs."
       image="/images/portes/filles.webp"
-      quote="Un lien, une fois, et c'est réglé."
       footer={
         <span className="text-muted">
           <Link href="/compte/connexion" className="font-bold text-accent underline underline-offset-4">

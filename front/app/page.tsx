@@ -1,5 +1,4 @@
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart-drawer";
 import { Home } from "@/components/home";
 import { lireArborescence, lireFacettes, lirePageCatalogue } from "@/lib/catalogue";
@@ -32,7 +31,6 @@ export default async function Page() {
           campagnes={campagnes}
         />
       </main>
-      <Footer />
       <CartDrawer />
     </>
   );

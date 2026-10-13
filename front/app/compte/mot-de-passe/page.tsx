@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart-drawer";
 import { ResetPasswordForm } from "@/components/password-reset";
 
@@ -25,7 +24,6 @@ export default function Page() {
           <ResetPasswordForm />
         </Suspense>
       </main>
-      <Footer />
       <CartDrawer />
     </>
   );
