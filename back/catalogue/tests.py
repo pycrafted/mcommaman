@@ -266,6 +266,50 @@ class PhotothequeTest(APITestCase):
         )
         self.client.force_authenticate(self.gerante)
 
+    def test_la_liste_ne_fait_pas_de_requetes_par_image(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        Media.objects.bulk_create([
+            Media(url=f"https://exemple.test/photo-{i}.jpg", nom=f"Photo {i}")
+            for i in range(30)
+        ])
+        url = reverse("media-list")
+        with CaptureQueriesContext(connection) as petite:
+            self.client.get(url, {"page_size": 2})
+        with CaptureQueriesContext(connection) as grande:
+            reponse = self.client.get(url, {"page_size": 30})
+        self.assertEqual(len(reponse.data["results"]), 30)
+        self.assertEqual(
+            [m["id"] for m in reponse.data["results"]],
+            list(Media.objects.order_by("-ajoute_le", "-pk").values_list("pk", flat=True)),
+        )
+        self.assertEqual(len(petite), len(grande))
+        self.assertLessEqual(len(grande), 4)
+
+    def test_les_usages_additionnent_les_liens_sans_les_multiplier(self):
+        from vitrine.models import Bandeau
+
+        produit = fabriquer_produit()
+        autre = fabriquer_produit(slug="autre", sku="AUT-001", avec_photo=False)
+        media = produit.photos.first().media
+        PhotoProduit.objects.create(produit=autre, media=media)
+        for i in range(2):
+            Rayon.objects.create(nom=f"Rayon {i}", slug=f"rayon-{i}", image=media)
+            Bandeau.objects.create(media=media, titre=f"Bandeau {i}")
+
+        fiche = self.client.get(reverse("media-detail", args=[media.pk])).data
+        self.assertEqual(fiche["usages"], 6)
+        liste = self.client.get(reverse("media-list")).data["results"]
+        self.assertEqual(liste[0]["usages"], 6)
+
+    def test_une_image_creee_sans_usage_reste_serialisable(self):
+        reponse = self.client.post(reverse("media-list"), {
+            "url": "https://exemple.test/nouvelle.jpg", "nom": "Nouvelle photo",
+        }, format="json")
+        self.assertEqual(reponse.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(reponse.data["usages"], 0)
+
     def test_une_image_en_service_ne_se_supprime_pas(self):
         produit = fabriquer_produit()
         media = produit.photos.first().media

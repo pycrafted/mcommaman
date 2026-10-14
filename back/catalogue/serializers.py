@@ -131,6 +131,9 @@ class MediaSerializer(serializers.ModelSerializer):
 
     def get_usages(self, obj) -> int:
         """Combien de fiches et de rayons s'en servent — une image utilisée ne se supprime pas."""
+        if hasattr(obj, "nombre_usages"):
+            return obj.nombre_usages
+        # Une image tout juste créée n'est pas passée par le queryset annoté.
         return obj.utilisations.count() + obj.rayons_illustres.count() + obj.bandeaux.count()
 
 
@@ -147,6 +150,8 @@ class SousRayonSerializer(serializers.ModelSerializer):
         fields = ["id", "nom", "slug", "description", "image_url", "ordre", "nombre_produits"]
 
     def get_nombre_produits(self, obj) -> int:
+        if hasattr(obj, "nombre_produits_publies"):
+            return obj.nombre_produits_publies
         return obj.produits.filter(statut=Produit.Statut.PUBLIE).count()
 
 
@@ -177,6 +182,8 @@ class RayonSerializer(serializers.ModelSerializer):
 
     def get_nombre_produits(self, obj) -> int:
         """Le rayon et tout ce qu'il contient : une parente compte ses enfants."""
+        if hasattr(obj, "nombre_produits_publies"):
+            return obj.nombre_produits_publies
         rayons = [obj.pk] + [enfant.pk for enfant in obj.enfants.all()]
         return Produit.objects.filter(
             rayon_id__in=rayons, statut=Produit.Statut.PUBLIE

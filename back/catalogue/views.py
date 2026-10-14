@@ -77,6 +77,30 @@ def _du_stock():
     return Exists(Variante.objects.filter(produit=OuterRef("pk"), stock__gt=0))
 
 
+def _rayons_avec_comptages(enfants_visibles=False):
+    """Charge l'arborescence et ses comptes sans requête pour chaque rayon."""
+    publies = Q(produits__statut=Produit.Statut.PUBLIE)
+    publies_enfants = Q(enfants__produits__statut=Produit.Statut.PUBLIE)
+    enfants = Rayon.objects.select_related("image")
+    if enfants_visibles:
+        enfants = enfants.filter(visible=True)
+        publies_enfants &= Q(enfants__visible=True)
+    enfants = enfants.annotate(
+        nombre_produits_publies=Count("produits", filter=publies, distinct=True),
+    ).order_by("ordre", "nom", "pk")
+    return (
+        Rayon.objects.select_related("image")
+        .annotate(
+            nombre_produits_publies=(
+                Count("produits", filter=publies, distinct=True)
+                + Count("enfants__produits", filter=publies_enfants, distinct=True)
+            ),
+        )
+        .prefetch_related("parents", Prefetch("enfants", queryset=enfants))
+        .order_by("ordre", "nom", "pk")
+    )
+
+
 def _dans_le_rayon(selection, slug: str):
     """Les articles d'une catégorie et de ses sous-catégories, sans doublon."""
     rayons = Rayon.objects.filter(Q(slug=slug) | Q(parents__slug=slug)).values("pk")
@@ -320,23 +344,8 @@ class RayonPublicViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        selection = (
-            Rayon.objects.filter(visible=True)
-            .select_related("image")
-            .prefetch_related(
-                "parents",
-                # Une sous-catégorie masquée depuis le back-office ne doit pas
-                # reparaître dans les filtres de la boutique. Le filtre est posé
-                # ici et non dans le sérialiseur : celui-ci sert aussi au
-                # back-office, à qui il faut continuer de montrer ce qu'il a
-                # masqué. Le décompte de fiches suit, puisqu'il lit la même
-                # liste d'enfants.
-                Prefetch(
-                    "enfants",
-                    queryset=Rayon.objects.filter(visible=True).select_related("image"),
-                ),
-            )
-        )
+        # Les enfants masqués et leurs fiches restent exclus du décompte public.
+        selection = _rayons_avec_comptages(enfants_visibles=True).filter(visible=True)
         params = self.request.query_params
         if univers := params.get("univers"):
             selection = selection.filter(univers=univers)
@@ -601,15 +610,23 @@ class MouvementStockViewSet(viewsets.ReadOnlyModelViewSet):
 class PhotoProduitViewSet(viewsets.ModelViewSet):
     permission_classes = [EstEquipe]
     serializer_class = PhotoProduitSerializer
-    queryset = PhotoProduit.objects.select_related("media", "produit")
+    queryset = PhotoProduit.objects.select_related("media", "produit").order_by("position", "pk")
+
+    def get_queryset(self):
+        selection = super().get_queryset()
+        produit = self.request.query_params.get("produit")
+        if produit is not None:
+            if not produit.isdigit():
+                return selection.none()
+            selection = selection.filter(produit_id=produit)
+        return selection
 
 
 class RayonGestionViewSet(viewsets.ModelViewSet):
     permission_classes = [EstEquipe]
     serializer_class = RayonGestionSerializer
     queryset = (
-        Rayon.objects.select_related("image")
-        .prefetch_related("parents", "enfants")
+        _rayons_avec_comptages()
         .annotate(
             fiches=Count("produits", distinct=True),
             fiches_brouillons=Count(
@@ -691,7 +708,23 @@ class MediaViewSet(viewsets.ModelViewSet):
 
     permission_classes = [EstEquipe]
     serializer_class = MediaSerializer
-    queryset = Media.objects.all()
+    # Trois compteurs par image provoquaient 600 requêtes pour une page de
+    # 200 photos. DISTINCT évite que les trois relations se multiplient.
+    queryset = Media.objects.annotate(
+        nombre_usages=(
+            Count("utilisations", distinct=True)
+            + Count("rayons_illustres", distinct=True)
+            + Count("bandeaux", distinct=True)
+        ),
+    ).order_by("-ajoute_le", "-pk")
+
+    def get_queryset(self):
+        selection = super().get_queryset()
+        # L'éditeur retrouve seulement les visuels de sa fiche, même lorsque
+        # la photothèque dépasse les 500 premières entrées.
+        if "url" in self.request.query_params:
+            selection = selection.filter(url__in=self.request.query_params.getlist("url"))
+        return selection
 
     def perform_destroy(self, instance):
         usages = (
