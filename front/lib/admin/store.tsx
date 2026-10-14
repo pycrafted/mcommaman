@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -217,6 +218,9 @@ interface AdminContextValue extends AdminState {
   savePromotion: (promotion: AdminPromotion) => void;
   deletePromotion: (id: string) => void;
   /* Bibliothèque */
+  photothequeChargee: boolean;
+  erreurPhototheque: string;
+  chargerPhototheque: () => Promise<void>;
   saveSizes: (sizes: SizeValue[]) => void;
   saveColor: (color: AdminColor) => void;
   deleteColor: (id: string) => void;
@@ -252,7 +256,7 @@ const contenu = <T,>(page: Page<T> | T[] | null): T[] =>
 /** Le rythme de relecture des commandes, back-office ouvert. */
 const SURVEILLANCE_MS = 30_000;
 
-async function tout<T>(chemin: string): Promise<T[]> {
+async function tout<T>(chemin: string, signalerErreur = false): Promise<T[]> {
   const lignes: T[] = [];
   let suite: string | null = chemin + (chemin.includes("?") ? "&" : "?") + "page_size=200";
 
@@ -264,7 +268,8 @@ async function tout<T>(chemin: string): Promise<T[]> {
       // `lib/api` sait à quel serveur il parle.
       suite = page.next ? new URL(page.next).pathname + new URL(page.next).search : null;
     }
-  } catch {
+  } catch (e) {
+    if (signalerErreur) throw e;
     /* interrompu : on garde ce qui est déjà arrivé */
   }
   return lignes;
@@ -277,8 +282,8 @@ export function AdminProvider({
   children: ReactNode;
   /**
    * Ne lire que ce que le formulaire produit consulte : rayons, tailles,
-   * coloris, matières, photothèque. Pas de commandes, de clientes, d'équipe,
-   * de campagnes ni de cloche, et pas de surveillance en fond. C'est le mode
+   * coloris, matières. La photothèque attend son ouverture. Pas de commandes,
+   * de clientes, d'équipe, de campagnes ni de cloche, et pas de surveillance en fond. C'est le mode
    * de la fenêtre ouverte depuis la boutique (`edition-piece.tsx`) : elle n'a
    * pas à attendre l'historique des ventes pour afficher une fiche.
    */
@@ -301,6 +306,37 @@ export function AdminProvider({
   const [cloche, setCloche] = useState<Cloche>(CLOCHE_VIDE);
   const [compteursProduits, setCompteursProduits] = useState<CompteursProduits>(COMPTEURS_VIDES);
   const [versionProduits, setVersionProduits] = useState(0);
+  const [photothequeChargee, setPhotothequeChargee] = useState(false);
+  const [erreurPhototheque, setErreurPhototheque] = useState("");
+  const lecturePhototheque = useRef<Promise<void> | null>(null);
+
+  // Le formulaire n'a besoin des anciennes images que lorsqu'on ouvre le
+  // sélecteur. Plusieurs ouvertures partagent la même lecture et son résultat.
+  const chargerPhototheque = useCallback((): Promise<void> => {
+    if (!equipe || photothequeChargee) return Promise.resolve();
+    if (lecturePhototheque.current) return lecturePhototheque.current;
+    setErreurPhototheque("");
+    const lecture = tout<MediaApi>("/api/gestion/photheque/", true)
+      .then((medias) => {
+        setState((courant) => ({
+          ...courant,
+          library: {
+            ...courant.library,
+            media: [
+              ...courant.library.media.filter((m) => !medias.some((brut) => String(brut.id) === m.id)),
+              ...medias.map(versMedia),
+            ],
+          },
+        }));
+        setPhotothequeChargee(true);
+      })
+      .catch((e: unknown) => {
+        setErreurPhototheque(e instanceof Error ? e.message : "Impossible de charger les photos.");
+      })
+      .finally(() => { lecturePhototheque.current = null; });
+    lecturePhototheque.current = lecture;
+    return lecture;
+  }, [equipe, photothequeChargee]);
 
   const adopterCloche = useCallback((brut: ClocheApi) => {
     setCloche({ nonLues: brut.non_lues, notifications: brut.notifications });
@@ -342,12 +378,11 @@ export function AdminProvider({
    */
   const relire = useCallback(async (relireFiches = true) => {
     if (leger) {
-      const [rayons, tailles, coloris, matieres, medias] = await Promise.all([
+      const [rayons, tailles, coloris, matieres] = await Promise.all([
         tout<RayonApi>("/api/gestion/rayons/"),
         envoyer<TailleApi[]>("/api/gestion/tailles/").catch(() => null),
         envoyer<ColorisApi[]>("/api/gestion/coloris/").catch(() => null),
         envoyer<MatiereApi[]>("/api/gestion/matieres/").catch(() => null),
-        tout<MediaApi>("/api/gestion/photheque/"),
       ]);
       if (relireFiches) setVersionProduits((v) => v + 1);
       setState((courant) => ({
@@ -358,7 +393,6 @@ export function AdminProvider({
           sizes: (tailles ?? []).map(versTaille),
           colors: (coloris ?? []).map(versColoris),
           materials: (matieres ?? []).map(versMatiere),
-          media: contenu(medias).map(versMedia),
         },
       }));
       return;
@@ -390,6 +424,7 @@ export function AdminProvider({
     const categories = contenu(rayons).map(versCategorie);
     const rayonsParId = new Map(categories.map((r) => [Number(r.id), r.slug]));
     const orders = contenu(commandes).map(versCommande);
+    setPhotothequeChargee(true);
     if (compteurs) setCompteursProduits(compteurs);
     if (relireFiches) setVersionProduits((v) => v + 1);
     setState((courant) => ({
@@ -440,6 +475,8 @@ export function AdminProvider({
       // pu être lu — la personne suivante sur ce navigateur n'a pas à voir les
       // commandes de la précédente.
       setState(VIDE);
+      setPhotothequeChargee(false);
+      setErreurPhototheque("");
       setHydrated(true);
       return;
     }
@@ -527,17 +564,19 @@ export function AdminProvider({
    */
   const rangerPhotos = useCallback(
     async (produitId: number, adresses: string[]) => {
-      const photothegue = new Map(
-        contenu(await envoyer<Page<MediaApi>>("/api/gestion/photheque/?page_size=500").catch(
-          () => null,
-        )).map((m) => [m.url, m.id]),
+      const existantes = await tout<PhotoProduitApi>(`/api/gestion/photos/?produit=${produitId}`, true);
+      const photothegue = new Map(state.library.media.map((m) => [m.src, Number(m.id)]));
+      const inconnues = [...new Set(adresses)].filter(
+        (adresse) => !photothegue.has(adresse) && !existantes.some((p) => p.url === adresse),
       );
-
-      const existantes = contenu(
-        await envoyer<Page<PhotoProduitApi>>(
-          `/api/gestion/photos/?produit=${produitId}&page_size=200`,
-        ).catch(() => null),
-      ).filter((p) => p.produit === produitId);
+      // Des URL longues sont découpées en petits lots pour rester sous la
+      // limite des serveurs HTTP. Aucune lecture de la photothèque entière.
+      for (let debut = 0; debut < inconnues.length; debut += 5) {
+        const params = new URLSearchParams();
+        for (const adresse of inconnues.slice(debut, debut + 5)) params.append("url", adresse);
+        const medias = await tout<MediaApi>(`/api/gestion/photheque/?${params}`, true);
+        for (const media of medias) photothegue.set(media.url, media.id);
+      }
 
       // Ce qui n'est plus dans le formulaire quitte la fiche.
       for (const photo of existantes) {
@@ -575,7 +614,7 @@ export function AdminProvider({
         }).catch(() => undefined);
       }
     },
-    [],
+    [state.library.media],
   );
 
   const rangerVariantes = useCallback(
@@ -967,8 +1006,17 @@ export function AdminProvider({
         forme.append("fichier", await reduirePourEnvoi(fichier));
         forme.append("nom", nom?.trim() || fichier.name);
         const brut = await televerser<MediaApi>("/api/gestion/photheque/", forme);
-        await relire();
-        return versMedia(brut);
+        const media = versMedia(brut);
+        setState((courant) => ({
+          ...courant,
+          library: {
+            ...courant.library,
+            media: [media, ...courant.library.media.filter((m) => m.id !== media.id)],
+          },
+        }));
+        // L'API renvoie déjà le média créé : importer une photo ne change
+        // ni les commandes ni les catégories, inutile de tout relire.
+        return media;
       } catch (e) {
         setErreur(e instanceof Error ? e.message : "L'envoi de l'image a échoué.");
         return null;
@@ -976,7 +1024,7 @@ export function AdminProvider({
         setEnCours(false);
       }
     },
-    [relire],
+    [],
   );
 
   const removeMedia = useCallback<AdminContextValue["removeMedia"]>(
@@ -1035,6 +1083,9 @@ export function AdminProvider({
       saveMaterial,
       deleteMaterial,
       addMedia,
+      photothequeChargee,
+      erreurPhototheque,
+      chargerPhototheque,
       televerserMedia,
       removeMedia,
       updateSettings,
@@ -1042,6 +1093,7 @@ export function AdminProvider({
     }),
     [
       state, hydrated, enCours, erreur, notification,
+      photothequeChargee, erreurPhototheque, chargerPhototheque,
       cloche, lireCloche, relire, relireCloche, compteursProduits, versionProduits, saveProduct,
       createProduct, deleteProduct,
       duplicateProduct, setProductStatus, setOrderStatus, restoreOrder, saveTeamMember, setTeamMemberActive, saveCategory,

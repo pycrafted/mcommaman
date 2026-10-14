@@ -285,6 +285,9 @@ export function ProductForm({
     saveColor,
     saveSizes,
     televerserMedia,
+    photothequeChargee,
+    erreurPhototheque,
+    chargerPhototheque,
   } = useAdmin();
 
   const [name, setName] = useState(product?.name ?? "");
@@ -353,6 +356,10 @@ export function ProductForm({
   const [envoiPhotos, setEnvoiPhotos] = useState(false);
   const [choix, setChoix] = useState<"matieres" | "coloris" | "tailles" | null>(null);
   const fichierRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (photothegue) void chargerPhototheque();
+  }, [photothegue, chargerPhototheque]);
 
   /* Une valeur créée depuis la fiche part vers la bibliothèque, mais celle-ci
      ne revient du serveur qu'après l'aller-retour. On la garde donc ici en
@@ -1094,15 +1101,24 @@ export function ProductForm({
           </Button>
         </div>
 
-        <GrilleMedias
-          medias={library.media}
-          estChoisi={(m) => photos.includes(m.src)}
-          onChoisir={(m) => {
-            ajouterPhoto(m.src);
-            setPhotothegue(false);
-          }}
-          vide="La photothèque est vide : importez une première image."
-        />
+        {erreurPhototheque ? (
+          <div role="alert" className="space-y-3 text-[13px] text-muted">
+            <p>{erreurPhototheque}</p>
+            <Button onClick={() => void chargerPhototheque()}>Réessayer</Button>
+          </div>
+        ) : !photothequeChargee ? (
+          <p role="status" className="text-[13px] text-muted">Chargement des photos…</p>
+        ) : (
+          <GrilleMedias
+            medias={library.media}
+            estChoisi={(m) => photos.includes(m.src)}
+            onChoisir={(m) => {
+              ajouterPhoto(m.src);
+              setPhotothegue(false);
+            }}
+            vide="La photothèque est vide : importez une première image."
+          />
+        )}
       </Modal>
     </div>
   );

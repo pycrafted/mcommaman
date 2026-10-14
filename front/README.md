@@ -15,6 +15,25 @@ npm run dev
 
 → http://localhost:3000
 
+`npm test` vérifie les lectures du catalogue, leur annulation et les replis
+réseau. `npx tsc --noEmit` contrôle les types, puis `npm run build` valide la
+compilation de production.
+
+### Chargements et performances
+
+- Les photos des cartes utilisent le chargement différé natif : la grille reste
+  complète, mais les photos éloignées de l'écran attendent le défilement.
+- Les filtres regroupent les clics espacés de moins de 150 ms et annulent les
+  lectures devenues inutiles ; une réponse annulée ne vide pas la grille.
+- L'éditeur ouvert depuis la boutique charge ses référentiels séparément de la
+  photothèque. Importer une photo conserve la réponse de l'API sans relire tout
+  le back-office. Enregistrer une fiche ne recherche que ses propres photos et
+  les adresses de médias qui lui manquent.
+- Côté API, les compteurs des médias et des catégories sont calculés en base
+  sans requête supplémentaire par ligne. Les tests dans
+  `back/catalogue/tests_performance.py` couvrent aussi les sous-catégories
+  masquées, les parentes multiples et les lectures de photos ciblées.
+
 > **Il faut le serveur.** La vitrine lit tout dans `back` : sans lui elle s'affiche, mais vide.
 > `cd back && docker compose up -d && .venv\Scripts\python.exe manage.py runserver`.
 

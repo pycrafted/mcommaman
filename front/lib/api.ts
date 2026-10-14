@@ -45,6 +45,8 @@ function messageDe(corps: unknown, statut: number): string {
 type OptionsLecture = {
   /** Secondes de cache. 0 pour toujours redemander — les stocks bougent. */
   revalider?: number;
+  /** Annule une sélection devenue inutile lorsque les filtres changent. */
+  signal?: AbortSignal;
 };
 
 /**
@@ -55,11 +57,12 @@ type OptionsLecture = {
  */
 export async function lire<T>(
   chemin: string,
-  { revalider = 60 }: OptionsLecture = {},
+  { revalider = 60, signal }: OptionsLecture = {},
 ): Promise<T | null> {
   const reponse = await fetch(`${BASE}${chemin}`, {
     next: { revalidate: revalider },
     headers: { Accept: "application/json" },
+    signal,
   });
 
   if (reponse.status === 404) return null;

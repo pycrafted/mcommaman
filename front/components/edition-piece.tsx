@@ -17,7 +17,8 @@ import { Modal } from "./admin/ui";
  *
  * Il a besoin des données du back-office (rayons, matières, coloris,
  * tailles) : la fenêtre monte donc son propre `AdminProvider`, en mode léger —
- * il ne lit que ça à l'ouverture, pas les commandes ni les clientes, dont le
+ * il ne lit que ça à l'ouverture ; la photothèque attend son sélecteur.
+ * Pas de commandes ni de clientes, dont le
  * volume ne ferait que grandir avec les ventes. Ce code n'est chargé qu'au premier clic (`next/dynamic` chez
  * l'appelant) : les visiteuses ne téléchargent pas le back-office.
  *

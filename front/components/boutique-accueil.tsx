@@ -318,17 +318,13 @@ export function BoutiqueAccueil({
     return () => window.removeEventListener("mcm:catalogue-modifie", relire);
   }, []);
 
-  /* À chaque changement d'état (sauf le premier rendu, déjà servi), la
-     sélection et ses facettes sont relues ensemble. Une réponse en retard sur
-     une plus récente est ignorée : le numéro de requête fait foi. */
-  const premier = useRef(true);
+  /* Regroupe les clics rapprochés et annule les lectures dépassées : leurs
+     réponses n'ont plus à concurrencer la sélection réellement demandée. */
   const requete = useRef(0);
   useEffect(() => {
-    if (premier.current) {
-      premier.current = false;
-      return;
-    }
+    if (etat === VIDE && rafraichir === 0) return;
     const numero = ++requete.current;
+    const controleur = new AbortController();
     const filtres = {
       rayon: etat.categorie || undefined,
       sous: etat.sous,
@@ -338,16 +334,26 @@ export function BoutiqueAccueil({
       prixMax: etat.prixMax,
       tri: etat.tri,
     };
-    demarrer(async () => {
-      const [page, f] = await Promise.all([
-        lirePageCatalogue({ ...filtres, parPage: TOUTES }),
-        lireFacettes(filtres),
-      ]);
-      if (numero !== requete.current) return;
-      setProduits(page.produits);
-      setFacettes(f);
-      setGeneration(numero);
-    });
+    const minuteur = window.setTimeout(() => {
+      demarrer(async () => {
+        try {
+          const [page, f] = await Promise.all([
+            lirePageCatalogue({ ...filtres, parPage: TOUTES }, controleur.signal),
+            lireFacettes(filtres, controleur.signal),
+          ]);
+          if (controleur.signal.aborted || numero !== requete.current) return;
+          setProduits(page.produits);
+          setFacettes(f);
+          setGeneration(numero);
+        } catch (e) {
+          if (!controleur.signal.aborted) throw e;
+        }
+      });
+    }, 150);
+    return () => {
+      window.clearTimeout(minuteur);
+      controleur.abort();
+    };
   }, [etat, rafraichir]);
 
   const categorie = categories.find((c) => c.slug === etat.categorie) ?? null;

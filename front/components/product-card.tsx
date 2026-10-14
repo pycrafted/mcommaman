@@ -73,12 +73,19 @@ export function ProductCard({
     >
       <div className="shine relative aspect-4/5 overflow-hidden bg-stone">
         {/* Toute la photo est cliquable. Les boutons posés dessus sont en z-20. */}
-        <Link href={`/p/${product.slug}`} className="absolute inset-0 z-10" aria-label={product.name} />
+        <Link href={`/p/${product.slug}`} prefetch={false} className="absolute inset-0 z-10" aria-label={product.name} />
 
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-[1100ms] ease-soft group-hover:scale-108"
-          style={{ backgroundImage: `url(${product.image})` }}
-        />
+        {/* Une image de fond chargeait toutes les photos de la grille. Le
+            navigateur attend maintenant qu'elles approchent de l'écran. */}
+        {product.image && <img
+          src={product.image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          width={640}
+          height={800}
+          className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-[1100ms] ease-soft group-hover:scale-108"
+        />}
 
         <div className="absolute left-3 top-3 z-20 flex flex-col items-start gap-1.5">
           {discount > 0 && (
@@ -116,6 +123,7 @@ export function ProductCard({
         <div className="mt-1.5 flex items-start justify-between gap-3">
           <Link
             href={`/p/${product.slug}`}
+            prefetch={false}
             className="font-serif text-[17px] font-semibold leading-snug tracking-tight text-ink transition-colors duration-300 group-hover:text-accent-deep"
           >
             {product.name}

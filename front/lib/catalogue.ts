@@ -97,6 +97,7 @@ function parametres(filtres: FiltresCatalogue): URLSearchParams {
  */
 export async function lirePageCatalogue(
   filtres: FiltresCatalogue = {},
+  signal?: AbortSignal,
 ): Promise<{ produits: Product[]; total: number; pages: number }> {
   const params = parametres(filtres);
   const parPage = filtres.parPage ?? PAR_PAGE;
@@ -108,6 +109,7 @@ export async function lirePageCatalogue(
       // Le stock bouge : une minute de cache suffit à absorber les rafales sans
       // afficher une rupture d'il y a une heure.
       revalider: 60,
+      signal,
     });
     const total = page?.count ?? 0;
     return {
@@ -115,7 +117,8 @@ export async function lirePageCatalogue(
       total,
       pages: Math.max(1, Math.ceil(total / parPage)),
     };
-  } catch {
+  } catch (e) {
+    if (signal?.aborted) throw e;
     // Une page au-delà de la dernière, ou le serveur éteint en développement :
     // la boutique reste consultable plutôt que de rendre une page d'erreur.
     return { produits: [], total: 0, pages: 1 };
@@ -144,11 +147,11 @@ const FACETTES_VIDES: Facettes = { total: 0, prixMin: 0, prixMax: 0, sousCategor
  * Chaque facette est comptée par le serveur sans son propre filtre : cocher
  * une taille n'efface pas les autres de la liste.
  */
-export async function lireFacettes(filtres: FiltresCatalogue = {}): Promise<Facettes> {
+export async function lireFacettes(filtres: FiltresCatalogue = {}, signal?: AbortSignal): Promise<Facettes> {
   try {
     const brut = await lire<FacettesApi>(
       `/api/catalogue/produits/facettes/?${parametres(filtres)}`,
-      { revalider: 60 },
+      { revalider: 60, signal },
     );
     if (!brut) return FACETTES_VIDES;
     return {
@@ -159,7 +162,8 @@ export async function lireFacettes(filtres: FiltresCatalogue = {}): Promise<Face
       tailles: brut.tailles,
       coloris: brut.coloris ?? [],
     };
-  } catch {
+  } catch (e) {
+    if (signal?.aborted) throw e;
     return FACETTES_VIDES;
   }
 }
