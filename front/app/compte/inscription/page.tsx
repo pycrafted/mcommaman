@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Header } from "@/components/header";
 import { CartDrawer } from "@/components/cart-drawer";
@@ -15,9 +14,7 @@ export default function Page() {
     <>
       <Header />
       <main>
-        <Suspense fallback={<div className="mx-auto max-w-[1180px] px-5 py-20 text-muted md:px-10">Chargement…</div>}>
-          <SignupForm />
-        </Suspense>
+        <SignupForm />
       </main>
       <CartDrawer />
     </>

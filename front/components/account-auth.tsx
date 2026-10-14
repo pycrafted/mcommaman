@@ -2,32 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { IconLock, IconMail, IconPhone, IconPin, IconUser } from "./icons";
 import { Alert, AuthShell, Checkbox, PasswordField, PasswordMeter, SubmitButton, TextField } from "./form-kit";
-
-/* Après connexion, on repart d'où l'on venait. `?suite=` est posé par les liens
-   qui exigent un compte — pour l'instant le tunnel de commande.
-
-   On ne suit que les chemins du site : un `?suite=https://ailleurs` collé dans
-   un lien envoyé par courriel ferait atterrir la cliente, une fois connectée,
-   sur une page qui n'est pas la nôtre. Un chemin commence par un seul `/` —
-   `//ailleurs` est une adresse absolue déguisée, le navigateur la suivrait. */
-const suivant = (params: URLSearchParams) => {
-  const suite = params.get("suite") ?? "";
-  return suite.startsWith("/") && !suite.startsWith("//") ? suite : "/compte";
-};
-
-const lienAvecSuite = (base: string, suite: string) =>
-  suite !== "/compte" ? `${base}?suite=${encodeURIComponent(suite)}` : base;
 
 /* ------------------------------------------------------------------ connexion */
 
 export function LoginForm() {
   const router = useRouter();
-  const params = useSearchParams();
-  const suite = suivant(params);
   const { login, account, hydrated } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -37,8 +20,8 @@ export function LoginForm() {
 
   /* Déjà connectée : cette page n'a plus lieu d'être. */
   useEffect(() => {
-    if (hydrated && account) router.replace(suite);
-  }, [hydrated, account, suite, router]);
+    if (hydrated && account) router.replace("/");
+  }, [hydrated, account, router]);
 
   const envoyer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +40,7 @@ export function LoginForm() {
       setErreur(resultat.error ?? "La connexion a échoué.");
       return;
     }
-    router.push(suite);
+    router.replace("/");
   };
 
   return (
@@ -69,7 +52,7 @@ export function LoginForm() {
         <span className="text-muted">
           Pas encore de compte ?{" "}
           <Link
-            href={lienAvecSuite("/compte/inscription", suite)}
+            href="/compte/inscription"
             className="font-bold text-accent underline underline-offset-4"
           >
             Créer un compte
@@ -135,8 +118,6 @@ type Champ = "name" | "email" | "phone" | "password" | "confirm" | "terms";
 
 export function SignupForm() {
   const router = useRouter();
-  const params = useSearchParams();
-  const suite = suivant(params);
   const { register, account, hydrated } = useAuth();
 
   const [name, setName] = useState("");
@@ -151,8 +132,8 @@ export function SignupForm() {
   const [envoi, setEnvoi] = useState(false);
 
   useEffect(() => {
-    if (hydrated && account) router.replace(suite);
-  }, [hydrated, account, suite, router]);
+    if (hydrated && account) router.replace("/");
+  }, [hydrated, account, router]);
 
   const erreurs = useMemo(() => {
     const liste: Partial<Record<Champ, string>> = {};
@@ -185,7 +166,7 @@ export function SignupForm() {
       setErreur(resultat.error ?? "La création du compte a échoué.");
       return;
     }
-    router.push(suite);
+    router.replace("/");
   };
 
   return (
@@ -198,7 +179,7 @@ export function SignupForm() {
         <span className="text-muted">
           Vous avez déjà un compte ?{" "}
           <Link
-            href={lienAvecSuite("/compte/connexion", suite)}
+            href="/compte/connexion"
             className="font-bold text-accent underline underline-offset-4"
           >
             Se connecter

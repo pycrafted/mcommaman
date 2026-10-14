@@ -37,7 +37,7 @@ export function AccountDashboard() {
   const [sortie, setSortie] = useState(false);
 
   useEffect(() => {
-    if (hydrated && !account && !sortie) router.replace("/compte/connexion?suite=/compte");
+    if (hydrated && !account && !sortie) router.replace("/compte/connexion");
   }, [hydrated, account, sortie, router]);
 
   /* Avant l'hydratation on ne sait pas encore qui est là : on rend la même

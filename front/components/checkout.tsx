@@ -371,7 +371,7 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                     Vous avez un compte ? Vos coordonnées et votre adresse se remplissent seules.
                   </p>
                   <Link
-                    href="/compte/connexion?suite=/commande"
+                    href="/compte/connexion"
                     className="shrink-0 rounded-full bg-ink px-5 py-2.5 text-[13px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
                   >
                     Se connecter

@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Header } from "@/components/header";
 import { CartDrawer } from "@/components/cart-drawer";
@@ -15,11 +14,7 @@ export default function Page() {
     <>
       <Header />
       <main>
-        {/* `useSearchParams` lit `?suite=` : la page doit être rendue sous
-            Suspense, comme le catalogue. */}
-        <Suspense fallback={<div className="mx-auto max-w-[1180px] px-5 py-20 text-muted md:px-10">Chargement…</div>}>
-          <LoginForm />
-        </Suspense>
+        <LoginForm />
       </main>
       <CartDrawer />
     </>

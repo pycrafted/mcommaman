@@ -22,7 +22,7 @@ export default function Page() {
 
   /* Déjà entrée : on ne redemande pas. */
   useEffect(() => {
-    if (hydrated && account?.equipe) router.replace("/admin");
+    if (hydrated && account?.equipe) router.replace("/");
   }, [hydrated, account, router]);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function Page() {
       setErreur(resultat.error ?? "Le serveur ne répond pas. Réessayez.");
       return;
     }
-    router.replace("/admin");
+    router.replace("/");
   };
 
   const champ =

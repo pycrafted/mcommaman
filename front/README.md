@@ -55,11 +55,11 @@ compilation de production.
 | `/commandes` | `app/commandes/page.tsx` → `components/orders-list.tsx` | Historique et avancement de chaque colis |
 | `/commandes/[ref]` | `app/commandes/[ref]/page.tsx` → `components/order-detail.tsx` | Suivi détaillé, frise en quatre temps, recommander, annuler |
 | `/compte` | `app/compte/page.tsx` → `components/account-dashboard.tsx` | Tableau de bord : dernière commande, panier en cours, mes envies, adresse par défaut |
-| `/compte/connexion` | `app/compte/connexion/page.tsx` → `components/account-auth.tsx` | Connexion, redirection `?suite=` |
-| `/compte/inscription` | `app/compte/inscription/page.tsx` → `components/account-auth.tsx` | Création de compte, six règles de validation, jauge de mot de passe |
+| `/compte/connexion` | `app/compte/connexion/page.tsx` → `components/account-auth.tsx` | Connexion, puis redirection vers l'accueil (`/`) |
+| `/compte/inscription` | `app/compte/inscription/page.tsx` → `components/account-auth.tsx` | Création de compte, six règles de validation, jauge de mot de passe, puis redirection vers l'accueil |
 | `/compte/profil` | `app/compte/profil/page.tsx` → `components/account-profile.tsx` | Informations, carnet d'adresses, tailles suivies, mot de passe, suppression |
 | `/infos/[slug]` | `app/infos/[slug]/page.tsx` | CGV, mentions légales, confidentialité, retours, livraison, FAQ |
-| `/admin/connexion` | `app/admin/connexion/page.tsx` | Entrée du back-office, identifiants de démonstration affichés |
+| `/admin/connexion` | `app/admin/connexion/page.tsx` | Connexion de l'équipe, puis redirection vers l'accueil (`/`) |
 | `/admin` | `app/admin/(espace)/page.tsx` | Tableau de bord : huit tuiles de rubrique, chacune avec son chiffre |
 | `/admin/statistiques` | `app/admin/(espace)/statistiques/page.tsx` | Indicateurs comparés, ventes jour par jour, rayons, paiements, villes, fiches sans vente, journal |
 | `/admin/commandes` | `app/admin/(espace)/commandes/page.tsx` | Liste filtrable, détail en fenêtre, avancement du statut |

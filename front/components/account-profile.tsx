@@ -58,7 +58,7 @@ export function AccountProfile() {
   const { orders } = useOrders();
 
   useEffect(() => {
-    if (hydrated && !account && !sortie) router.replace("/compte/connexion?suite=/compte/profil");
+    if (hydrated && !account && !sortie) router.replace("/compte/connexion");
   }, [hydrated, account, sortie, router]);
 
   /* « Ajouter une adresse » depuis le tableau de bord arrive ici avec
