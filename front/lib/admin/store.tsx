@@ -270,7 +270,20 @@ async function tout<T>(chemin: string): Promise<T[]> {
   return lignes;
 }
 
-export function AdminProvider({ children }: { children: ReactNode }) {
+export function AdminProvider({
+  children,
+  leger = false,
+}: {
+  children: ReactNode;
+  /**
+   * Ne lire que ce que le formulaire produit consulte : rayons, tailles,
+   * coloris, matières, photothèque. Pas de commandes, de clientes, d'équipe,
+   * de campagnes ni de cloche, et pas de surveillance en fond. C'est le mode
+   * de la fenêtre ouverte depuis la boutique (`edition-piece.tsx`) : elle n'a
+   * pas à attendre l'historique des ventes pour afficher une fiche.
+   */
+  leger?: boolean;
+}) {
   /* Le back-office ne se lit que pour une session d'équipe. Ce fournisseur est
      monté au-dessus de la page de connexion aussi : sans cette condition, il
      partait à vide sur `/admin/connexion` — treize appels, treize 403 avalés
@@ -322,8 +335,35 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    * Un seul appel groupé plutôt qu'un rechargement par domaine : le
    * back-office se consulte d'une page à l'autre, et les compteurs de la barre
    * latérale ont besoin des commandes même sur la page des rayons.
+   *
+   * `relireFiches` à faux ne signale pas les fiches comme changées : c'est le
+   * cas du premier chargement, où les pages viennent déjà de lire les leurs —
+   * les prévenir les ferait relire une seconde fois pour rien.
    */
-  const relire = useCallback(async () => {
+  const relire = useCallback(async (relireFiches = true) => {
+    if (leger) {
+      const [rayons, tailles, coloris, matieres, medias] = await Promise.all([
+        tout<RayonApi>("/api/gestion/rayons/"),
+        envoyer<TailleApi[]>("/api/gestion/tailles/").catch(() => null),
+        envoyer<ColorisApi[]>("/api/gestion/coloris/").catch(() => null),
+        envoyer<MatiereApi[]>("/api/gestion/matieres/").catch(() => null),
+        tout<MediaApi>("/api/gestion/photheque/"),
+      ]);
+      if (relireFiches) setVersionProduits((v) => v + 1);
+      setState((courant) => ({
+        ...courant,
+        categories: contenu(rayons).map(versCategorie),
+        library: {
+          ...courant.library,
+          sizes: (tailles ?? []).map(versTaille),
+          colors: (coloris ?? []).map(versColoris),
+          materials: (matieres ?? []).map(versMatiere),
+          media: contenu(medias).map(versMedia),
+        },
+      }));
+      return;
+    }
+
     const [compteurs, rayons, commandes, clientes, equipe, campagnes, tailles, coloris, matieres, medias, reglages] =
       await Promise.all([
         // Les chiffres du catalogue, pas le catalogue : chaque page lit les
@@ -351,7 +391,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     const rayonsParId = new Map(categories.map((r) => [Number(r.id), r.slug]));
     const orders = contenu(commandes).map(versCommande);
     if (compteurs) setCompteursProduits(compteurs);
-    setVersionProduits((v) => v + 1);
+    if (relireFiches) setVersionProduits((v) => v + 1);
     setState((courant) => ({
       ...courant,
       categories,
@@ -368,7 +408,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       },
       settings: reglages ? versReglages(reglages) : courant.settings,
     }));
-  }, []);
+  }, [leger]);
 
   /**
    * Relit les seules commandes.
@@ -404,15 +444,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       return;
     }
     setHydrated(false);
-    void relireCloche();
-    relire().finally(() => setHydrated(true));
-  }, [relire, relireCloche, sessionPrete, equipe]);
+    if (!leger) void relireCloche();
+    relire(false).finally(() => setHydrated(true));
+  }, [relire, relireCloche, sessionPrete, equipe, leger]);
 
   /* Pendant que le back-office est ouvert, les commandes sont relues toutes
      les trente secondes, et tout de suite quand l'onglet revient au premier
      plan. Une session fermée oublie ce qu'elle savait. */
   useEffect(() => {
-    if (!sessionPrete || !equipe) {
+    if (!sessionPrete || !equipe || leger) {
       setCloche(CLOCHE_VIDE);
       return;
     }
@@ -429,7 +469,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       window.clearInterval(minuteur);
       document.removeEventListener("visibilitychange", auRetour);
     };
-  }, [sessionPrete, equipe, surveillerCommandes, relireCloche]);
+  }, [sessionPrete, equipe, leger, surveillerCommandes, relireCloche]);
 
 
   /**

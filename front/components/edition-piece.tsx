@@ -16,8 +16,9 @@ import { Modal } from "./admin/ui";
  * l'identique : une seule façon de décrire une fiche.
  *
  * Il a besoin des données du back-office (rayons, matières, coloris,
- * tailles) : la fenêtre monte donc son propre `AdminProvider`, qui les lit à
- * l'ouverture. Ce code n'est chargé qu'au premier clic (`next/dynamic` chez
+ * tailles) : la fenêtre monte donc son propre `AdminProvider`, en mode léger —
+ * il ne lit que ça à l'ouverture, pas les commandes ni les clientes, dont le
+ * volume ne ferait que grandir avec les ventes. Ce code n'est chargé qu'au premier clic (`next/dynamic` chez
  * l'appelant) : les visiteuses ne téléchargent pas le back-office.
  *
  * La fenêtre reste ouverte après « Enregistrer » ; c'est la gérante qui la
@@ -82,7 +83,7 @@ export function EditionPiece({
 
   return (
     <Modal open onClose={fermer} title={produitId ? "Modifier la pièce" : "Nouvelle pièce"} wide>
-      <AdminProvider>
+      <AdminProvider leger>
         <Contenu
           produitId={produitId}
           onSaved={() => {
