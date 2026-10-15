@@ -232,7 +232,7 @@ figée au 15 août 2026 a disparu avec la graine locale.
 ### Publication d'un produit
 
 `components/product-form.tsx` est le seul éditeur : sans `product` il crée, avec il modifie.
-Depuis la boutique, le crayon et le « + » ouvrent un tiroir à gauche, en pleine hauteur.
+Depuis la boutique, le crayon et le « + » ouvrent un tiroir à droite, en pleine hauteur.
 Le nom, le prix et la catégorie sont regroupés en tête, suivis de la description, des photos
 et des variantes. La référence interne est générée automatiquement et conservée à la modification.
 Les blocs de statut et d'aperçu ont été retirés. La composition et le référentiel de matières
@@ -306,7 +306,7 @@ réutilisables dans `components/motion.tsx` et `components/reveal.tsx`.
 | Reflet qui traverse un bouton au survol | `.shine` |
 | Carte produit : inclinaison et lueur sous le curseur, reflet sur la photo, zoom, prix qui se soulève, sac qui s'incline sur « Ajouter », coche qui saute sur « Ajouté » | `useSpotlight(4)` + `.spot.tilt`, `.shine`, `group-hover:scale-108` sur `components/product-card.tsx` |
 | Filtres de l'accueil, dans une carte blanche : entrée en cascade, pastilles roses qui se soulèvent et s'enfoncent (catégorie, sous-catégories avec coche), glissière de tri dont le curseur rose glisse, menus Taille et Couleur qui s'ouvrent d'un souffle avec cases à onde, pastilles de filtre actif qui sautent, grille qui rejoue sa cascade à chaque sélection | `<Reveal stagger>`, `.stagger`, `.anim-fade-up`, `.anim-pop-in`, `.anim-pop`, `.anim-onde`, `key={generation}` dans `components/boutique-accueil.tsx` |
-| Le crayon des cartes et le « + » du dock (équipe seulement) ouvrent le formulaire produit dans un tiroir à gauche ; la grille se relit à la fermeture | `components/edition-piece.tsx`, événement `mcm:catalogue-modifie` |
+| Le crayon des cartes et le « + » du dock (équipe seulement) ouvrent le formulaire produit dans un tiroir à droite ; la grille se relit à la fermeture | `components/edition-piece.tsx`, événement `mcm:catalogue-modifie` |
 | Le dock (bas à droite, à la place de la barre du haut) : arrivée en glissant, boutons qui grossissent sous le curseur, pastille du panier qui saute | `.anim-fade-up`, `anim-pop` + `key={pulse}` dans `components/dock.tsx` |
 | Bascule des secondes, rotation du bandeau d'annonce | `anim-tick` + `key` sur la valeur |
 | Ouverture du panier / modale | `anim-slide-in`, `anim-fade-up` |
