@@ -7,7 +7,7 @@ import { formatXOF } from "@/lib/format";
 import { type Product } from "@/lib/products";
 import { useCart } from "./cart-context";
 import { useAuth } from "./auth-context";
-import { IconPencil } from "./admin/icons";
+import { IconPencil, IconTrash } from "./admin/icons";
 import { useSpotlight } from "./motion";
 import { IconBag, IconCheck, IconRuler } from "./icons";
 
@@ -25,6 +25,7 @@ import { IconBag, IconCheck, IconRuler } from "./icons";
 /* Le formulaire du back-office, chargé au premier clic sur le crayon : les
    visiteuses ne téléchargent pas ce code. */
 const EditionPiece = dynamic(() => import("./edition-piece").then((m) => m.EditionPiece), { ssr: false });
+const SuppressionPiece = dynamic(() => import("./suppression-piece").then((m) => m.SuppressionPiece), { ssr: false });
 
 export function ProductCard({
   product,
@@ -38,8 +39,10 @@ export function ProductCard({
 }) {
   const { addBySlug } = useCart();
   const { account } = useAuth();
-  /* Le crayon n'existe que pour l'équipe (repris de Golden Pousso). */
+  /* Les actions de gestion n'existent que pour l'équipe. */
   const [edition, setEdition] = useState(false);
+  const [suppression, setSuppression] = useState(false);
+  const [supprime, setSupprime] = useState(false);
   const carte = useSpotlight<HTMLElement>(4);
   /* Trois temps sur le bouton : au repos, pendant l'aller-retour, puis une
      seconde de « Ajouté » avant de redevenir cliquable. */
@@ -60,6 +63,8 @@ export function ProductCard({
     setEtat("ajoute");
     window.setTimeout(() => setEtat("repos"), 1400);
   };
+
+  if (supprime) return null;
 
   return (
     <article
@@ -101,17 +106,36 @@ export function ProductCard({
         </div>
 
         {account?.equipe && (
-          <button
-            type="button"
-            onClick={() => setEdition(true)}
-            aria-label={`Modifier ${product.name}`}
-            title="Modifier la pièce"
-            className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/92 text-ink shadow-[0_8px_20px_-12px_rgba(36,26,32,.5)] backdrop-blur transition-[transform,background-color,color] duration-300 ease-back hover:scale-110 hover:bg-[#e24f88] hover:text-white active:scale-90"
-          >
-            <IconPencil className="h-4 w-4" />
-          </button>
+          <div className="absolute right-3 top-3 z-20 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setEdition(true)}
+              aria-label={`Modifier ${product.name}`}
+              title="Modifier la pièce"
+              className="grid h-9 w-9 place-items-center rounded-full bg-white/92 text-ink shadow-[0_8px_20px_-12px_rgba(36,26,32,.5)] backdrop-blur transition-[transform,background-color,color] duration-300 ease-back hover:scale-110 hover:bg-[#e24f88] hover:text-white active:scale-90"
+            >
+              <IconPencil className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSuppression(true)}
+              aria-label={`Supprimer ${product.name}`}
+              title="Supprimer la pièce"
+              className="grid h-9 w-9 place-items-center rounded-full bg-white/92 text-ink shadow-[0_8px_20px_-12px_rgba(36,26,32,.5)] backdrop-blur transition-[transform,background-color,color] duration-300 ease-back hover:scale-110 hover:bg-[#b3306a] hover:text-white active:scale-90"
+            >
+              <IconTrash className="h-4 w-4" />
+            </button>
+          </div>
         )}
         {edition && <EditionPiece produitId={product.id} onClose={() => setEdition(false)} />}
+        {suppression && (
+          <SuppressionPiece
+            produitId={product.id}
+            nom={product.name}
+            onClose={() => setSuppression(false)}
+            onDeleted={() => setSupprime(true)}
+          />
+        )}
 
       </div>
 

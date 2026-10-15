@@ -121,7 +121,7 @@ export default function Page() {
                 {p.name}
               </Link>
               <span className="mt-0.5 block text-[11.5px] text-muted">
-                {p.category}{p.materials.length ? ` · ${p.materials.join(", ")}` : ""}
+                {p.category}
               </span>
             </span>
           </span>,

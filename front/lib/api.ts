@@ -278,7 +278,6 @@ export type ProduitApi = ProduitCarteApi & {
   prix: number;
   prix_barre: number | null;
   description: string;
-  matiere: string;
   univers: "enfant" | "maman";
   genre: "fille" | "garcon" | "mixte" | "";
   age: "2-10" | "11-14" | "";

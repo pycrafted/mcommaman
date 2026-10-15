@@ -30,7 +30,6 @@ export type ProduitLigneApi = {
   rayon_nom: string;
   image: string | null;
   stock_total: number;
-  matieres_noms: string[];
   cree_le: string;
   modifie_le: string;
 };
@@ -52,7 +51,6 @@ export function versLigneProduit(brut: ProduitLigneApi): AdminProduct {
     status: brut.statut,
     sizes: [],
     colors: [],
-    materials: brut.matieres_noms ?? [],
     variants: [],
     createdAt: brut.cree_le,
     updatedAt: brut.modifie_le,

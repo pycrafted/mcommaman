@@ -64,11 +64,11 @@ compilation de production.
 | `/admin/statistiques` | `app/admin/(espace)/statistiques/page.tsx` | Indicateurs comparés, ventes jour par jour, rayons, paiements, villes, fiches sans vente, journal |
 | `/admin/commandes` | `app/admin/(espace)/commandes/page.tsx` | Liste filtrable, détail en fenêtre, avancement du statut |
 | `/admin/produits` | `app/admin/(espace)/produits/page.tsx` | Catalogue paginé par le serveur (20 lignes), recherche et onglets de statut ; publier / dépublier / dupliquer / supprimer. Le back-office ne charge plus tout le catalogue : les chiffres viennent de `compteurs/`, les fiches de `lib/admin/produits.ts` |
-| `/admin/produits/nouveau`, `/admin/produits/[id]` | `components/product-form.tsx` | Éditeur de fiche : identité, photothèque, prix, variantes, aperçu live, cinq conditions de publication |
+| `/admin/produits/nouveau`, `/admin/produits/[id]` | `components/product-form.tsx` | Éditeur simplifié : nom, prix, catégorie, description, photos et variantes ; trois conditions de publication |
 | `/admin/categories` | `app/admin/(espace)/categories/page.tsx` | Catégories, visuel, renvois symétriques, visibilité |
 | `/admin/promotions` | `app/admin/(espace)/promotions/page.tsx` | Campagnes en bons de réduction, onglets par statut, avancement, tiroir de saisie |
 | `/admin/clients` | `app/admin/(espace)/clients/page.tsx` | Fichier clientes, segments déduits, commandes de chacune |
-| `/admin/configuration` | `app/admin/(espace)/configuration/page.tsx` | Tailles, coloris, matières, photothèque |
+| `/admin/configuration` | `app/admin/(espace)/configuration/page.tsx` | Tailles, coloris, photothèque |
 | `/admin/reglages` | `app/admin/(espace)/reglages/page.tsx` | Identité, livraison, bandeau, photos d'accueil, remise à zéro |
 | 404 | `app/not-found.tsx` | Page introuvable |
 
@@ -231,23 +231,28 @@ figée au 15 août 2026 a disparu avec la graine locale.
 
 ### Publication d'un produit
 
-`components/product-form.tsx` est le seul éditeur : sans `product` il crée, avec il modifie, et il
-écrit dans le magasin. Les coloris, tailles et matières ne s'y saisissent pas — ils viennent de la
-bibliothèque, ce qui évite « rose poudré » d'un côté et « Rose Poudre » de l'autre. Il applique le
-garde-fou de l'audit : cinq conditions avant publication —
-nom commercial de 4 caractères minimum, au moins une photo, prix supérieur à zéro, description de
-20 caractères minimum, référence interne renseignée. Tant qu'il en manque une, seul
-« Enregistrer en brouillon » est actif et le panneau latéral liste ce qui manque.
+`components/product-form.tsx` est le seul éditeur : sans `product` il crée, avec il modifie.
+Depuis la boutique, le crayon et le « + » ouvrent un tiroir à gauche, en pleine hauteur.
+Le nom, le prix et la catégorie sont regroupés en tête, suivis de la description, des photos
+et des variantes. La référence interne est générée automatiquement et conservée à la modification.
+Les blocs de statut et d'aperçu ont été retirés. La composition et le référentiel de matières
+ont été supprimés du front et de l'API ; appliquer la migration `catalogue.0012_supprimer_composition`
+au déploiement du serveur (elle retire les anciennes données de composition).
 
-**À reproduire côté serveur.** Le contrôle est aujourd'hui dans le composant : un appel direct à
-l'API le contournerait. La règle doit vivre dans la couche de validation avant l'écriture en base.
+La publication vérifie toujours trois conditions, côté formulaire **et** côté API : un nom,
+au moins une photo et un prix strictement positif. Une fiche incomplète peut rester en brouillon.
+Les tailles et les couleurs viennent de la bibliothèque et peuvent être ajoutées depuis la fiche.
+
+Une poubelle apparaît à côté du crayon pour l'équipe uniquement. La suppression demande une
+confirmation, affiche les erreurs sans fermer la fenêtre et actualise la grille après succès.
+L'API garde les anciennes lignes de commande et les médias partagés.
 
 Trois points repris de l'audit et déjà tenus dans le code :
 
 - **Prix en entiers** (`price: 12000`), jamais de `Float` — `lib/format.ts` gère l'affichage.
 - **Compte à rebours piloté par une date** (`PROMO_END`) : `components/countdown.tsx` ne rend
   rien quand l'échéance est passée, au lieu d'afficher 00:00:00:00.
-- **Référence interne séparée du nom** : `sku` est affiché en petit sur la fiche, jamais en titre.
+- **Référence interne automatique** : `sku` reste un identifiant technique, sans champ de saisie dans le formulaire.
 
 ---
 
@@ -301,7 +306,7 @@ réutilisables dans `components/motion.tsx` et `components/reveal.tsx`.
 | Reflet qui traverse un bouton au survol | `.shine` |
 | Carte produit : inclinaison et lueur sous le curseur, reflet sur la photo, zoom, prix qui se soulève, sac qui s'incline sur « Ajouter », coche qui saute sur « Ajouté » | `useSpotlight(4)` + `.spot.tilt`, `.shine`, `group-hover:scale-108` sur `components/product-card.tsx` |
 | Filtres de l'accueil, dans une carte blanche : entrée en cascade, pastilles roses qui se soulèvent et s'enfoncent (catégorie, sous-catégories avec coche), glissière de tri dont le curseur rose glisse, menus Taille et Couleur qui s'ouvrent d'un souffle avec cases à onde, pastilles de filtre actif qui sautent, grille qui rejoue sa cascade à chaque sélection | `<Reveal stagger>`, `.stagger`, `.anim-fade-up`, `.anim-pop-in`, `.anim-pop`, `.anim-onde`, `key={generation}` dans `components/boutique-accueil.tsx` |
-| Le crayon des cartes et le « + » du dock (équipe seulement) ouvrent le formulaire produit du back-office dans une fenêtre ; la grille se relit à la fermeture | `components/edition-piece.tsx`, événement `mcm:catalogue-modifie` |
+| Le crayon des cartes et le « + » du dock (équipe seulement) ouvrent le formulaire produit dans un tiroir à gauche ; la grille se relit à la fermeture | `components/edition-piece.tsx`, événement `mcm:catalogue-modifie` |
 | Le dock (bas à droite, à la place de la barre du haut) : arrivée en glissant, boutons qui grossissent sous le curseur, pastille du panier qui saute | `.anim-fade-up`, `anim-pop` + `key={pulse}` dans `components/dock.tsx` |
 | Bascule des secondes, rotation du bandeau d'annonce | `anim-tick` + `key` sur la valeur |
 | Ouverture du panier / modale | `anim-slide-in`, `anim-fade-up` |

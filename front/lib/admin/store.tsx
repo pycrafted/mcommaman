@@ -24,7 +24,6 @@ import {
   versCommande,
   versMedia,
   versMembre,
-  versMatiere,
   versPromotion,
   versReglages,
   versTaille,
@@ -34,7 +33,6 @@ import {
   type CommandeApi,
   type MediaApi,
   type MembreApi,
-  type MatiereApi,
   type PhotoProduitApi,
   type ReglagesApi,
   type TailleApi,
@@ -119,7 +117,7 @@ const VIDE: AdminState = {
   team: [],
   categories: [],
   promotions: [],
-  library: { sizes: [], sizeGuide: "", colors: [], materials: [], media: [] },
+  library: { sizes: [], sizeGuide: "", colors: [], media: [] },
   settings: {
     storeName: "M comme Maman",
     tagline: "",
@@ -224,8 +222,6 @@ interface AdminContextValue extends AdminState {
   saveSizes: (sizes: SizeValue[]) => void;
   saveColor: (color: AdminColor) => void;
   deleteColor: (id: string) => void;
-  saveMaterial: (name: string) => void;
-  deleteMaterial: (id: string) => void;
   addMedia: (items: Pick<MediaItem, "src" | "name">[]) => void;
   /** Envoie un fichier à la photothèque et renvoie l'image créée. */
   televerserMedia: (fichier: File, nom?: string) => Promise<MediaItem | null>;
@@ -282,7 +278,7 @@ export function AdminProvider({
   children: ReactNode;
   /**
    * Ne lire que ce que le formulaire produit consulte : rayons, tailles,
-   * coloris, matières. La photothèque attend son ouverture. Pas de commandes,
+   * coloris. La photothèque attend son ouverture. Pas de commandes,
    * de clientes, d'équipe, de campagnes ni de cloche, et pas de surveillance en fond. C'est le mode
    * de la fenêtre ouverte depuis la boutique (`edition-piece.tsx`) : elle n'a
    * pas à attendre l'historique des ventes pour afficher une fiche.
@@ -378,11 +374,10 @@ export function AdminProvider({
    */
   const relire = useCallback(async (relireFiches = true) => {
     if (leger) {
-      const [rayons, tailles, coloris, matieres] = await Promise.all([
+      const [rayons, tailles, coloris] = await Promise.all([
         tout<RayonApi>("/api/gestion/rayons/"),
         envoyer<TailleApi[]>("/api/gestion/tailles/").catch(() => null),
         envoyer<ColorisApi[]>("/api/gestion/coloris/").catch(() => null),
-        envoyer<MatiereApi[]>("/api/gestion/matieres/").catch(() => null),
       ]);
       if (relireFiches) setVersionProduits((v) => v + 1);
       setState((courant) => ({
@@ -392,13 +387,12 @@ export function AdminProvider({
           ...courant.library,
           sizes: (tailles ?? []).map(versTaille),
           colors: (coloris ?? []).map(versColoris),
-          materials: (matieres ?? []).map(versMatiere),
         },
       }));
       return;
     }
 
-    const [compteurs, rayons, commandes, clientes, equipe, campagnes, tailles, coloris, matieres, medias, reglages] =
+    const [compteurs, rayons, commandes, clientes, equipe, campagnes, tailles, coloris, medias, reglages] =
       await Promise.all([
         // Les chiffres du catalogue, pas le catalogue : chaque page lit les
         // fiches qu'elle affiche.
@@ -413,7 +407,6 @@ export function AdminProvider({
         tout<CampagneApi>("/api/gestion/campagnes/"),
         envoyer<TailleApi[]>("/api/gestion/tailles/").catch(() => null),
         envoyer<ColorisApi[]>("/api/gestion/coloris/").catch(() => null),
-        envoyer<MatiereApi[]>("/api/gestion/matieres/").catch(() => null),
         tout<MediaApi>("/api/gestion/photheque/"),
         // Les réglages du back-office passent par `/api/gestion/` : la route
         // publique est en lecture seule et ne porte pas le seuil de stock bas.
@@ -438,7 +431,6 @@ export function AdminProvider({
         ...courant.library,
         sizes: (tailles ?? []).map(versTaille),
         colors: (coloris ?? []).map(versColoris),
-        materials: (matieres ?? []).map(versMatiere),
         media: contenu(medias).map(versMedia),
       },
       settings: reglages ? versReglages(reglages) : courant.settings,
@@ -543,12 +535,6 @@ export function AdminProvider({
     for (const categorie of state.categories) table.set(categorie.label, Number(categorie.id));
     return table;
   }, [state.categories]);
-
-  const matieresParNom = useMemo(() => {
-    const table = new Map<string, number>();
-    for (const matiere of state.library.materials) table.set(matiere.name, Number(matiere.id));
-    return table;
-  }, [state.library.materials]);
 
   /* --------------------------------------------------------- produits */
 
@@ -725,13 +711,13 @@ export function AdminProvider({
         await envoyer(
           `/api/gestion/produits/${produit.id}/`,
           "PATCH",
-          depuisProduit({ ...produit, status: "brouillon" }, rayonsParNom, matieresParNom),
+          depuisProduit({ ...produit, status: "brouillon" }, rayonsParNom),
         );
         await rangerPhotos(Number(produit.id), [produit.image, ...produit.gallery].filter(Boolean));
         await rangerVariantes(Number(produit.id), produit);
         if (publier) await envoyer(`/api/gestion/produits/${produit.id}/publier/`, "POST");
       }),
-    [ecrire, matieresParNom, rangerPhotos, rangerVariantes, rayonsParNom],
+    [ecrire, rangerPhotos, rangerVariantes, rayonsParNom],
   );
 
   const createProduct = useCallback<AdminContextValue["createProduct"]>(
@@ -741,14 +727,14 @@ export function AdminProvider({
         const cree = await envoyer<{ id: number }>(
           "/api/gestion/produits/",
           "POST",
-          depuisProduit({ ...produit, status: "brouillon" }, rayonsParNom, matieresParNom),
+          depuisProduit({ ...produit, status: "brouillon" }, rayonsParNom),
         );
         // La fiche existe avant ses photos : elles ont besoin de son identifiant.
         await rangerPhotos(cree.id, [produit.image, ...produit.gallery].filter(Boolean));
         await rangerVariantes(cree.id, produit);
         if (publier) await envoyer(`/api/gestion/produits/${cree.id}/publier/`, "POST");
       }),
-    [ecrire, matieresParNom, rangerPhotos, rangerVariantes, rayonsParNom],
+    [ecrire, rangerPhotos, rangerVariantes, rayonsParNom],
   );
 
   const deleteProduct = useCallback<AdminContextValue["deleteProduct"]>(
@@ -970,16 +956,6 @@ export function AdminProvider({
     [ecrire],
   );
 
-  const saveMaterial = useCallback<AdminContextValue["saveMaterial"]>(
-    (name) => void ecrire(() => envoyer("/api/gestion/matieres/", "POST", { nom: name })),
-    [ecrire],
-  );
-
-  const deleteMaterial = useCallback<AdminContextValue["deleteMaterial"]>(
-    (id) => void ecrire(() => envoyer(`/api/gestion/matieres/${id}/`, "DELETE")),
-    [ecrire],
-  );
-
   const addMedia = useCallback<AdminContextValue["addMedia"]>(
     (items) =>
       void ecrire(async () => {
@@ -1080,8 +1056,6 @@ export function AdminProvider({
       saveSizes,
       saveColor,
       deleteColor,
-      saveMaterial,
-      deleteMaterial,
       addMedia,
       photothequeChargee,
       erreurPhototheque,
@@ -1098,7 +1072,7 @@ export function AdminProvider({
       createProduct, deleteProduct,
       duplicateProduct, setProductStatus, setOrderStatus, restoreOrder, saveTeamMember, setTeamMemberActive, saveCategory,
       deleteCategory, savePromotion, deletePromotion, saveSizes,
-      saveColor, deleteColor, saveMaterial, deleteMaterial, addMedia, televerserMedia, removeMedia,
+      saveColor, deleteColor, addMedia, televerserMedia, removeMedia,
       updateSettings, resetDemoData,
     ],
   );

@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatXOF } from "@/lib/format";
 import { envoyer } from "@/lib/api";
 import { TAILLE_UNIQUE, useAdmin } from "@/lib/admin/store";
 import { slugify } from "@/lib/admin/slug";
-import type { AdminColor, AdminMaterial, AdminProduct, SizeValue } from "@/lib/admin/types";
+import type { AdminColor, AdminProduct, SizeValue } from "@/lib/admin/types";
 import {
   Button,
   GrilleMedias,
@@ -23,7 +22,6 @@ import {
   IconPalette,
   IconPlus,
   IconRulerAdmin,
-  IconScissors,
   IconTrash,
   IconX,
 } from "./admin/icons";
@@ -33,17 +31,19 @@ const inputClass =
 
 const Field = ({
   label,
+  htmlFor,
   hint,
   children,
   span = 1,
 }: {
   label: string;
+  htmlFor: string;
   hint?: string;
   children: React.ReactNode;
   span?: number;
 }) => (
-  <div style={{ gridColumn: `span ${span}` }}>
-    <label className="mb-2 block text-[12.5px] font-bold">{label}</label>
+  <div className={span === 2 ? "sm:col-span-2" : undefined}>
+    <label htmlFor={htmlFor} className="mb-2 block text-[12.5px] font-bold">{label}</label>
     {children}
     {hint && <p className="mt-1.5 text-[11.5px] leading-snug text-muted">{hint}</p>}
   </div>
@@ -55,10 +55,10 @@ const nombre = (v: string) => Number(v.replace(/\s/g, "")) || 0;
 /**
  * Le « + Autre » au bout d'une liste de choix.
  *
- * Une matière, un coloris ou une taille absent de la bibliothèque se saisit
+ * Un coloris ou une taille absent de la bibliothèque se saisit
  * ici. La valeur part quand même dans la configuration — c'est elle qui garde
  * l'orthographe commune à tout le catalogue — mais la gérante n'a plus à
- * quitter sa fiche pour ajouter « Lin lavé ».
+ * quitter sa fiche pour ajouter « Bleu ciel ».
  */
 const AjoutRapide = ({
   placeholder,
@@ -147,8 +147,8 @@ const AjoutRapide = ({
 /**
  * L'éditeur de fiche.
  *
- * Sans `product`, il crée ; avec, il modifie. Les couleurs, les tailles et les
- * matières ne sont pas écrites ici : elles viennent de la bibliothèque du
+ * Sans `product`, il crée ; avec, il modifie. Les couleurs et les tailles
+ * ne sont pas écrites ici : elles viennent de la bibliothèque du
  * back-office, pour que deux fiches ne finissent pas avec « rose poudré » et
  * « Rose Poudre ».
  */
@@ -172,7 +172,7 @@ function referenceDeSecours(nom: string): string {
 type ChoixItem = { cle: string; valeur: string; hex?: string };
 
 /**
- * La bibliothèque en fenêtre : matières, coloris ou tailles.
+ * La bibliothèque en fenêtre : coloris ou tailles.
  *
  * La fiche ne montre plus que ce qui est coché. Déroulées, les puces d'une
  * bibliothèque un peu fournie tenaient plus de place que le formulaire ; on
@@ -281,20 +281,16 @@ export function ProductForm({
     createProduct,
     saveProduct,
     categories,
-    saveMaterial,
     saveColor,
     saveSizes,
     televerserMedia,
     photothequeChargee,
     erreurPhototheque,
     chargerPhototheque,
+    enCours,
   } = useAdmin();
 
   const [name, setName] = useState(product?.name ?? "");
-  const [sku, setSku] = useState(product?.sku ?? "");
-  /* Tant que la gérante n'a pas écrit sa propre référence, celle-ci suit le
-     nom. Dès qu'elle en saisit une, on ne la lui reprend plus. */
-  const [skuTouche, setSkuTouche] = useState(Boolean(product?.sku));
   const [price, setPrice] = useState(product ? String(product.price) : "");
   /* Les rayons viennent de la table des catégories, jamais d'une liste écrite
      ici : en créer une nouvelle doit suffire à la voir apparaître. Les
@@ -332,7 +328,6 @@ export function ProductForm({
     const enregistrees = product?.sizes ?? [];
     return enregistrees.length === 1 && enregistrees[0] === TAILLE_UNIQUE ? [] : enregistrees;
   });
-  const [materials, setMaterials] = useState<string[]>(product?.materials ?? []);
   const [variantStocks, setVariantStocks] = useState<Record<string, number>>(() =>
     Object.fromEntries(
       (product?.variants ?? []).map((v) => [`${v.size}\u0000${v.color}`, v.stock]),
@@ -354,7 +349,7 @@ export function ProductForm({
   } | null>(null);
   const [photothegue, setPhotothegue] = useState(false);
   const [envoiPhotos, setEnvoiPhotos] = useState(false);
-  const [choix, setChoix] = useState<"matieres" | "coloris" | "tailles" | null>(null);
+  const [choix, setChoix] = useState<"coloris" | "tailles" | null>(null);
   const fichierRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -365,7 +360,6 @@ export function ProductForm({
      ne revient du serveur qu'après l'aller-retour. On la garde donc ici en
      attendant, sinon la puce qu'on vient de cocher disparaîtrait le temps d'un
      battement. */
-  const [matieresAjoutees, setMatieresAjoutees] = useState<AdminMaterial[]>([]);
   const [colorisAjoutes, setColorisAjoutes] = useState<AdminColor[]>([]);
   const [taillesAjoutees, setTaillesAjoutees] = useState<SizeValue[]>([]);
 
@@ -397,11 +391,6 @@ export function ProductForm({
     };
   }, [name, product?.id]);
 
-  useEffect(() => {
-    if (skuTouche) return;
-    setSku(name.trim() ? disponibilite.reference : "");
-  }, [name, skuTouche, disponibilite.reference]);
-
   /* Le premier rayon connu sert de valeur de départ : la liste arrive après le
      premier rendu, quand le back-office a fini de lire la base. */
   useEffect(() => {
@@ -416,9 +405,9 @@ export function ProductForm({
    * un nom commercial, au moins une photo et un prix supérieur à zéro.
    * C'est ce contrôle qui manquait quand « Safari enfant » est parti en ligne à 0 F.
    *
-   * Rien de plus, et aucune longueur minimale : la description, la composition
-   * et les tailles restent facultatives, et la référence interne se propose
-   * toute seule. La même liste est opposable côté serveur.
+   * Rien de plus, et aucune longueur minimale : la description
+   * et les tailles restent facultatives, et la référence interne se génère
+   * automatiquement. La même liste est opposable côté serveur.
    */
   const blockers = useMemo(() => {
     const list: string[] = [];
@@ -461,13 +450,6 @@ export function ProductForm({
 
   /* Ce qui s'affiche en puces : la bibliothèque, plus ce que la fiche vient
      d'ajouter et que le serveur n'a pas encore renvoyé. */
-  const matieresProposees = useMemo(
-    () => [
-      ...library.materials,
-      ...matieresAjoutees.filter((m) => !library.materials.some((x) => x.name === m.name)),
-    ],
-    [library.materials, matieresAjoutees],
-  );
   const colorisProposes = useMemo(
     () => [
       ...library.colors,
@@ -483,17 +465,9 @@ export function ProductForm({
     [library.sizes, taillesAjoutees],
   );
 
-  /* Les trois bibliothèques partagent la même fenêtre : seule change la liste
+  /* Les deux bibliothèques partagent la même fenêtre : seule change la liste
      qu'on lui donne, et le tableau de la fiche qu'elle coche. */
   const fenetres = {
-    matieres: {
-      titre: "Choisir des matières",
-      placeholder: "Rechercher une matière…",
-      vide: "Aucune matière dans la bibliothèque.",
-      items: matieresProposees.map((m) => ({ cle: m.id, valeur: m.name })),
-      selection: materials,
-      set: setMaterials,
-    },
     coloris: {
       titre: "Choisir des coloris",
       placeholder: "Rechercher un coloris…",
@@ -513,16 +487,6 @@ export function ProductForm({
   };
 
   const fenetre = choix ? fenetres[choix] : null;
-
-  const ajouterMatiere = (nom: string) => {
-    // Saisie deux fois, ou déjà en bibliothèque : on coche, on ne duplique pas.
-    const connue = matieresProposees.find((m) => m.name.toLowerCase() === nom.toLowerCase());
-    const valeur = connue?.name ?? nom;
-    if (!materials.includes(valeur)) setMaterials((liste) => [...liste, valeur]);
-    if (connue) return;
-    setMatieresAjoutees((liste) => [...liste, { id: `attente-${nom}`, name: nom }]);
-    saveMaterial(nom);
-  };
 
   const ajouterColoris = (nom: string, hex: string) => {
     const connu = colorisProposes.find((c) => c.name.toLowerCase() === nom.toLowerCase());
@@ -576,18 +540,15 @@ export function ProductForm({
   };
 
   const enregistrer = (statut: "brouillon" | "publie") => {
+    if (enCours) return;
     if (statut === "publie" && !canPublish) return;
     const maintenant = new Date().toISOString();
-    /* La référence n'est plus réclamée à la gérante : si le champ a été vidé,
-       on en reprend une libre. Le serveur, lui, l'exige toujours unique. */
-    const reference = sku.trim() || disponibilite.reference || referenceDeSecours(name);
-
     const fiche: AdminProduct = {
       id: product?.id ?? `prod-${Date.now().toString(36)}`,
       univers: categories.find((c) => c.label === category)?.univers ?? "enfant",
       slug: slug || `fiche-${Date.now().toString(36)}`,
       name: name.trim(),
-      sku: reference,
+      sku: product?.sku || disponibilite.reference || referenceDeSecours(name),
       price: priceNumber,
       /* Le prix barré ne se saisit plus ici : une fiche déjà en promotion garde
          le sien tant qu'on ne le change pas. */
@@ -598,7 +559,6 @@ export function ProductForm({
       description: description.trim(),
       colors,
       sizes: taillesVendues,
-      materials,
       variants: variantChoices.map(({ size, color, key }) => ({
         id: product?.variants.find((v) => v.size === size && v.color === color)?.id,
         size,
@@ -624,7 +584,7 @@ export function ProductForm({
   return (
     <div className="anim-fade-up">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
+        {!enFenetre && <div className="min-w-0">
           <button
             type="button"
             onClick={() => (onClose ? onClose() : router.push("/admin/produits"))}
@@ -636,14 +596,14 @@ export function ProductForm({
           <h1 className="mt-2 text-[clamp(1.6rem,3vw,1.9rem)] font-extrabold tracking-[-.03em]">
             {product ? product.name : "Nouveau produit"}
           </h1>
-        </div>
+        </div>}
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button variant="contour" onClick={() => enregistrer("brouillon")}>
+          <Button variant="contour" disabled={enCours || envoiPhotos} onClick={() => enregistrer("brouillon")}>
             Enregistrer en brouillon
           </Button>
           <Button
             variant="rose"
-            disabled={!canPublish}
+            disabled={!canPublish || enCours || envoiPhotos}
             onClick={() => enregistrer("publie")}
           >
             {product?.status === "publie" ? "Enregistrer et garder en ligne" : "Publier en boutique"}
@@ -652,7 +612,7 @@ export function ProductForm({
       </div>
 
 
-      <div className="mt-6 grid items-start gap-5 xl:grid-cols-[1fr_320px]">
+      <div className="mt-6">
         <div className="flex flex-col gap-4">
           {/* -------------------------------------------------------- identité */}
           <section className="rounded-[20px] border border-line bg-white p-5 sm:p-6">
@@ -660,9 +620,11 @@ export function ProductForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label="Nom commercial"
+                htmlFor="produit-nom"
                 span={2}
               >
                 <input
+                  id="produit-nom"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Robe chasuble rose à volant plumetis"
@@ -672,29 +634,31 @@ export function ProductForm({
 
               {slugPris && (
                 <p
-                  style={{ gridColumn: "span 2" }}
-                  className="rounded-xl bg-accent-soft px-4 py-3 text-[12.5px] font-semibold text-accent-deep"
+                  className="sm:col-span-2 rounded-xl bg-accent-soft px-4 py-3 text-[12.5px] font-semibold text-accent-deep"
                 >
                   Un produit portant ce nom existe déjà.
                 </p>
               )}
 
-              <Field
-                label="Référence interne"
-              >
-                <input
-                  value={sku}
-                  onChange={(e) => {
-                    setSkuTouche(true);
-                    setSku(e.target.value.toUpperCase());
-                  }}
-                  placeholder="TEE-0001"
-                  className={inputClass}
-                />
+              <Field label="Prix de vente" htmlFor="produit-prix">
+                <div className="relative">
+                  <input
+                    id="produit-prix"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value.replace(/[^\d\s]/g, ""))}
+                    placeholder="12 000"
+                    inputMode="numeric"
+                    className={`${inputClass} pr-14`}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[12.5px] font-semibold text-muted">
+                    F CFA
+                  </span>
+                </div>
               </Field>
 
               <Field
                 label="Catégorie"
+                htmlFor="produit-categorie"
               >
                 {rayons.length === 0 ? (
                   <p className="rounded-xl bg-accent-soft px-4 py-3 text-[12.5px] leading-relaxed text-accent-deep">
@@ -705,6 +669,7 @@ export function ProductForm({
                   </p>
                 ) : (
                   <select
+                    id="produit-categorie"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className={inputClass}
@@ -724,9 +689,11 @@ export function ProductForm({
 
               <Field
                 label="Description"
+                htmlFor="produit-description"
                 span={2}
               >
                 <textarea
+                  id="produit-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
@@ -736,28 +703,6 @@ export function ProductForm({
               </Field>
             </div>
 
-            <div className="mt-4 border-t border-line pt-4">
-              <span className="text-[12.5px] font-bold">Composition</span>
-              <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                {materials.map((nom) => (
-                  <button
-                    key={nom}
-                    type="button"
-                    onClick={() => bascule(materials, setMaterials, nom)}
-                    title="Retirer de la fiche"
-                    className="flex items-center gap-2 rounded-full border-[1.5px] border-ink bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white"
-                  >
-                    {nom}
-                    <IconX className="h-3 w-3" />
-                  </button>
-                ))}
-                <AjoutRapide placeholder="Lin lavé" onAjouter={(nom) => ajouterMatiere(nom)} />
-                <Button variant="contour" size="sm" onClick={() => setChoix("matieres")}>
-                  <IconScissors className="h-4 w-4" />
-                  Bibliothèque
-                </Button>
-              </div>
-            </div>
           </section>
 
           {/* ---------------------------------------------------------- photos */}
@@ -823,28 +768,6 @@ export function ProductForm({
               <span className="text-[12px] text-muted">
                 JPG ou PNG, plusieurs à la fois
               </span>
-            </div>
-          </section>
-
-          {/* ------------------------------------------------------------- prix */}
-          <section className="rounded-[20px] border border-line bg-white p-5 sm:p-6">
-            <h2 className="mb-4 text-[15px] font-extrabold tracking-tight">Prix</h2>
-            <div className="max-w-md">
-              <Field label="Prix de vente">
-                <div className="relative">
-                  <input
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value.replace(/[^\d\s]/g, ""))}
-                    placeholder="12 000"
-                    inputMode="numeric"
-                    className={`${inputClass} pr-14`}
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[12.5px] font-semibold text-muted">
-                    F CFA
-                  </span>
-                </div>
-              </Field>
-
             </div>
           </section>
 
@@ -960,77 +883,6 @@ export function ProductForm({
           </section>
         </div>
 
-        {/* ------------------------------------------------------------ aside */}
-        <aside className="flex flex-col gap-4 xl:sticky xl:top-6">
-          <div className="rounded-[20px] border border-line bg-white p-5">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[12.5px] font-extrabold uppercase tracking-[.06em]">Statut</span>
-              <span
-                className="rounded-full px-2.5 py-1 text-[11.5px] font-bold"
-                style={
-                  canPublish
-                    ? { background: "#eaf6ef", color: "#2e7d52" }
-                    : { background: "#fdf3dc", color: "#8a6a12" }
-                }
-              >
-                {canPublish ? "Prêt à publier" : "Brouillon"}
-              </span>
-            </div>
-
-            {!canPublish && (
-              <>
-                <p className="mt-3.5 text-[13px] font-semibold">Il manque encore :</p>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {blockers.map((b) => (
-                    <li key={b} className="flex gap-2.5 text-[13px] leading-snug text-muted">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-
-          <div className="rounded-[20px] border border-line bg-white p-5">
-            <div className="text-[12.5px] font-extrabold uppercase tracking-[.06em]">
-              Aperçu de la carte
-            </div>
-            <div className="mt-3.5">
-              <div
-                className="relative flex aspect-3/4 items-end overflow-hidden rounded-2xl bg-stone bg-cover bg-center p-3"
-                style={photos[0] ? { backgroundImage: `url(${photos[0]})` } : undefined}
-              >
-                {Boolean(product?.compareAt) && (
-                  <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1.5 text-[11.5px] font-bold text-white">
-                    Promo
-                  </span>
-                )}
-                {photos.length === 0 && (
-                  <span className="text-[10.5px] font-semibold text-[#a2939a]">aucune photo</span>
-                )}
-              </div>
-              <div className="pt-3">
-                <div className="text-[14px] font-semibold tracking-tight">
-                  {name || <span className="text-[#b3a5aa]">Nom du produit</span>}
-                </div>
-                <div className="mt-1.5 flex items-baseline gap-2.5">
-                  <span className="text-[15px] font-extrabold tabular-nums">
-                    {priceNumber > 0 ? formatXOF(priceNumber) : "- F"}
-                  </span>
-                  {product?.compareAt && (
-                    <span className="text-[13px] text-muted line-through">
-                      {formatXOF(product.compareAt)}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 text-[12.5px] text-muted">
-                  {category}{materials.length ? ` · ${materials.join(", ")}` : ""}
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
 
       {/* ------------------------------------------------- bibliothèques */}

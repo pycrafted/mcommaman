@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { STATUS_LABELS, STATUS_TONES } from "@/lib/admin/store";
 import type { OrderStatus, ProductStatus } from "@/lib/admin/types";
@@ -892,6 +892,8 @@ export function SideDrawer({
   subtitle,
   children,
   footer,
+  side = "right",
+  wide = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -899,32 +901,64 @@ export function SideDrawer({
   subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  side?: "left" | "right";
+  wide?: boolean;
 }) {
+  const panneau = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!open) return;
-    const surTouche = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const surTouche = (e: KeyboardEvent) => {
+      // Un sélecteur ouvert au-dessus du formulaire reçoit Échap en premier.
+      const dialogues = document.querySelectorAll('[role="dialog"]');
+      if (dialogues[dialogues.length - 1] !== panneau.current) return;
+      if (e.key === "Escape") onClose();
+      if (e.key === "Tab") {
+        const champs = panneau.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
+        );
+        if (!champs?.length) return;
+        const premier = champs[0];
+        const dernier = champs[champs.length - 1];
+        if (!panneau.current?.contains(document.activeElement)) {
+          e.preventDefault();
+          (e.shiftKey ? dernier : premier).focus();
+        } else if (e.shiftKey && (document.activeElement === premier || document.activeElement === panneau.current)) {
+          e.preventDefault();
+          dernier.focus();
+        } else if (!e.shiftKey && document.activeElement === dernier) {
+          e.preventDefault();
+          premier.focus();
+        }
+      }
+    };
     window.addEventListener("keydown", surTouche);
     const avant = document.body.style.overflow;
+    const focusAvant = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.style.overflow = "hidden";
+    panneau.current?.focus();
     return () => {
       window.removeEventListener("keydown", surTouche);
       document.body.style.overflow = avant;
+      focusAvant?.focus();
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-90 flex justify-end">
+  return createPortal(
+    <div className={`fixed inset-0 z-90 flex ${side === "left" ? "justify-start" : "justify-end"}`}>
       <div
         onClick={onClose}
         aria-hidden
         className="absolute inset-0 bg-ink/40 backdrop-blur-[3px]"
       />
       <aside
+        ref={panneau}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        className="anim-slide-in relative flex h-full w-full max-w-[26rem] flex-col border-l border-line bg-white"
+        aria-label={typeof title === "string" ? title : undefined}
+        className={`${side === "left" ? "anim-slide-in-left border-r" : "anim-slide-in border-l"} relative flex h-dvh w-full ${wide ? "max-w-[40rem]" : "max-w-[26rem]"} flex-col border-line bg-white outline-none`}
       >
         <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
           <div className="min-w-0">
@@ -939,10 +973,11 @@ export function SideDrawer({
             <IconX />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">{children}</div>
         {footer && <footer className="border-t border-line px-6 py-4">{footer}</footer>}
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

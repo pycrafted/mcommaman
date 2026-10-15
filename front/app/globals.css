@@ -50,6 +50,7 @@ body {
 @keyframes pop { 0% { transform: scale(1) } 42% { transform: scale(1.55) } 100% { transform: scale(1) } }
 @keyframes tick { from { opacity: .35; transform: translateY(-5px) } to { opacity: 1; transform: none } }
 @keyframes slide-in { from { opacity: 0; transform: translateX(28px) } to { opacity: 1; transform: none } }
+@keyframes slide-in-left { from { opacity: 0; transform: translateX(-28px) } to { opacity: 1; transform: none } }
 @keyframes fade-up { from { opacity: 0; transform: translateY(14px) scale(.97) } to { opacity: 1; transform: none } }
 
 /* Révélations — une variante par direction, même courbe. */
@@ -148,6 +149,7 @@ body {
 .anim-pop { animation: pop .4s var(--ease-soft); }
 .anim-tick { animation: tick .45s var(--ease-soft); }
 .anim-slide-in { animation: slide-in .24s var(--ease-soft); }
+.anim-slide-in-left { animation: slide-in-left .24s var(--ease-soft); }
 .anim-fade-up { animation: fade-up .26s var(--ease-soft); }
 .anim-cue { animation: cue 1.8s ease-in-out infinite; }
 

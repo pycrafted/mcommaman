@@ -22,8 +22,6 @@ export interface AdminProduct extends Product {
   colors: string[];
   /** Valeurs de taille, tenues dans la bibliothèque. */
   sizes: string[];
-  /** Matières choisies dans le référentiel partagé. */
-  materials: string[];
   /** Options réellement vendables et leur stock propre. */
   variants: {
     id?: string;
@@ -231,11 +229,6 @@ export interface AdminColor {
   productCount?: number;
 }
 
-export interface AdminMaterial {
-  id: string;
-  name: string;
-}
-
 /** Une image de la photothèque, partagée par les fiches et les rayons. */
 export interface MediaItem {
   id: string;
@@ -251,7 +244,6 @@ export interface ProductLibrary {
   /** Visuel du guide des tailles. Facultatif. */
   sizeGuide: string;
   colors: AdminColor[];
-  materials: AdminMaterial[];
   media: MediaItem[];
 }
 

@@ -21,7 +21,7 @@ const normaliser = (valeur: string) =>
 /**
  * La bibliothèque : le vocabulaire commun des fiches.
  *
- * Tailles, coloris, matières et photothèque se règlent une fois ici et se
+ * Tailles, coloris et photothèque se règlent une fois ici et se
  * choisissent ensuite dans l'éditeur de fiche. C'est ce qui empêche « rose
  * poudré » et « Rose Poudre » de cohabiter dans le même catalogue.
  */
@@ -31,8 +31,6 @@ export default function Page() {
     saveSizes,
     saveColor,
     deleteColor,
-    saveMaterial,
-    deleteMaterial,
     televerserMedia,
     removeMedia,
     hydrated,
@@ -43,7 +41,6 @@ export default function Page() {
   const [taille, setTaille] = useState("");
   const [repere, setRepere] = useState("");
   const [couleur, setCouleur] = useState({ name: "", hex: "#e0417f" });
-  const [matiere, setMatiere] = useState("");
   const [envoiMedia, setEnvoiMedia] = useState(false);
   const [rechercheMedia, setRechercheMedia] = useState("");
   const fichierRef = useRef<HTMLInputElement>(null);
@@ -52,7 +49,6 @@ export default function Page() {
 
   const taillesPage = usePagination(library.sizes, 8, (s) => s.value);
   const couleursPage = usePagination(library.colors, 8, (c) => c.id);
-  const matieresPage = usePagination(library.materials, 12, (m) => m.id);
   /* Même besoin que dans l'éditeur de fiche : passé quelques séances photo, on
      ne retrouve plus une image en déroulant. */
   const mediasFiltres = library.media.filter(
@@ -116,18 +112,6 @@ export default function Page() {
     setCouleur({ name: "", hex: "#e0417f" });
   };
 
-  const ajouterMatiere = () => {
-    const m = matiere.trim();
-    if (!m) return;
-    const existante = library.materials.find((item) => normaliser(item.name) === normaliser(m));
-    if (existante) {
-      notify("warning", `La matière « ${existante.name} » existe déjà.`);
-      return;
-    }
-    saveMaterial(m);
-    setMatiere("");
-  };
-
   /**
    * Importe des images depuis l'ordinateur.
    *
@@ -153,7 +137,7 @@ export default function Page() {
       <PageHeader
         eyebrow="Catalogue"
         title="Configuration"
-        sub="Ce qui se règle une fois et se réutilise partout : tailles, coloris, matières, photothèque."
+        sub="Ce qui se règle une fois et se réutilise partout : tailles, coloris, photothèque."
       />
 
       <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
@@ -284,53 +268,6 @@ export default function Page() {
             affiches={couleursPage.tranche.length}
             onPage={couleursPage.setPage}
             unite="coloris"
-          />
-        </Section>
-
-        {/* -------------------------------------------------------- matières */}
-        <Section
-          title="Matières"
-          sub="Référentiel de composition : un produit peut utiliser plusieurs matières."
-        >
-          <div className="flex flex-wrap items-end gap-2.5">
-            <Field label="Matière" className="min-w-[180px] flex-1">
-              <Input value={matiere} onChange={setMatiere} placeholder="100 % coton peigné" />
-            </Field>
-            <Button variant="ink" onClick={ajouterMatiere} disabled={!matiere.trim() || enCours}>
-              <IconPlus />
-              Ajouter
-            </Button>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {matieresPage.tranche.map((m) => (
-              <span
-                key={m.id}
-                className="inline-flex items-center gap-2 rounded-full bg-mist px-3.5 py-2 text-[12.5px] font-semibold"
-              >
-                {m.name}
-                <button
-                  type="button"
-                  onClick={() => deleteMaterial(m.id)}
-                  aria-label={`Retirer ${m.name}`}
-                  className="text-muted transition-colors hover:text-accent-deep"
-                >
-                  <IconX className="h-3.5 w-3.5" />
-                </button>
-              </span>
-            ))}
-            {library.materials.length === 0 && (
-              <p className="text-[13px] text-muted">Aucune matière enregistrée.</p>
-            )}
-          </div>
-          <Pagination
-            page={matieresPage.page}
-            pages={matieresPage.pages}
-            total={matieresPage.total}
-            debut={matieresPage.debut}
-            affiches={matieresPage.tranche.length}
-            onPage={matieresPage.setPage}
-            unite="matières"
           />
         </Section>
 

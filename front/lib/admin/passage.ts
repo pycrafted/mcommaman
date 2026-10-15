@@ -10,7 +10,6 @@ import type { RayonApi } from "@/lib/api";
 import type {
   AdminCategory,
   AdminColor,
-  AdminMaterial,
   AdminProduct,
   AdminPromotion,
   Customer,
@@ -31,8 +30,6 @@ export type ProduitGestionApi = {
   prix: number;
   prix_barre: number | null;
   description: string;
-  matieres: number[];
-  matieres_noms: string[];
   rayon: number;
   rayon_nom: string;
   univers: string;
@@ -73,7 +70,6 @@ export function versProduit(brut: ProduitGestionApi): AdminProduct {
     status: brut.statut,
     sizes: [...new Set(brut.variantes.map((v) => v.taille_valeur))],
     colors: [...new Set(brut.variantes.map((v) => v.coloris_nom).filter(Boolean))],
-    materials: brut.matieres_noms ?? [],
     variants: brut.variantes.map((v) => ({
       id: String(v.id),
       size: v.taille_valeur,
@@ -89,7 +85,6 @@ export function versProduit(brut: ProduitGestionApi): AdminProduct {
 export function depuisProduit(
   produit: AdminProduct,
   rayonsParNom: Map<string, number>,
-  matieresParNom: Map<string, number>,
 ): Record<string, unknown> {
   return {
     nom: produit.name,
@@ -98,7 +93,6 @@ export function depuisProduit(
     prix: produit.price,
     prix_barre: produit.compareAt ?? null,
     description: produit.description,
-    matieres: produit.materials.map((nom) => matieresParNom.get(nom)).filter(Boolean),
     rayon: rayonsParNom.get(produit.category),
     statut: produit.status,
   };
@@ -339,13 +333,6 @@ export const versColoris = (brut: ColorisApi): AdminColor => ({
   name: brut.nom,
   hex: brut.hexa,
   productCount: brut.nombre_produits ?? 0,
-});
-
-export type MatiereApi = { id: number; nom: string };
-
-export const versMatiere = (brut: MatiereApi): AdminMaterial => ({
-  id: String(brut.id),
-  name: brut.nom,
 });
 
 export type ReglagesApi = {

@@ -4,18 +4,18 @@ import { useCallback, useRef } from "react";
 import { AdminProvider, useAdmin } from "@/lib/admin/store";
 import { useFicheProduit } from "@/lib/admin/produits";
 import { ProductForm } from "./product-form";
-import { Modal } from "./admin/ui";
+import { SideDrawer } from "./admin/ui";
 
 /**
  * Modifier ou créer une pièce sans quitter la boutique.
  *
  * Repris de Golden Pousso : un crayon posé sur chaque carte, visible des seuls
  * comptes de l'équipe, ouvre le formulaire produit du back-office dans une
- * fenêtre, en modification ; le « + » du dock ouvre le même formulaire, vide,
+ * tiroir à gauche, en modification ; le « + » du dock ouvre le même formulaire, vide,
  * pour créer une pièce. Le formulaire est celui de `/admin/produits`, à
  * l'identique : une seule façon de décrire une fiche.
  *
- * Il a besoin des données du back-office (rayons, matières, coloris,
+ * Il a besoin des données du back-office (rayons, coloris,
  * tailles) : la fenêtre monte donc son propre `AdminProvider`, en mode léger —
  * il ne lit que ça à l'ouverture ; la photothèque attend son sélecteur.
  * Pas de commandes ni de clientes, dont le
@@ -83,7 +83,7 @@ export function EditionPiece({
   }, [onClose]);
 
   return (
-    <Modal open onClose={fermer} title={produitId ? "Modifier la pièce" : "Nouvelle pièce"} wide>
+    <SideDrawer open onClose={fermer} title={produitId ? "Modifier la pièce" : "Nouvelle pièce"} side="left" wide>
       <AdminProvider leger>
         <Contenu
           produitId={produitId}
@@ -93,6 +93,6 @@ export function EditionPiece({
           onClose={fermer}
         />
       </AdminProvider>
-    </Modal>
+    </SideDrawer>
   );
 }
