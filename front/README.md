@@ -240,7 +240,9 @@ ont été supprimés du front et de l'API ; appliquer la migration `catalogue.00
 au déploiement du serveur (elle retire les anciennes données de composition).
 
 La publication vérifie toujours trois conditions, côté formulaire **et** côté API : un nom,
-au moins une photo et un prix strictement positif. Une fiche incomplète peut rester en brouillon.
+au moins une photo et un prix strictement positif. Depuis l'accueil, le formulaire propose
+uniquement « Publier la pièce » à la création et « Enregistrer » à la modification, avec une
+mise en ligne directe. L'enregistrement en brouillon reste disponible dans le back-office.
 Les tailles et les couleurs viennent de la bibliothèque et peuvent être ajoutées depuis la fiche.
 
 Une poubelle apparaît à côté du crayon pour l'équipe uniquement. La suppression demande une

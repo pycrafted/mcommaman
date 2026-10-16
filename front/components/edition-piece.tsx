@@ -62,7 +62,7 @@ function Contenu({
           {enCours ? "Enregistrement…" : notification?.message}
         </p>
       )}
-      <ProductForm key={fiche?.id ?? "nouvelle"} product={fiche ?? undefined} onSaved={onSaved} onClose={onClose} />
+      <ProductForm key={fiche?.id ?? "nouvelle"} product={fiche ?? undefined} mode="boutique" onSaved={onSaved} onClose={onClose} />
     </>
   );
 }

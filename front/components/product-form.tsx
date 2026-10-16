@@ -267,8 +267,11 @@ export function ProductForm({
   product,
   onSaved,
   onClose,
+  mode = "gestion",
 }: {
   product?: AdminProduct;
+  /** Depuis la boutique, une fiche s'enregistre directement en ligne. */
+  mode?: "gestion" | "boutique";
   /** Dans une fenêtre : appelé après l'enregistrement, au lieu de retourner à la liste. */
   onSaved?: () => void;
   /** Dans une fenêtre : ce que fait « Retour », au lieu de naviguer. */
@@ -276,6 +279,7 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const enFenetre = Boolean(onClose);
+  const depuisBoutique = mode === "boutique";
   const {
     library,
     createProduct,
@@ -598,15 +602,19 @@ export function ProductForm({
           </h1>
         </div>}
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button variant="contour" disabled={enCours || envoiPhotos} onClick={() => enregistrer("brouillon")}>
-            Enregistrer en brouillon
-          </Button>
+          {!depuisBoutique && (
+            <Button variant="contour" disabled={enCours || envoiPhotos} onClick={() => enregistrer("brouillon")}>
+              Enregistrer en brouillon
+            </Button>
+          )}
           <Button
             variant="rose"
             disabled={!canPublish || enCours || envoiPhotos}
             onClick={() => enregistrer("publie")}
           >
-            {product?.status === "publie" ? "Enregistrer et garder en ligne" : "Publier en boutique"}
+            {depuisBoutique
+              ? product ? "Enregistrer" : "Publier la pièce"
+              : product?.status === "publie" ? "Enregistrer et garder en ligne" : "Publier en boutique"}
           </Button>
         </div>
       </div>
