@@ -11,7 +11,6 @@ from rest_framework import serializers
 
 from .models import (
     Coloris,
-    Matiere,
     Media,
     MouvementStock,
     PhotoProduit,
@@ -83,22 +82,6 @@ class ColorisSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coloris
         fields = ["id", "nom", "hexa", "nombre_produits"]
-
-
-class MatiereSerializer(serializers.ModelSerializer):
-    def validate_nom(self, valeur):
-        valeur = _texte_propre(valeur)
-        return _refuser_doublon(
-            self,
-            Matiere.objects.all(),
-            "nom",
-            valeur,
-            "Cette matière existe déjà.",
-        )
-
-    class Meta:
-        model = Matiere
-        fields = ["id", "nom"]
 
 
 class MediaSerializer(serializers.ModelSerializer):
@@ -359,7 +342,6 @@ class ProduitVitrineSerializer(_PrixDuJour, serializers.ModelSerializer):
     rayon_nom = serializers.CharField(source="rayon.nom", read_only=True)
     rayon_slug = serializers.CharField(source="rayon.slug", read_only=True)
     univers = serializers.CharField(source="rayon.univers", read_only=True)
-    matiere = serializers.CharField(source="composition", read_only=True)
     image = serializers.SerializerMethodField()
     photos = serializers.SerializerMethodField()
     tailles = serializers.SerializerMethodField()
@@ -372,7 +354,7 @@ class ProduitVitrineSerializer(_PrixDuJour, serializers.ModelSerializer):
     class Meta:
         model = Produit
         fields = [
-            "id", "slug", "nom", "prix", "prix_barre", "description", "matiere",
+            "id", "slug", "nom", "prix", "prix_barre", "description",
             "prix_public", "prix_avant", "promotion",
             "rayon_nom", "rayon_slug", "univers",
             "image", "photos", "tailles", "coloris", "en_rupture",
@@ -446,15 +428,12 @@ class ProduitGestionListeSerializer(serializers.ModelSerializer):
     rayon_nom = serializers.CharField(source="rayon.nom", read_only=True)
     image = serializers.CharField(source="image_url", read_only=True, default="")
     stock_total = serializers.IntegerField(source="stock_somme", read_only=True, default=0)
-    matieres_noms = serializers.SlugRelatedField(
-        source="matieres", many=True, read_only=True, slug_field="nom"
-    )
 
     class Meta:
         model = Produit
         fields = [
             "id", "slug", "nom", "sku", "prix", "statut", "rayon", "rayon_nom",
-            "image", "stock_total", "matieres_noms", "cree_le", "modifie_le",
+            "image", "stock_total", "cree_le", "modifie_le",
         ]
 
 
@@ -465,9 +444,6 @@ class ProduitAdminSerializer(serializers.ModelSerializer):
     variantes = VarianteSerializer(many=True, read_only=True)
     rayon_nom = serializers.CharField(source="rayon.nom", read_only=True)
     univers = serializers.CharField(source="rayon.univers", read_only=True)
-    matieres_noms = serializers.SlugRelatedField(
-        source="matieres", many=True, read_only=True, slug_field="nom"
-    )
     stock_total = serializers.IntegerField(read_only=True)
     manques = serializers.SerializerMethodField()
     publiable = serializers.BooleanField(read_only=True)
@@ -476,7 +452,7 @@ class ProduitAdminSerializer(serializers.ModelSerializer):
         model = Produit
         fields = [
             "id", "slug", "nom", "sku", "prix", "prix_barre", "description",
-            "rayon", "rayon_nom", "univers", "matieres", "matieres_noms", "statut",
+            "rayon", "rayon_nom", "univers", "statut",
             "photos", "variantes", "stock_total", "manques", "publiable",
             "cree_le", "modifie_le",
         ]
@@ -489,7 +465,7 @@ class ProduitAdminSerializer(serializers.ModelSerializer):
         """
         Le garde-fou de l'audit, appliqué là où il compte.
 
-        Le back-office affiche déjà la liste de ce qui manque ; ici elle devient
+        Le formulaire vérifie déjà les champs nécessaires ; ici la règle devient
         opposable : une fiche incomplète ne passe pas en « publié », quelle que
         soit la façon dont on appelle l'API.
         """

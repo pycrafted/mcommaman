@@ -34,7 +34,7 @@ Quatre applications, découpées par domaine métier et non par couche technique
 | Application | Ce qu'elle porte |
 |---|---|
 | `clientele` | Utilisateurs (clientes **et** équipe), adresses, panier |
-| `catalogue` | Rayons, tailles, coloris, matières, photothèque, produits, variantes, mouvements de stock, alertes de stock |
+| `catalogue` | Rayons, tailles, coloris, photothèque, produits, variantes, mouvements de stock, alertes de stock |
 | `ventes` | Commandes, lignes, paiements, campagnes de remise |
 | `vitrine` | Réglages de la boutique, bandeau d'accueil, journal d'activité |
 

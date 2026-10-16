@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from catalogue.models import (
-    Coloris, Matiere, Media, Produit, PhotoProduit, Rayon, Taille, Univers, Variante,
+    Coloris, Media, Produit, PhotoProduit, Rayon, Taille, Univers, Variante,
 )
 from clientele.models import Adresse
 from ventes.models import Campagne, Commande, LigneCommande
@@ -62,11 +62,6 @@ COLORIS = [
     ("Rose poudré", "#e8b7c8"), ("Écru", "#efe6da"), ("Lilas", "#ded0f0"),
     ("Bleu nuit", "#39456b"), ("Rose", "#e0417f"), ("Marine", "#2f3a56"),
     ("Moutarde", "#f0c24a"), ("Sauge", "#8ca783"),
-]
-
-MATIERES = [
-    "100 % coton", "Coton biologique", "Jersey de coton", "Popeline de coton",
-    "Lin lavé", "Denim léger", "Maille tricot",
 ]
 
 # Les douze fiches de la vitrine, mot pour mot.
@@ -179,7 +174,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING("Effacement des données métier…"))
         for modele in (LigneCommande, Commande, Campagne, Bandeau, EntreeJournal,
                        Variante, PhotoProduit, Produit, Media, Taille, Coloris,
-                       Matiere, Adresse):
+                       Adresse):
             modele.objects.all().delete()
         # Les sous-catégories d'abord : leur parente est protégée tant qu'elles
         # existent, et c'est très bien ainsi.
@@ -215,9 +210,7 @@ class Command(BaseCommand):
             tailles[valeur] = taille
         for nom, hexa in COLORIS:
             Coloris.objects.update_or_create(nom=nom, defaults={"hexa": hexa})
-        for nom in MATIERES:
-            Matiere.objects.get_or_create(nom=nom)
-        self.stdout.write(f"  {len(tailles)} tailles, {len(COLORIS)} coloris, {len(MATIERES)} matières")
+        self.stdout.write(f"  {len(tailles)} tailles, {len(COLORIS)} coloris")
         return tailles
 
     def _produits(self, rayons, tailles, alea):
@@ -238,7 +231,6 @@ class Command(BaseCommand):
                     "statut": statut,
                 },
             )
-            produit.matieres.set([Matiere.objects.get(nom=alea.choice(MATIERES))])
             PhotoProduit.objects.get_or_create(produit=produit, media=media, defaults={"position": 0})
 
             valeurs = POINTURES if rayon == "Chaussures" else TAILLES_PAR_AGE[age]

@@ -46,7 +46,7 @@ def filtrer(selection, requete: str):
     Restreint une sélection de produits aux fiches qui contiennent **tous** les
     mots cherchés.
 
-    Chaque mot doit se retrouver quelque part — nom, description, matière ou
+    Chaque mot doit se retrouver quelque part — nom, description ou
     rayon. Un « ou » ramènerait la moitié du catalogue dès le deuxième mot.
     """
     termes = mots(requete)
@@ -57,7 +57,6 @@ def filtrer(selection, requete: str):
         selection = selection.filter(
             Q(nom__unaccent__icontains=terme)
             | Q(description__unaccent__icontains=terme)
-            | Q(matieres__nom__unaccent__icontains=terme)
             | Q(rayon__nom__unaccent__icontains=terme)
         )
     return selection.distinct()

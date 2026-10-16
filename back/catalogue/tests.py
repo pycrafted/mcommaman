@@ -11,7 +11,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Coloris, Matiere, Media, MouvementStock, PhotoProduit, Produit, Rayon, Taille, Variante
+from .models import Coloris, Media, MouvementStock, PhotoProduit, Produit, Rayon, Taille, Variante
 from .recherche import mots, normaliser
 
 Utilisateur = get_user_model()
@@ -82,16 +82,6 @@ class ReferentielsUniquesTest(APITestCase):
             format="json",
         )
         self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_une_matiere_ne_se_duplique_pas_avec_une_autre_casse(self):
-        Matiere.objects.create(nom="Coton biologique")
-        reponse = self.client.post(
-            reverse("matiere-list"),
-            {"nom": "  coton BIOLOGIQUE  "},
-            format="json",
-        )
-        self.assertEqual(reponse.status_code, status.HTTP_400_BAD_REQUEST)
-
 
 class CataloguePublicTest(APITestCase):
     def setUp(self):

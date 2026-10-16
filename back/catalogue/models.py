@@ -142,20 +142,6 @@ class Coloris(models.Model):
         return self.nom
 
 
-class Matiere(models.Model):
-    """Proposée en saisie rapide sur la fiche produit, jamais imposée."""
-
-    nom = models.CharField(max_length=80, unique=True)
-
-    class Meta:
-        verbose_name = "matière"
-        verbose_name_plural = "matières"
-        ordering = ["nom"]
-
-    def __str__(self):
-        return self.nom
-
-
 class Media(models.Model):
     """
     La photothèque, partagée par les fiches, les rayons et le bandeau d'accueil.
@@ -245,13 +231,6 @@ class Produit(models.Model):
     prix_barre = models.PositiveIntegerField("prix barré", null=True, blank=True)
 
     description = models.TextField(blank=True)
-    matieres = models.ManyToManyField(
-        Matiere,
-        blank=True,
-        related_name="produits",
-        help_text="Une composition peut réunir plusieurs matières.",
-    )
-
     rayon = models.ForeignKey(Rayon, on_delete=models.PROTECT, related_name="produits")
 
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.BROUILLON)
@@ -291,20 +270,16 @@ class Produit(models.Model):
         """L'univers vient du rayon : une seule source de vérité."""
         return self.rayon.univers
 
-    @property
-    def composition(self) -> str:
-        return ", ".join(self.matieres.values_list("nom", flat=True))
-
     def manque_pour_publier(self) -> list[str]:
         """
         Ce qui empêche encore la publication.
 
-        Trois conditions, les mêmes que celles affichées dans le back-office :
+        Trois conditions, les mêmes que celles vérifiées dans le formulaire :
         de quoi nommer la fiche, la montrer et la facturer. C'est ce contrôle
         qui manquait quand « Safari enfant » est parti en ligne à 0 F.
 
         Aucune longueur minimale n'est imposée : un nom court est un nom. La
-        description, la composition et les tailles restent facultatives — une
+        description et les tailles restent facultatives — une
         fiche sans variante s'affiche en boutique sans être achetable, ce qui
         est le comportement voulu pour un article annoncé avant réassort.
         """

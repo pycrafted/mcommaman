@@ -12,7 +12,6 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CatalogueViewSet,
     ColorisViewSet,
-    MatiereViewSet,
     MediaViewSet,
     MouvementStockViewSet,
     PhotoProduitViewSet,
@@ -37,7 +36,6 @@ gestion.register("photos", PhotoProduitViewSet, basename="photo")
 gestion.register("rayons", RayonGestionViewSet, basename="rayon-gestion")
 gestion.register("tailles", TailleViewSet, basename="taille")
 gestion.register("coloris", ColorisViewSet, basename="coloris")
-gestion.register("matieres", MatiereViewSet, basename="matiere")
 gestion.register("photheque", MediaViewSet, basename="media")
 
 urlpatterns = [

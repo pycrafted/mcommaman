@@ -22,7 +22,6 @@ from clientele.permissions import EstEquipe
 from .models import (
     AlerteStock,
     Coloris,
-    Matiere,
     Media,
     MouvementStock,
     PhotoProduit,
@@ -34,7 +33,6 @@ from .models import (
 from .recherche import filtrer
 from .serializers import (
     ColorisSerializer,
-    MatiereSerializer,
     MediaSerializer,
     MouvementStockSerializer,
     PhotoProduitSerializer,
@@ -160,7 +158,6 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
             return self._publies().prefetch_related(
                 Prefetch("photos", queryset=PhotoProduit.objects.select_related("media").order_by("position")),
                 Prefetch("variantes", queryset=Variante.objects.select_related("taille", "coloris")),
-                "matieres",
                 "rayon__parents",
             )
 
@@ -370,7 +367,6 @@ class ReferentielsView(viewsets.ViewSet):
         return Response({
             "tailles": TailleSerializer(Taille.objects.all(), many=True).data,
             "coloris": ColorisSerializer(Coloris.objects.all(), many=True).data,
-            "matieres": MatiereSerializer(Matiere.objects.all(), many=True).data,
         })
 
 
@@ -395,12 +391,11 @@ class ProduitGestionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.action != "list":
             return Produit.objects.select_related("rayon").prefetch_related(
-                "photos__media", "variantes__taille", "variantes__coloris", "matieres"
+                "photos__media", "variantes__taille", "variantes__coloris"
             )
 
         selection = (
             Produit.objects.select_related("rayon")
-            .prefetch_related("matieres")
             .annotate(
                 image_url=_image_principale(),
                 stock_somme=Coalesce(Sum("variantes__stock"), 0),
@@ -529,7 +524,6 @@ class ProduitGestionViewSet(viewsets.ModelViewSet):
             rayon=source.rayon,
             statut=Produit.Statut.BROUILLON,
         )
-        copie.matieres.set(source.matieres.all())
         for photo in source.photos.all():
             PhotoProduit.objects.create(produit=copie, media=photo.media, position=photo.position)
         for variante in source.variantes.all():
@@ -688,19 +682,6 @@ class ColorisViewSet(viewsets.ModelViewSet):
     serializer_class = ColorisSerializer
     queryset = Coloris.objects.annotate(nombre_produits=Count("variantes__produit", distinct=True))
     pagination_class = None
-
-
-class MatiereViewSet(viewsets.ModelViewSet):
-    permission_classes = [EstEquipe]
-    serializer_class = MatiereSerializer
-    queryset = Matiere.objects.all()
-    pagination_class = None
-
-    def perform_destroy(self, instance):
-        if instance.produits.exists():
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({"detail": "Cette matière est utilisée par une ou plusieurs fiches."})
-        instance.delete()
 
 
 class MediaViewSet(viewsets.ModelViewSet):
