@@ -232,7 +232,9 @@ figée au 15 août 2026 a disparu avec la graine locale.
 ### Publication d'un produit
 
 `components/product-form.tsx` est le seul éditeur : sans `product` il crée, avec il modifie.
-Depuis la boutique, le crayon et le « + » ouvrent un tiroir à droite, en pleine hauteur.
+Depuis la boutique, le crayon et le « + » ouvrent un tiroir à droite, en pleine hauteur,
+limité à 416 px de large (ou à la largeur de l'écran sur mobile). Les champs y restent
+sur une colonne et les photos sur trois colonnes.
 Le nom, le prix et la catégorie sont regroupés en tête, suivis de la description, des photos
 et des variantes. La référence interne est générée automatiquement et conservée à la modification.
 Les blocs de statut et d'aperçu ont été retirés. La composition et le référentiel de matières

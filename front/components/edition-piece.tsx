@@ -83,7 +83,7 @@ export function EditionPiece({
   }, [onClose]);
 
   return (
-    <SideDrawer open onClose={fermer} title={produitId ? "Modifier la pièce" : "Nouvelle pièce"} side="right" wide>
+    <SideDrawer open onClose={fermer} title={produitId ? "Modifier la pièce" : "Nouvelle pièce"} side="right">
       <AdminProvider leger>
         <Contenu
           produitId={produitId}

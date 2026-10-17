@@ -42,7 +42,7 @@ const Field = ({
   children: React.ReactNode;
   span?: number;
 }) => (
-  <div className={span === 2 ? "sm:col-span-2" : undefined}>
+  <div className={`min-w-0 ${span === 2 ? "sm:col-span-2" : ""}`}>
     <label htmlFor={htmlFor} className="mb-2 block text-[12.5px] font-bold">{label}</label>
     {children}
     {hint && <p className="mt-1.5 text-[11.5px] leading-snug text-muted">{hint}</p>}
@@ -625,11 +625,11 @@ export function ProductForm({
           {/* -------------------------------------------------------- identité */}
           <section className="rounded-[20px] border border-line bg-white p-5 sm:p-6">
             <h2 className="mb-4 text-[15px] font-extrabold tracking-tight">Identité</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className={`grid gap-4 ${depuisBoutique ? "" : "sm:grid-cols-2"}`}>
               <Field
                 label="Nom commercial"
                 htmlFor="produit-nom"
-                span={2}
+                span={depuisBoutique ? 1 : 2}
               >
                 <input
                   id="produit-nom"
@@ -642,7 +642,7 @@ export function ProductForm({
 
               {slugPris && (
                 <p
-                  className="sm:col-span-2 rounded-xl bg-accent-soft px-4 py-3 text-[12.5px] font-semibold text-accent-deep"
+                  className={`${depuisBoutique ? "" : "sm:col-span-2"} rounded-xl bg-accent-soft px-4 py-3 text-[12.5px] font-semibold text-accent-deep`}
                 >
                   Un produit portant ce nom existe déjà.
                 </p>
@@ -698,7 +698,7 @@ export function ProductForm({
               <Field
                 label="Description"
                 htmlFor="produit-description"
-                span={2}
+                span={depuisBoutique ? 1 : 2}
               >
                 <textarea
                   id="produit-description"
@@ -722,7 +722,7 @@ export function ProductForm({
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+            <div className={`grid grid-cols-3 gap-3 ${depuisBoutique ? "" : "sm:grid-cols-5"}`}>
               {photos.map((src, i) => (
                 <div
                   key={src}
