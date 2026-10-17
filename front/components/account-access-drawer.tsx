@@ -89,7 +89,7 @@ export function AccountAccessDrawer({
         aria-modal="true"
         aria-labelledby="compte-titre"
         tabIndex={-1}
-        className="anim-fade-up relative z-10 max-h-[calc(100dvh-24px)] w-full max-w-[400px] overflow-y-auto overscroll-contain rounded-[24px] border border-line bg-white p-5 shadow-[0_24px_70px_-20px_rgba(36,26,32,.4)] outline-none sm:max-h-[min(760px,calc(100dvh-48px))] sm:p-6"
+        className="anim-fade-up masquer-barre-defilement relative z-10 max-h-[calc(100dvh-24px)] w-full max-w-[400px] overflow-y-auto overscroll-contain rounded-[24px] border border-line bg-white p-5 shadow-[0_24px_70px_-20px_rgba(36,26,32,.4)] outline-none sm:max-h-[min(760px,calc(100dvh-48px))] sm:p-6"
       >
         <header className="mb-4 flex items-center justify-between gap-3">
           <h1 id="compte-titre" className="text-[14px] font-extrabold">Mon compte</h1>

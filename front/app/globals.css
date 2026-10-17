@@ -230,6 +230,10 @@ body {
 .rail-onglets { scrollbar-width: none; }
 .rail-onglets::-webkit-scrollbar { display: none; }
 
+/* Le contenu du modal reste défilable sans afficher de barre latérale. */
+.masquer-barre-defilement { scrollbar-width: none; }
+.masquer-barre-defilement::-webkit-scrollbar { display: none; }
+
 /* Rail horizontal : on cache la barre, le doigt et la souris suffisent. */
 .rail {
   display: flex;
