@@ -127,12 +127,22 @@ export function LoginForm({ compact = false, onClose, onModeChange, onSuccess }:
           <span className="h-px flex-1 bg-line" />
         </div>
 
-        <Link
-          href="/"
-          className="rounded-full border-[1.5px] border-[#e5d9de] bg-white px-8 py-3.5 text-center text-sm font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
-        >
-          Continuer sans compte
-        </Link>
+        {compact && onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border-[1.5px] border-[#e5d9de] bg-white px-8 py-3.5 text-center text-sm font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
+          >
+            Continuer sans compte
+          </button>
+        ) : (
+          <Link
+            href="/"
+            className="rounded-full border-[1.5px] border-[#e5d9de] bg-white px-8 py-3.5 text-center text-sm font-semibold transition-colors duration-300 hover:border-accent hover:text-accent"
+          >
+            Continuer sans compte
+          </Link>
+        )}
       </form>
     </AuthShell>
   );
