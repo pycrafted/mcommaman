@@ -55,8 +55,8 @@ compilation de production.
 | `/commandes` | `app/commandes/page.tsx` → `components/orders-list.tsx` | Historique et avancement de chaque colis |
 | `/commandes/[ref]` | `app/commandes/[ref]/page.tsx` → `components/order-detail.tsx` | Suivi détaillé, frise en quatre temps, recommander, annuler |
 | `/compte` | `app/compte/page.tsx` → `components/account-dashboard.tsx` | Tableau de bord : dernière commande, panier en cours, mes envies, adresse par défaut |
-| `/compte/connexion` | `app/compte/connexion/page.tsx` → `components/account-auth.tsx` | Connexion, puis redirection vers l'accueil (`/`) |
-| `/compte/inscription` | `app/compte/inscription/page.tsx` → `components/account-auth.tsx` | Création de compte, six règles de validation, jauge de mot de passe, puis redirection vers l'accueil |
+| `/compte/connexion` | `app/compte/connexion/page.tsx` | Ouvre la fenêtre de connexion sur l'accueil |
+| `/compte/inscription` | `app/compte/inscription/page.tsx` | Ouvre l'inscription dans la fenêtre de compte sur l'accueil |
 | `/compte/profil` | `app/compte/profil/page.tsx` → `components/account-profile.tsx` | Informations, carnet d'adresses, tailles suivies, mot de passe, suppression |
 | `/infos/[slug]` | `app/infos/[slug]/page.tsx` | CGV, mentions légales, confidentialité, retours, livraison, FAQ |
 | `/admin/connexion` | `app/admin/connexion/page.tsx` | Connexion de l'équipe, puis redirection vers l'accueil (`/`) |
@@ -99,9 +99,9 @@ Les réglages sont lus **une seule fois**, par `app/layout.tsx`, et posés dans
 trouvent là sans refaire l'appel chacun de leur côté.
 
 **Pas de barre du haut.** La navigation est un dock collé en bas à droite de l'écran
-(`components/dock.tsx`) : l'accueil, les commandes, le compte et le panier. Les
-couleurs du logo original sont conservées sur fond blanc dans le lien d'accueil
-(`public/images/logo-m-comme-maman.png`, repris de la maquette).
+(`components/dock.tsx`) : le logo original, le compte et le panier. En petit format, il garde ses
+couleurs sur fond blanc (`public/images/logo-m-comme-maman.png`). Le bouton du compte ouvre une
+fenêtre à gauche pour se connecter ou créer un compte (`components/account-access-drawer.tsx`).
 Les catégories se choisissent dans les filtres de l'accueil. Le Coin Maman est une catégorie comme
 les autres et n'a plus de page à lui. Le serveur garde
 sa recherche (`catalogue/recherche.py`, `?q=`) pour le back-office. Il n'y a plus non plus de

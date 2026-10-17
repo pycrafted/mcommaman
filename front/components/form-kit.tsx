@@ -326,6 +326,7 @@ export function AuthShell({
   image,
   footer,
   children,
+  compact = false,
 }: {
   eyebrow: string;
   title: string;
@@ -333,7 +334,20 @@ export function AuthShell({
   image: string;
   footer: React.ReactNode;
   children: React.ReactNode;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div>
+        <span className="text-[10px] font-bold uppercase tracking-[.16em] text-accent">{eyebrow}</span>
+        <h2 className="mt-1.5 text-[23px] font-extrabold leading-tight tracking-[-.03em]">{title}</h2>
+        {description && <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{description}</p>}
+        <div className="mt-4">{children}</div>
+        <div className="mt-4 text-center text-[12px]">{footer}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto grid max-w-[1180px] gap-10 px-5 pb-22 pt-10 md:px-8 lg:grid-cols-[1.05fr_.95fr] lg:items-start lg:px-10">
       <div className="anim-fade-up">

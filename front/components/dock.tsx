@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { useCart } from "./cart-context";
 import { IconBag, IconPlus, IconUser } from "./icons";
+import { AccountAccessDrawer } from "./account-access-drawer";
 
 const EditionPiece = dynamic(() => import("./edition-piece").then((m) => m.EditionPiece), { ssr: false });
 
@@ -34,6 +35,28 @@ export function Dock() {
   const { count, pulse, openDrawer } = useCart();
   const { account } = useAuth();
   const [creation, setCreation] = useState(false);
+  const [authMode, setAuthMode] = useState<"connexion" | "inscription" | null>(null);
+  const fermerCompte = useCallback(() => setAuthMode(null), []);
+
+  useEffect(() => {
+    const ouvrir = () => setAuthMode("connexion");
+    window.addEventListener("mcm:ouvrir-connexion", ouvrir);
+
+    const parametres = new URLSearchParams(window.location.search);
+    const accesDemande = parametres.get("ouvrirCompte");
+    if (accesDemande === "connexion" || accesDemande === "inscription") {
+      setAuthMode(accesDemande);
+      parametres.delete("ouvrirCompte");
+      const recherche = parametres.toString();
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${recherche ? `?${recherche}` : ""}${window.location.hash}`,
+      );
+    }
+
+    return () => window.removeEventListener("mcm:ouvrir-connexion", ouvrir);
+  }, [pathname]);
 
   if (pathname.startsWith("/admin")) return null;
 
@@ -55,7 +78,7 @@ export function Dock() {
         aria-label="M comme Maman, accueil"
         aria-current={pathname === "/" ? "page" : undefined}
         title="Accueil"
-        className="relative grid h-14 w-[88px] shrink-0 place-items-center rounded-full bg-white p-1 transition-transform duration-300 ease-back hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="relative grid h-10 w-14 shrink-0 place-items-center rounded-full bg-white p-1 transition-transform duration-300 ease-back hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Image
           src="/images/logo-m-comme-maman.png"
@@ -64,7 +87,7 @@ export function Dock() {
           height={105}
           unoptimized
           priority
-          className="h-auto w-20 rounded-md object-contain"
+          className="h-auto w-12 rounded-md object-contain"
         />
       </Link>
 
@@ -76,20 +99,28 @@ export function Dock() {
         </Link>
       ))}
 
-      <Link
-        href={account ? "/compte" : "/compte/connexion"}
-        aria-label={account ? "Mon espace client" : "Se connecter"}
-        title={account ? account.name : "Se connecter"}
-        className={classe(pathname.startsWith("/compte"))}
-      >
-        {initiales ? (
+      {account ? (
+        <Link
+          href="/compte"
+          aria-label="Mon espace client"
+          title={account.name}
+          className={classe(pathname.startsWith("/compte"))}
+        >
           <span className="grid h-8 w-8 place-items-center rounded-full bg-[#e24f88] text-[11.5px] font-extrabold text-white">
             {initiales}
           </span>
-        ) : (
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAuthMode("connexion")}
+          aria-label="Se connecter"
+          title="Se connecter"
+          className={classe(false)}
+        >
           <IconUser className="h-5 w-5" />
-        )}
-      </Link>
+        </button>
+      )}
 
       {/* L'équipe crée une pièce d'ici, comme chez Golden Pousso : le même
           formulaire que le back-office, dans une fenêtre. */}
@@ -105,6 +136,7 @@ export function Dock() {
         </button>
       )}
       {creation && <EditionPiece onClose={() => setCreation(false)} />}
+      {authMode && <AccountAccessDrawer mode={authMode} onModeChange={setAuthMode} onClose={fermerCompte} />}
 
       <button
         type="button"

@@ -370,12 +370,13 @@ export function Checkout({ startAt = 1 }: { startAt?: number }) {
                   <p className="text-[13px] leading-relaxed text-muted">
                     Vous avez un compte ? Vos coordonnées et votre adresse se remplissent seules.
                   </p>
-                  <Link
-                    href="/compte/connexion"
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new Event("mcm:ouvrir-connexion"))}
                     className="shrink-0 rounded-full bg-ink px-5 py-2.5 text-[13px] font-bold text-white transition-transform duration-400 ease-soft hover:-translate-y-0.5"
                   >
                     Se connecter
-                  </Link>
+                  </button>
                 </div>
               )}
 

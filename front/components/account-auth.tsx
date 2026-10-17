@@ -7,9 +7,18 @@ import { useAuth } from "./auth-context";
 import { IconLock, IconMail, IconPhone, IconPin, IconUser } from "./icons";
 import { Alert, AuthShell, Checkbox, PasswordField, PasswordMeter, SubmitButton, TextField } from "./form-kit";
 
+type ModeConnexion = "connexion" | "inscription";
+
+type AuthFormProps = {
+  compact?: boolean;
+  onClose?: () => void;
+  onModeChange?: (mode: ModeConnexion) => void;
+  onSuccess?: () => void;
+};
+
 /* ------------------------------------------------------------------ connexion */
 
-export function LoginForm() {
+export function LoginForm({ compact = false, onClose, onModeChange, onSuccess }: AuthFormProps = {}) {
   const router = useRouter();
   const { login, account, hydrated } = useAuth();
 
@@ -40,7 +49,8 @@ export function LoginForm() {
       setErreur(resultat.error ?? "La connexion a échoué.");
       return;
     }
-    router.replace("/");
+    if (onSuccess) onSuccess();
+    else router.replace("/");
   };
 
   return (
@@ -48,19 +58,23 @@ export function LoginForm() {
       eyebrow="Espace client"
       title="Bon retour parmi nous"
       image="/images/portes/filles.webp"
+      compact={compact}
       footer={
         <span className="text-muted">
           Pas encore de compte ?{" "}
-          <Link
-            href="/compte/inscription"
-            className="font-bold text-accent underline underline-offset-4"
-          >
-            Créer un compte
-          </Link>
+          {compact && onModeChange ? (
+            <button type="button" onClick={() => onModeChange("inscription")} className="font-bold text-accent underline underline-offset-4">
+              Créer un compte
+            </button>
+          ) : (
+            <Link href="/compte/inscription" className="font-bold text-accent underline underline-offset-4">
+              Créer un compte
+            </Link>
+          )}
         </span>
       }
     >
-      <form onSubmit={envoyer} className="flex flex-col gap-5" noValidate>
+      <form onSubmit={envoyer} className={`flex flex-col ${compact ? "gap-4" : "gap-5"}`} noValidate>
         {erreur && <Alert>{erreur}</Alert>}
 
         <TextField
@@ -69,6 +83,7 @@ export function LoginForm() {
           type="email"
           placeholder="aminata@exemple.sn"
           autoComplete="email"
+          autoFocus={compact}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -84,6 +99,7 @@ export function LoginForm() {
           <p className="mt-2 text-right text-[12px]">
             <Link
               href="/compte/mot-de-passe-oublie"
+              onClick={onClose}
               className="font-semibold text-accent underline underline-offset-4"
             >
               Mot de passe oublié ?
@@ -116,7 +132,7 @@ export function LoginForm() {
 
 type Champ = "name" | "email" | "phone" | "password" | "confirm" | "terms";
 
-export function SignupForm() {
+export function SignupForm({ compact = false, onModeChange, onSuccess }: AuthFormProps = {}) {
   const router = useRouter();
   const { register, account, hydrated } = useAuth();
 
@@ -166,7 +182,8 @@ export function SignupForm() {
       setErreur(resultat.error ?? "La création du compte a échoué.");
       return;
     }
-    router.replace("/");
+    if (onSuccess) onSuccess();
+    else router.replace("/");
   };
 
   return (
@@ -175,29 +192,34 @@ export function SignupForm() {
       title="Créer mon compte"
       description="Vos commandes et vos adresses, retrouvées à chaque visite."
       image="/images/portes/bebes.webp"
+      compact={compact}
       footer={
         <span className="text-muted">
           Vous avez déjà un compte ?{" "}
-          <Link
-            href="/compte/connexion"
-            className="font-bold text-accent underline underline-offset-4"
-          >
-            Se connecter
-          </Link>
+          {compact && onModeChange ? (
+            <button type="button" onClick={() => onModeChange("connexion")} className="font-bold text-accent underline underline-offset-4">
+              Se connecter
+            </button>
+          ) : (
+            <Link href="/compte/connexion" className="font-bold text-accent underline underline-offset-4">
+              Se connecter
+            </Link>
+          )}
         </span>
       }
     >
-      <form onSubmit={envoyer} className="flex flex-col gap-7" noValidate>
+      <form onSubmit={envoyer} className={`flex flex-col ${compact ? "gap-4" : "gap-7"}`} noValidate>
         {erreur && <Alert>{erreur}</Alert>}
 
         <div className="flex flex-col gap-4">
-          <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Vous</span>
+          {!compact && <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Vous</span>}
 
           <TextField
             label="Nom et prénom"
             icon={IconUser}
             placeholder="Aminata Fall"
             autoComplete="name"
+            autoFocus={compact}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => toucher("name")}
@@ -232,19 +254,21 @@ export function SignupForm() {
             />
           </div>
 
-          <TextField
-            label="Ville ou quartier"
-            icon={IconPin}
-            optional
-            placeholder="Sacré-Cœur 3, Dakar"
-            autoComplete="address-level2"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-          />
+          {!compact && (
+            <TextField
+              label="Ville ou quartier"
+              icon={IconPin}
+              optional
+              placeholder="Sacré-Cœur 3, Dakar"
+              autoComplete="address-level2"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
-          <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Sécurité</span>
+          {!compact && <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Sécurité</span>}
 
           <div>
             <PasswordField
@@ -256,7 +280,7 @@ export function SignupForm() {
               autoComplete="new-password"
               error={erreurDe("password")}
             />
-            <PasswordMeter password={password} />
+            {!compact && <PasswordMeter password={password} />}
           </div>
 
           <PasswordField

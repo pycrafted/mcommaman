@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/header";
-import { CartDrawer } from "@/components/cart-drawer";
-import { LoginForm } from "@/components/account-auth";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Se connecter",
@@ -9,14 +7,6 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function Page() {
-  return (
-    <>
-      <Header />
-      <main>
-        <LoginForm />
-      </main>
-      <CartDrawer />
-    </>
-  );
+export default function Page(): never {
+  redirect("/?ouvrirCompte=connexion");
 }
