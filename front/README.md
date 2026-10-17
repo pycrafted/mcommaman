@@ -100,7 +100,9 @@ trouvent là sans refaire l'appel chacun de leur côté.
 
 **Pas de barre du haut.** La navigation est un dock collé en bas à droite de l'écran
 (`components/dock.tsx`) : l'accueil, les commandes, le compte et le panier. Les
-catégories se choisissent dans les filtres de l'accueil. Le Coin Maman est une catégorie comme
+couleurs du logo original sont conservées sur fond blanc dans le lien d'accueil
+(`public/images/logo-m-comme-maman.png`, repris de la maquette).
+Les catégories se choisissent dans les filtres de l'accueil. Le Coin Maman est une catégorie comme
 les autres et n'a plus de page à lui. Le serveur garde
 sa recherche (`catalogue/recherche.py`, `?q=`) pour le back-office. Il n'y a plus non plus de
 page `/contact` : les coordonnées sont sur le bandeau de l'accueil (`/#contact`). Il n'y a pas

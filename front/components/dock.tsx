@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./auth-context";
@@ -48,14 +49,23 @@ export function Dock() {
       aria-label="Navigation"
       className="anim-fade-up fixed bottom-4 right-4 z-90 flex flex-row items-center gap-1 rounded-full border border-line bg-white/95 p-1.5 shadow-[0_24px_50px_-24px_rgba(36,26,32,.45)] backdrop-blur sm:bottom-6 sm:right-6 sm:flex-col"
     >
-      {/* Le « M » de la marque, en haut du dock : il ramène à l'accueil. */}
+      {/* Le logo garde ses couleurs sur fond blanc et ramène à l'accueil. */}
       <Link
         href="/"
         aria-label="M comme Maman, accueil"
+        aria-current={pathname === "/" ? "page" : undefined}
         title="Accueil"
-        className={`${classe(pathname === "/")} font-serif text-[22px] font-semibold italic`}
+        className="relative grid h-14 w-[88px] shrink-0 place-items-center rounded-full bg-white p-1 transition-transform duration-300 ease-back hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        M
+        <Image
+          src="/images/logo-m-comme-maman.png"
+          alt=""
+          width={182}
+          height={105}
+          unoptimized
+          priority
+          className="h-auto w-20 rounded-md object-contain"
+        />
       </Link>
 
       <span aria-hidden className="mx-0.5 h-6 w-px bg-line sm:mx-0 sm:my-0.5 sm:h-px sm:w-6" />
