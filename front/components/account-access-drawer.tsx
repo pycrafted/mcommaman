@@ -87,21 +87,18 @@ export function AccountAccessDrawer({
         ref={panneau}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="compte-titre"
+        aria-label="Accès au compte"
         tabIndex={-1}
         className="anim-fade-up masquer-barre-defilement relative z-10 max-h-[calc(100dvh-24px)] w-full max-w-[400px] overflow-y-auto overscroll-contain rounded-[24px] border border-line bg-white p-5 shadow-[0_24px_70px_-20px_rgba(36,26,32,.4)] outline-none sm:max-h-[min(760px,calc(100dvh-48px))] sm:p-6"
       >
-        <header className="mb-4 flex items-center justify-between gap-3">
-          <h1 id="compte-titre" className="text-[14px] font-extrabold">Mon compte</h1>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer la fenêtre de connexion"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line text-muted transition-colors hover:bg-blush hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            <IconClose className="h-4 w-4" />
-          </button>
-        </header>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer la fenêtre de connexion"
+          className="absolute right-4 top-4 z-20 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line text-muted transition-colors hover:bg-blush hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:right-5 sm:top-5"
+        >
+          <IconClose className="h-4 w-4" />
+        </button>
 
         {mode === "connexion" ? (
           <LoginForm compact onClose={onClose} onModeChange={onModeChange} onSuccess={accueil} />
