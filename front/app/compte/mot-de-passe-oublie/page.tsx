@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/header";
-import { CartDrawer } from "@/components/cart-drawer";
-import { ChangePasswordForm } from "@/components/password-reset";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Changer mon mot de passe",
-  description: "Changez votre mot de passe avec l'actuel, ou recevez un lien par e-mail.",
+  title: "Mot de passe oublié",
+  description: "Recevez un lien pour choisir un nouveau mot de passe.",
   robots: { index: false },
 };
 
-export default function Page() {
-  return (
-    <>
-      <Header />
-      <main>
-        <ChangePasswordForm />
-      </main>
-      <CartDrawer />
-    </>
-  );
+export default function Page(): never {
+  redirect("/?ouvrirCompte=oubli");
 }

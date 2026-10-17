@@ -35,7 +35,7 @@ export function Dock() {
   const { count, pulse, openDrawer } = useCart();
   const { account } = useAuth();
   const [creation, setCreation] = useState(false);
-  const [authMode, setAuthMode] = useState<"connexion" | "inscription" | null>(null);
+  const [authMode, setAuthMode] = useState<"connexion" | "inscription" | "oubli" | null>(null);
   const fermerCompte = useCallback(() => setAuthMode(null), []);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export function Dock() {
 
     const parametres = new URLSearchParams(window.location.search);
     const accesDemande = parametres.get("ouvrirCompte");
-    if (accesDemande === "connexion" || accesDemande === "inscription") {
+    if (accesDemande === "connexion" || accesDemande === "inscription" || accesDemande === "oubli") {
       setAuthMode(accesDemande);
       parametres.delete("ouvrirCompte");
       const recherche = parametres.toString();

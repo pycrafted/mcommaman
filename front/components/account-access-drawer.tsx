@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { IconClose } from "./icons";
 import { LoginForm, SignupForm } from "./account-auth";
+import { ForgotPasswordForm } from "./password-reset";
 
-type ModeConnexion = "connexion" | "inscription";
+type ModeConnexion = "connexion" | "inscription" | "oubli";
 
 export function AccountAccessDrawer({
   mode,
@@ -104,8 +105,10 @@ export function AccountAccessDrawer({
 
         {mode === "connexion" ? (
           <LoginForm compact onClose={onClose} onModeChange={onModeChange} onSuccess={accueil} />
-        ) : (
+        ) : mode === "inscription" ? (
           <SignupForm compact onModeChange={onModeChange} onSuccess={accueil} />
+        ) : (
+          <ForgotPasswordForm compact onModeChange={onModeChange} />
         )}
       </section>
     </div>,

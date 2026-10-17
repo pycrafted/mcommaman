@@ -172,7 +172,7 @@ export function ChangePasswordForm() {
 
 /* ------------------------------------------------------- le lien par courriel */
 
-function ForgotByEmail({ onFermer }: { onFermer: () => void }) {
+function ForgotByEmail({ onFermer }: { onFermer?: () => void } = {}) {
   const [email, setEmail] = useState("");
   const [envoye, setEnvoye] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -243,15 +243,46 @@ function ForgotByEmail({ onFermer }: { onFermer: () => void }) {
         <SubmitButton pending={envoi} pendingLabel="Envoi…">
           Recevoir le lien
         </SubmitButton>
-        <button
-          type="button"
-          onClick={onFermer}
-          className="text-[13px] font-semibold text-muted underline underline-offset-4"
-        >
-          Annuler
-        </button>
+        {onFermer && (
+          <button
+            type="button"
+            onClick={onFermer}
+            className="text-[13px] font-semibold text-muted underline underline-offset-4"
+          >
+            Annuler
+          </button>
+        )}
       </div>
     </form>
+  );
+}
+
+export function ForgotPasswordForm({
+  compact = false,
+  onModeChange,
+}: {
+  compact?: boolean;
+  onModeChange: (mode: "connexion" | "inscription" | "oubli") => void;
+}) {
+  return (
+    <AuthShell
+      eyebrow="Espace client"
+      title="Mot de passe oublié ?"
+      description="Indiquez votre e-mail pour recevoir un lien et choisir un nouveau mot de passe."
+      image="/images/portes/filles.webp"
+      compact={compact}
+      footer={
+        <button
+          type="button"
+          onClick={() => onModeChange("connexion")}
+          className="font-bold text-accent underline underline-offset-4"
+        >
+          Retour à la connexion
+        </button>
+      }
+    >
+      <ForgotByEmail />
+    </AuthShell>
   );
 }
 

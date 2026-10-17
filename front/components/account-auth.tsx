@@ -7,7 +7,7 @@ import { useAuth } from "./auth-context";
 import { IconLock, IconMail, IconPhone, IconPin, IconUser } from "./icons";
 import { Alert, AuthShell, Checkbox, PasswordField, PasswordMeter, SubmitButton, TextField } from "./form-kit";
 
-type ModeConnexion = "connexion" | "inscription";
+type ModeConnexion = "connexion" | "inscription" | "oubli";
 
 type AuthFormProps = {
   compact?: boolean;
@@ -97,13 +97,23 @@ export function LoginForm({ compact = false, onClose, onModeChange, onSuccess }:
             autoComplete="current-password"
           />
           <p className="mt-2 text-right text-[12px]">
-            <Link
-              href="/compte/mot-de-passe-oublie"
-              onClick={onClose}
-              className="font-semibold text-accent underline underline-offset-4"
-            >
-              Mot de passe oublié ?
-            </Link>
+            {compact && onModeChange ? (
+              <button
+                type="button"
+                onClick={() => onModeChange("oubli")}
+                className="font-semibold text-accent underline underline-offset-4"
+              >
+                Mot de passe oublié ?
+              </button>
+            ) : (
+              <Link
+                href="/compte/mot-de-passe-oublie"
+                onClick={onClose}
+                className="font-semibold text-accent underline underline-offset-4"
+              >
+                Mot de passe oublié ?
+              </Link>
+            )}
           </p>
         </div>
 
