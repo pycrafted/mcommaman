@@ -114,6 +114,7 @@ export function Dock() {
         <button
           type="button"
           onClick={() => setAuthMode("connexion")}
+          id="dock-account-trigger"
           aria-label="Se connecter"
           title="Se connecter"
           className={classe(false)}
