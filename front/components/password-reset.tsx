@@ -200,19 +200,11 @@ function ForgotByEmail({ onFermer }: { onFermer?: () => void } = {}) {
 
   if (envoye) {
     return (
-      <div className="flex flex-col gap-3">
+      <div>
         {/* Le message ne dit pas si l'adresse a un compte : le serveur répond la
             même chose dans les deux cas, l'écran doit en faire autant. */}
-        <p className="rounded-2xl bg-mist px-5 py-4 text-[13.5px] leading-relaxed">
-          Si un compte existe pour <strong>{email.trim()}</strong>, un lien vient d&apos;y être
-          envoyé. Il ne sert qu&apos;une fois.
-        </p>
-        <p className="text-[12.5px] leading-relaxed text-muted">
-          Rien n&apos;arrive&nbsp;? Regardez dans les indésirables, puis écrivez-nous&nbsp;:{" "}
-          <Link href="/#contact" className="font-semibold text-accent underline underline-offset-4">
-            nous contacter
-          </Link>
-          .
+        <p className="rounded-2xl bg-mist px-4 py-3 text-[12.5px] leading-relaxed">
+          Si un compte existe, un lien a été envoyé à <strong>{email.trim()}</strong>.
         </p>
       </div>
     );
@@ -220,14 +212,6 @@ function ForgotByEmail({ onFermer }: { onFermer?: () => void } = {}) {
 
   return (
     <form onSubmit={demander} className="flex flex-col gap-4" noValidate>
-      <div>
-        <p className="text-[13px] font-bold">Recevoir un lien par e-mail</p>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
-          Nous vous envoyons un lien qui permet d&apos;en choisir un nouveau, sans connaître
-          l&apos;actuel.
-        </p>
-      </div>
-
       {erreur && <Alert>{erreur}</Alert>}
 
       <TextField
@@ -264,14 +248,36 @@ export function ForgotPasswordForm({
   compact?: boolean;
   onModeChange: (mode: "connexion" | "inscription" | "oubli") => void;
 }) {
+  const [methode, setMethode] = useState<"actuel" | "email">("email");
+
   return (
-    <AuthShell
-      eyebrow="Espace client"
-      title="Mot de passe oublié ?"
-      description="Indiquez votre e-mail pour recevoir un lien et choisir un nouveau mot de passe."
-      image="/images/portes/filles.webp"
-      compact={compact}
-      footer={
+    <div>
+      <h2 className="text-[20px] font-extrabold tracking-tight">Mot de passe</h2>
+
+      <div className="mt-4 grid grid-cols-2 gap-1 rounded-full bg-blush p-1" role="group" aria-label="Méthode de changement du mot de passe">
+        <button
+          type="button"
+          aria-pressed={methode === "actuel"}
+          onClick={() => setMethode("actuel")}
+          className={`rounded-full px-2 py-2.5 text-[11px] font-bold transition-colors ${methode === "actuel" ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+        >
+          Mot de passe actuel
+        </button>
+        <button
+          type="button"
+          aria-pressed={methode === "email"}
+          onClick={() => setMethode("email")}
+          className={`rounded-full px-2 py-2.5 text-[11px] font-bold transition-colors ${methode === "email" ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+        >
+          Lien par e-mail
+        </button>
+      </div>
+
+      <div className="mt-4">
+        {methode === "actuel" ? <ChangeWithCurrentPassword compact={compact} /> : <ForgotByEmail />}
+      </div>
+
+      <p className="mt-4 text-center text-[12px]">
         <button
           type="button"
           onClick={() => onModeChange("connexion")}
@@ -279,10 +285,105 @@ export function ForgotPasswordForm({
         >
           Retour à la connexion
         </button>
-      }
-    >
-      <ForgotByEmail />
-    </AuthShell>
+      </p>
+    </div>
+  );
+}
+
+function ChangeWithCurrentPassword({ compact }: { compact: boolean }) {
+  const router = useRouter();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [actuel, setActuel] = useState("");
+  const [nouveau, setNouveau] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+  const [fait, setFait] = useState(false);
+
+  const changer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErreur(null);
+
+    if (!email.trim() || !actuel) {
+      setErreur("E-mail et mot de passe actuel requis.");
+      return;
+    }
+    if (!nouveau || nouveau !== confirmation) {
+      setErreur("Vérifiez le nouveau mot de passe et sa confirmation.");
+      return;
+    }
+    if (nouveau === actuel) {
+      setErreur("Choisissez un mot de passe différent de l'actuel.");
+      return;
+    }
+
+    setEnvoi(true);
+    const entree = await login(email.trim(), actuel);
+    if (!entree.ok) {
+      setEnvoi(false);
+      setErreur(entree.error ?? "Adresse ou mot de passe incorrect.");
+      return;
+    }
+
+    try {
+      await envoyer("/api/compte/mot-de-passe/", "POST", { actuel, nouveau });
+      setFait(true);
+      window.setTimeout(() => router.push("/compte"), 1600);
+    } catch (cause) {
+      setErreur(raison(cause, "Le changement n'a pas abouti."));
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  if (fait) {
+    return <p className="rounded-2xl bg-mist px-4 py-3 text-[12.5px]">Mot de passe modifié.</p>;
+  }
+
+  return (
+    <form onSubmit={changer} className="flex flex-col gap-4" noValidate>
+      {erreur && <Alert>{erreur}</Alert>}
+
+      <div className={compact ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-4"}>
+        <TextField
+          label="Adresse e-mail"
+          icon={IconMail}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+        />
+        <PasswordField
+          label="Mot de passe actuel"
+          icon={IconLock}
+          value={actuel}
+          onChange={setActuel}
+          autoComplete="current-password"
+        />
+      </div>
+
+      <div className={compact ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-4"}>
+        <PasswordField
+          label="Nouveau mot de passe"
+          icon={IconLock}
+          value={nouveau}
+          onChange={setNouveau}
+          autoComplete="new-password"
+        />
+        <PasswordField
+          label="Confirmer"
+          icon={IconLock}
+          value={confirmation}
+          onChange={setConfirmation}
+          autoComplete="new-password"
+        />
+      </div>
+
+      <SubmitButton pending={envoi} pendingLabel="Enregistrement…">
+        Changer le mot de passe
+      </SubmitButton>
+    </form>
   );
 }
 
