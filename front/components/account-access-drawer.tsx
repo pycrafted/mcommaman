@@ -7,7 +7,6 @@ import { IconClose } from "./icons";
 import { LoginForm, SignupForm } from "./account-auth";
 
 type ModeConnexion = "connexion" | "inscription";
-type FlecheCompte = { largeur: number; hauteur: number; courbe: string; pointe: string };
 
 export function AccountAccessDrawer({
   mode,
@@ -21,7 +20,6 @@ export function AccountAccessDrawer({
   const router = useRouter();
   const panneau = useRef<HTMLElement>(null);
   const [monte, setMonte] = useState(false);
-  const [fleche, setFleche] = useState<FlecheCompte | null>(null);
 
   useEffect(() => {
     setMonte(true);
@@ -70,66 +68,6 @@ export function AccountAccessDrawer({
     };
   }, [monte, onClose]);
 
-  useEffect(() => {
-    if (!monte) return;
-
-    const mesurerFleche = () => {
-      const rectPanneau = panneau.current?.getBoundingClientRect();
-      const cible = document.getElementById("dock-account-trigger");
-      const rectCible = cible?.getBoundingClientRect();
-
-      if (!rectPanneau || !rectCible || window.innerWidth < 700) {
-        setFleche(null);
-        return;
-      }
-
-      const departX = rectPanneau.right - 1;
-      const departY = rectPanneau.top + rectPanneau.height * 0.76;
-      const arriveeX = rectCible.left + Math.min(4, rectCible.width * 0.08);
-      const arriveeY = rectCible.top + rectCible.height / 2;
-      const distanceX = arriveeX - departX;
-
-      if (distanceX < 100) {
-        setFleche(null);
-        return;
-      }
-
-      const controle1X = departX + distanceX * 0.28;
-      const controle1Y = departY + Math.max(24, (arriveeY - departY) * 0.1);
-      const controle2X = arriveeX - distanceX * 0.24;
-      const controle2Y = arriveeY - Math.max(24, (arriveeY - departY) * 0.12);
-      const directionX = arriveeX - controle2X;
-      const directionY = arriveeY - controle2Y;
-      const longueur = Math.hypot(directionX, directionY) || 1;
-      const uniteX = directionX / longueur;
-      const uniteY = directionY / longueur;
-      const baseX = arriveeX - uniteX * 18;
-      const baseY = arriveeY - uniteY * 18;
-      const perpendiculaireX = -uniteY * 7;
-      const perpendiculaireY = uniteX * 7;
-
-      setFleche({
-        largeur: window.innerWidth,
-        hauteur: window.innerHeight,
-        courbe: `M ${departX} ${departY} C ${controle1X} ${controle1Y}, ${controle2X} ${controle2Y}, ${arriveeX} ${arriveeY}`,
-        pointe: `M ${arriveeX} ${arriveeY} L ${baseX + perpendiculaireX} ${baseY + perpendiculaireY} L ${baseX - perpendiculaireX} ${baseY - perpendiculaireY} Z`,
-      });
-    };
-
-    mesurerFleche();
-    const panneauObserve = panneau.current;
-    const cibleObservee = document.getElementById("dock-account-trigger");
-    const observateur = new ResizeObserver(mesurerFleche);
-    if (panneauObserve) observateur.observe(panneauObserve);
-    if (cibleObservee) observateur.observe(cibleObservee);
-    window.addEventListener("resize", mesurerFleche);
-
-    return () => {
-      observateur.disconnect();
-      window.removeEventListener("resize", mesurerFleche);
-    };
-  }, [monte]);
-
   const accueil = () => {
     onClose();
     router.replace("/");
@@ -144,18 +82,6 @@ export function AccountAccessDrawer({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      {fleche && (
-        <svg
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible sm:block"
-          viewBox={`0 0 ${fleche.largeur} ${fleche.hauteur}`}
-          preserveAspectRatio="none"
-        >
-          <path d={fleche.courbe} fill="none" stroke="white" strokeLinecap="round" strokeWidth="8" />
-          <path d={fleche.courbe} fill="none" stroke="#e24f88" strokeLinecap="round" strokeWidth="4" />
-          <path d={fleche.pointe} fill="#e24f88" stroke="white" strokeLinejoin="round" strokeWidth="2" />
-        </svg>
-      )}
       <section
         ref={panneau}
         role="dialog"

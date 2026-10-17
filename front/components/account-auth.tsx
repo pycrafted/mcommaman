@@ -214,31 +214,18 @@ export function SignupForm({ compact = false, onModeChange, onSuccess }: AuthFor
         <div className="flex flex-col gap-4">
           {!compact && <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Vous</span>}
 
-          <TextField
-            label="Nom et prénom"
-            icon={IconUser}
-            placeholder="Aminata Fall"
-            autoComplete="name"
-            autoFocus={compact}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => toucher("name")}
-            error={erreurDe("name")}
-            valid={valideDe("name")}
-          />
-
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
-              label="Adresse e-mail"
-              icon={IconMail}
-              type="email"
-              placeholder="aminata@exemple.sn"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => toucher("email")}
-              error={erreurDe("email")}
-              valid={valideDe("email")}
+              label="Nom et prénom"
+              icon={IconUser}
+              placeholder="Aminata Fall"
+              autoComplete="name"
+              autoFocus={compact}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => toucher("name")}
+              error={erreurDe("name")}
+              valid={valideDe("name")}
             />
             <TextField
               label="Téléphone"
@@ -253,6 +240,19 @@ export function SignupForm({ compact = false, onModeChange, onSuccess }: AuthFor
               valid={valideDe("phone")}
             />
           </div>
+
+          <TextField
+            label="Adresse e-mail"
+            icon={IconMail}
+            type="email"
+            placeholder="aminata@exemple.sn"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => toucher("email")}
+            error={erreurDe("email")}
+            valid={valideDe("email")}
+          />
 
           {!compact && (
             <TextField
@@ -270,29 +270,31 @@ export function SignupForm({ compact = false, onModeChange, onSuccess }: AuthFor
         <div className="flex flex-col gap-4">
           {!compact && <span className="text-[11px] font-bold uppercase tracking-[.16em] text-accent">Sécurité</span>}
 
-          <div>
-            <PasswordField
-              label="Mot de passe"
-              icon={IconLock}
-              value={password}
-              onChange={setPassword}
-              onBlur={() => toucher("password")}
-              autoComplete="new-password"
-              error={erreurDe("password")}
-            />
-            {!compact && <PasswordMeter password={password} />}
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <PasswordField
+                label="Mot de passe"
+                icon={IconLock}
+                value={password}
+                onChange={setPassword}
+                onBlur={() => toucher("password")}
+                autoComplete="new-password"
+                error={erreurDe("password")}
+              />
+              {!compact && <PasswordMeter password={password} />}
+            </div>
 
-          <PasswordField
-            label="Confirmer le mot de passe"
-            icon={IconLock}
-            value={confirm}
-            onChange={setConfirm}
-            onBlur={() => toucher("confirm")}
-            autoComplete="new-password"
-            error={erreurDe("confirm")}
-            valid={Boolean(confirm) && confirm === password}
-          />
+            <PasswordField
+              label="Confirmer le mot de passe"
+              icon={IconLock}
+              value={confirm}
+              onChange={setConfirm}
+              onBlur={() => toucher("confirm")}
+              autoComplete="new-password"
+              error={erreurDe("confirm")}
+              valid={Boolean(confirm) && confirm === password}
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">
