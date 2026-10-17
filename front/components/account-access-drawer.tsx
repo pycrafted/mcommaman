@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { IconClose } from "./icons";
 import { LoginForm, SignupForm } from "./account-auth";
@@ -18,8 +19,15 @@ export function AccountAccessDrawer({
 }) {
   const router = useRouter();
   const panneau = useRef<HTMLElement>(null);
+  const [monte, setMonte] = useState(false);
 
   useEffect(() => {
+    setMonte(true);
+  }, []);
+
+  useEffect(() => {
+    if (!monte) return;
+
     const focusAvant = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const defilementAvant = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -58,14 +66,16 @@ export function AccountAccessDrawer({
       window.removeEventListener("keydown", surTouche);
       focusAvant?.focus();
     };
-  }, [onClose]);
+  }, [monte, onClose]);
 
   const accueil = () => {
     onClose();
     router.replace("/");
   };
 
-  return (
+  if (!monte) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-start bg-ink/25 p-3 backdrop-blur-[2px] sm:p-6"
       onMouseDown={(event) => {
@@ -98,6 +108,7 @@ export function AccountAccessDrawer({
           <SignupForm compact onModeChange={onModeChange} onSuccess={accueil} />
         )}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
